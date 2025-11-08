@@ -35,7 +35,9 @@ const elements = {
     document.querySelectorAll('#orientationControls button')
   ),
   autoPlacementBtn: document.getElementById('autoPlacementBtn'),
+  undoPlacementBtn: document.getElementById('undoPlacementBtn'),
   resetPlacementBtn: document.getElementById('resetPlacementBtn'),
+  confirmPlacementBtn: document.getElementById('confirmPlacementBtn'),
   turnText: document.getElementById('turnText'),
   gameCanvas: document.getElementById('gameCanvas'),
   chatForm: document.getElementById('chatForm'),
@@ -255,6 +257,37 @@ function setOrientation(axis, { updateInfo = true } = {}) {
   if (updateInfo) updatePlacementInfo();
 }
 
+function syncPlacementButtons() {
+  const hasRoom = Boolean(state.roomCode);
+  const placementActive = state.phase === 'placement';
+  const hasPlacements = state.placements.length > 0;
+  const shipsTotal = Array.isArray(state.shipsConfig) ? state.shipsConfig.length : 0;
+  const allShipsPlaced = placementActive && shipsTotal > 0 && state.placementIndex >= shipsTotal;
+
+  if (elements.autoPlacementBtn) {
+    const hideAuto = !hasRoom || !placementActive;
+    elements.autoPlacementBtn.hidden = hideAuto;
+    elements.autoPlacementBtn.disabled = hideAuto;
+  }
+
+  if (elements.resetPlacementBtn) {
+    elements.resetPlacementBtn.hidden = !hasRoom;
+    elements.resetPlacementBtn.disabled = !hasRoom;
+  }
+
+  if (elements.undoPlacementBtn) {
+    const hideUndo = !hasRoom || !placementActive;
+    elements.undoPlacementBtn.hidden = hideUndo;
+    elements.undoPlacementBtn.disabled = hideUndo || !hasPlacements;
+  }
+
+  if (elements.confirmPlacementBtn) {
+    const hideConfirm = !hasRoom || !placementActive;
+    elements.confirmPlacementBtn.hidden = hideConfirm;
+    elements.confirmPlacementBtn.disabled = hideConfirm || !allShipsPlaced;
+  }
+}
+
 function highlightCells(boardKey, keys, { valid }) {
   hoveredCells = keys.map((key) => ({ boardKey, key }));
   hoveredCells.forEach(({ boardKey: bk, key }) => {
@@ -287,6 +320,20 @@ function getShipCells(start, axis, length) {
     cells.push(cell);
   }
   return cells;
+}
+
+function detectAxisFromCells(cells) {
+  if (!Array.isArray(cells) || cells.length < 2) {
+    return state.orientation;
+  }
+  const axes = ['x', 'y', 'z'];
+  for (const axis of axes) {
+    const uniqueValues = new Set(cells.map((cell) => cell[axis]));
+    if (uniqueValues.size > 1) {
+      return axis;
+    }
+  }
+  return state.orientation;
 }
 
 function cellsAreValid(cells, occupiedSet = state.selfOccupied) {
@@ -341,14 +388,15 @@ function generateAutomaticPlacements() {
   return placements;
 }
 
-function applyShipPlacement(ship, cells) {
+function applyShipPlacement(ship, cells, axis = state.orientation) {
   cells.forEach((cell) => {
     const key = toKey(cell);
     state.selfOccupied.add(key);
     setCellState('self', key, 'ship');
   });
-  state.placements.push({ name: ship.name, cells });
+  state.placements.push({ name: ship.name, cells, axis });
   state.placementIndex += 1;
+  syncPlacementButtons();
 }
 
 function resetPlacement() {
@@ -374,15 +422,43 @@ function resetPlacement() {
   }
   updatePlacementInfo();
   renderPlayers();
+  syncPlacementButtons();
+}
+
+function removeLastPlacement() {
+  if (state.phase !== 'placement') return;
+  const removed = state.placements.pop();
+  if (!removed) return;
+
+  removed.cells.forEach((cell) => {
+    const key = toKey(cell);
+    state.selfOccupied.delete(key);
+    setCellState('self', key, 'empty');
+  });
+
+  state.placementIndex = Math.max(0, state.placementIndex - 1);
+  const axis = removed.axis || detectAxisFromCells(removed.cells);
+  setOrientation(axis, { updateInfo: false });
+  clearHover();
+  setStatus(`Removed ${removed.name}. Place it again.`);
+  updatePlacementInfo();
+  syncPlacementButtons();
 }
 
 function lockPlacement() {
+  if (state.phase !== 'placement') return;
+  const totalShips = Array.isArray(state.shipsConfig) ? state.shipsConfig.length : 0;
+  if (!totalShips || state.placementIndex < totalShips) {
+    setStatus('Place all ships before confirming.');
+    return;
+  }
   state.phase = 'waiting';
   elements.orientationControls.hidden = true;
   elements.resetPlacementBtn.hidden = false;
   if (elements.autoPlacementBtn) {
     elements.autoPlacementBtn.hidden = true;
   }
+  syncPlacementButtons();
   updatePlacementInfo();
   renderPlayers();
   socket.emit(
@@ -393,6 +469,7 @@ function lockPlacement() {
         setStatus(response.error);
         state.phase = 'placement';
         elements.orientationControls.hidden = false;
+        syncPlacementButtons();
         return;
       }
       setStatus('Ships locked. Waiting for opponent to get ready.');
@@ -415,7 +492,8 @@ function updatePlacementInfo() {
       elements.placementInfo.textContent = `Place your ${ship.name} (${ship.length} cells). Orientation: ${state.orientation
         .toUpperCase()} (press X/Y/Z to change).${autoHint}`;
     } else {
-      elements.placementInfo.textContent = 'All ships placed. Confirming with server...';
+      elements.placementInfo.textContent =
+        'All ships placed. Review your fleet and press Confirm Fleet when ready.';
     }
     return;
   }
@@ -448,6 +526,7 @@ function enterPlacementPhase() {
   }
   updatePlacementInfo();
   renderPlayers();
+  syncPlacementButtons();
 }
 
 function ensureScene() {
@@ -565,7 +644,8 @@ function handleCanvasClick(event) {
     clearHover();
 
     if (state.placementIndex === state.shipsConfig.length) {
-      lockPlacement();
+      setStatus('All ships placed. Confirm your fleet when ready.');
+      syncPlacementButtons();
     }
   }
 
@@ -717,6 +797,20 @@ function setupUiEvents() {
     setStatus('Placement reset. Arrange your fleet again.');
   });
 
+  if (elements.undoPlacementBtn) {
+    elements.undoPlacementBtn.addEventListener('click', () => {
+      if (!state.roomCode) return;
+      removeLastPlacement();
+    });
+  }
+
+  if (elements.confirmPlacementBtn) {
+    elements.confirmPlacementBtn.addEventListener('click', () => {
+      if (!state.roomCode) return;
+      lockPlacement();
+    });
+  }
+
   if (elements.autoPlacementBtn) {
     elements.autoPlacementBtn.addEventListener('click', () => {
       if (!state.roomCode) return;
@@ -727,11 +821,13 @@ function setupUiEvents() {
       }
       resetPlacement();
       placements.forEach(({ name, cells }) => {
-        applyShipPlacement({ name }, cells);
+        const axis = detectAxisFromCells(cells);
+        applyShipPlacement({ name }, cells, axis);
       });
       clearHover();
-      setStatus('Fleet automatically arranged. Locking in...');
-      lockPlacement();
+      setStatus('Fleet automatically arranged. Review and confirm when ready.');
+      updatePlacementInfo();
+      syncPlacementButtons();
     });
   }
 
@@ -846,6 +942,7 @@ function handleAttackResult({ attacker, target, result, shipName, nextTurn, winn
     setStatus(youWon ? 'All enemy ships destroyed!' : 'Your fleet was sunk.');
     updatePlacementInfo();
     renderPlayers();
+    syncPlacementButtons();
     return;
   }
 
@@ -879,6 +976,7 @@ function setupSocketEvents() {
     elements.orientationControls.hidden = true;
     updatePlacementInfo();
     renderPlayers();
+    syncPlacementButtons();
   });
 
   socket.on('attackResult', (payload) => {
@@ -898,6 +996,7 @@ function setupSocketEvents() {
     updatePlacementInfo();
     renderPlayers();
     renderFleetStatus();
+    syncPlacementButtons();
   });
 
   socket.on('usernameUpdate', ({ players }) => {
@@ -927,6 +1026,7 @@ function init() {
   updatePlacementInfo();
   updateRoomCodeDisplay();
   syncOrientationButtons();
+  syncPlacementButtons();
   renderPlayers();
   renderFleetStatus();
   window.addEventListener('keydown', handleKeydown);
