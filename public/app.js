@@ -13,10 +13,13 @@ const state = {
   username: '',
   playerId: null,
   playerNames: new Map(),
+  players: [],
+  turn: null,
 };
 
 const elements = {
   createGameBtn: document.getElementById('createGameBtn'),
+  copyCodeBtn: document.getElementById('copyCodeBtn'),
   joinForm: document.getElementById('joinForm'),
   joinCodeInput: document.getElementById('joinCodeInput'),
   roomCodeDisplay: document.getElementById('roomCodeDisplay'),
@@ -36,6 +39,8 @@ const elements = {
   usernameBlock: document.getElementById('usernameBlock'),
   usernameForm: document.getElementById('usernameForm'),
   usernameInput: document.getElementById('usernameInput'),
+  playersList: document.getElementById('playersList'),
+  playersHint: document.getElementById('playersHint'),
 };
 
 const boards = {
@@ -73,6 +78,7 @@ let scene;
 let camera;
 let renderer;
 let animationId;
+let copyButtonResetTimeout;
 
 function setStatus(message) {
   elements.statusText.textContent = message;
@@ -89,6 +95,23 @@ function toKey({ x, y, z }) {
 function fromKey(key) {
   const [x, y, z] = key.split(':').map(Number);
   return { x, y, z };
+}
+
+function updateRoomCodeDisplay() {
+  const code = state.roomCode || '';
+  elements.roomCodeDisplay.textContent = code;
+  const copyButton = elements.copyCodeBtn;
+  if (!copyButton) return;
+  const showCopyButton = Boolean(code);
+  copyButton.hidden = !showCopyButton;
+  copyButton.disabled = !showCopyButton;
+  if (!showCopyButton) {
+    copyButton.textContent = 'Copy Code';
+    if (copyButtonResetTimeout) {
+      clearTimeout(copyButtonResetTimeout);
+      copyButtonResetTimeout = null;
+    }
+  }
 }
 
 function createBoardStates() {
@@ -159,6 +182,23 @@ function setCellState(boardKey, key, stateValue) {
   refreshCellAppearance(boardKey, key);
 }
 
+function syncOrientationButtons() {
+  elements.orientationButtons.forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.axis === state.orientation);
+  });
+}
+
+function setOrientation(axis, { updateInfo = true } = {}) {
+  if (!['x', 'y', 'z'].includes(axis)) return;
+  if (state.orientation === axis) {
+    if (updateInfo) updatePlacementInfo();
+    return;
+  }
+  state.orientation = axis;
+  syncOrientationButtons();
+  if (updateInfo) updatePlacementInfo();
+}
+
 function highlightCells(boardKey, keys, { valid }) {
   hoveredCells = keys.map((key) => ({ boardKey, key }));
   hoveredCells.forEach(({ boardKey: bk, key }) => {
@@ -217,11 +257,14 @@ function resetPlacement() {
   state.placements = [];
   state.placementIndex = 0;
   state.selfOccupied.clear();
+  setOrientation('y', { updateInfo: false });
+  syncOrientationButtons();
   boards.self.states.forEach((_, key) => {
     setCellState('self', key, 'empty');
   });
   state.phase = 'placement';
   updatePlacementInfo();
+  renderPlayers();
 }
 
 function lockPlacement() {
@@ -229,6 +272,7 @@ function lockPlacement() {
   elements.orientationControls.hidden = true;
   elements.resetPlacementBtn.hidden = false;
   updatePlacementInfo();
+  renderPlayers();
   socket.emit(
     'placeShips',
     { code: state.roomCode, ships: state.placements },
@@ -253,7 +297,8 @@ function updatePlacementInfo() {
   if (state.phase === 'placement') {
     const ship = state.shipsConfig[state.placementIndex];
     if (ship) {
-      elements.placementInfo.textContent = `Place your ${ship.name} (${ship.length} cells). Orientation: ${state.orientation.toUpperCase()}.`;
+      elements.placementInfo.textContent = `Place your ${ship.name} (${ship.length} cells). Orientation: ${state.orientation
+        .toUpperCase()} (press X/Y/Z to change).`;
     } else {
       elements.placementInfo.textContent = 'All ships placed. Confirming with server...';
     }
@@ -283,6 +328,7 @@ function enterPlacementPhase() {
   elements.orientationControls.hidden = false;
   elements.resetPlacementBtn.hidden = false;
   updatePlacementInfo();
+  renderPlayers();
 }
 
 function ensureScene() {
@@ -423,13 +469,74 @@ function handleCanvasClick(event) {
   }
 }
 
-function addChatEntry({ username, message, id }) {
+function addChatEntry({ username, message, id, timestamp }) {
   const template = elements.chatMessageTemplate.content.firstElementChild.cloneNode(true);
   const senderLabel = username || (id === state.playerId ? 'You' : 'Player');
   template.querySelector('.sender').textContent = senderLabel;
   template.querySelector('.content').textContent = message;
+  const stamp = template.querySelector('.timestamp');
+  if (stamp) {
+    stamp.textContent = formatTimestamp(timestamp);
+  }
   elements.chatLog.appendChild(template);
   elements.chatLog.scrollTop = elements.chatLog.scrollHeight;
+}
+
+function renderPlayers() {
+  const list = elements.playersList;
+  if (!list) return;
+  list.innerHTML = '';
+
+  if (!state.players.length) {
+    if (elements.playersHint) {
+      elements.playersHint.hidden = false;
+    }
+    return;
+  }
+
+  if (elements.playersHint) {
+    elements.playersHint.hidden = true;
+  }
+
+  state.players.forEach((player, index) => {
+    const item = document.createElement('li');
+    item.classList.add('player-item');
+    if (player.id === state.playerId) item.classList.add('player-self');
+    if (player.ready) item.classList.add('player-ready');
+    if (state.phase === 'playing' && state.turn && player.id === state.turn) {
+      item.classList.add('player-turn');
+    }
+
+    const displayName = player.username?.trim() || `Player ${index + 1}`;
+    const name = document.createElement('span');
+    name.classList.add('name');
+    name.textContent = player.id === state.playerId ? `${displayName} (You)` : displayName;
+
+    const status = document.createElement('span');
+    status.classList.add('status');
+    let statusText = 'Waiting';
+    if (state.phase === 'finished') {
+      statusText = 'Finished';
+    } else if (state.phase === 'playing') {
+      statusText = player.id === state.turn ? 'Taking turn' : 'Standing by';
+    } else if (player.ready) {
+      statusText = 'Ready';
+    } else {
+      statusText = 'Placing fleet';
+    }
+    status.textContent = statusText;
+
+    item.appendChild(name);
+    item.appendChild(status);
+    list.appendChild(item);
+  });
+}
+
+function formatTimestamp(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 function setupUiEvents() {
@@ -439,13 +546,15 @@ function setupUiEvents() {
         state.roomCode = response.code;
         state.boardSize = response.boardSize;
         state.shipsConfig = response.ships;
-        elements.roomCodeDisplay.textContent = response.code;
+        state.players = [];
+        state.playerNames = new Map();
         setStatus(`Room created! Share the code ${response.code} with your opponent.`);
         elements.usernameBlock.hidden = false;
         ensureScene();
         enterPlacementPhase();
         elements.chatForm.hidden = false;
         updatePlacementInfo();
+        updateRoomCodeDisplay();
       }
     });
   });
@@ -465,21 +574,21 @@ function setupUiEvents() {
       state.roomCode = code;
       state.boardSize = response.boardSize;
       state.shipsConfig = response.ships;
-      elements.roomCodeDisplay.textContent = code;
+      state.players = [];
+      state.playerNames = new Map();
       setStatus(`Joined room ${code}. Place your fleet!`);
       elements.usernameBlock.hidden = false;
       ensureScene();
       enterPlacementPhase();
       elements.chatForm.hidden = false;
       updatePlacementInfo();
+      updateRoomCodeDisplay();
     });
   });
 
   elements.orientationButtons.forEach((button) => {
     button.addEventListener('click', () => {
-      state.orientation = button.dataset.axis;
-      elements.orientationButtons.forEach((btn) => btn.classList.toggle('active', btn === button));
-      updatePlacementInfo();
+      setOrientation(button.dataset.axis);
     });
   });
 
@@ -505,6 +614,39 @@ function setupUiEvents() {
     state.username = username;
     socket.emit('setUsername', { code: state.roomCode, username });
   });
+
+  if (elements.copyCodeBtn) {
+    elements.copyCodeBtn.addEventListener('click', async () => {
+      if (!state.roomCode) return;
+      if (copyButtonResetTimeout) {
+        clearTimeout(copyButtonResetTimeout);
+        copyButtonResetTimeout = null;
+      }
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(state.roomCode);
+        } else {
+          const textArea = document.createElement('textarea');
+          textArea.value = state.roomCode;
+          textArea.setAttribute('readonly', '');
+          textArea.style.position = 'absolute';
+          textArea.style.left = '-9999px';
+          document.body.appendChild(textArea);
+          textArea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textArea);
+        }
+        elements.copyCodeBtn.textContent = 'Copied!';
+        copyButtonResetTimeout = setTimeout(() => {
+          elements.copyCodeBtn.textContent = 'Copy Code';
+          copyButtonResetTimeout = null;
+        }, 2000);
+        setStatus('Room code copied to clipboard.');
+      } catch (error) {
+        setStatus(`Unable to copy automatically. Room code: ${state.roomCode}`);
+      }
+    });
+  }
 }
 
 function handleAttackResult({ attacker, target, result, shipName, nextTurn, winner }) {
@@ -536,21 +678,26 @@ function handleAttackResult({ attacker, target, result, shipName, nextTurn, winn
   if (winner) {
     state.phase = 'finished';
     state.myTurn = false;
+    state.turn = null;
     const youWon = winner === state.playerId;
     setTurnInfo(youWon ? 'Victory!' : 'Defeat.');
     setStatus(youWon ? 'All enemy ships destroyed!' : 'Your fleet was sunk.');
     updatePlacementInfo();
+    renderPlayers();
     return;
   }
 
   state.myTurn = nextTurn === state.playerId;
+  state.turn = nextTurn;
   setTurnInfo(state.myTurn ? "Your turn" : "Opponent's turn");
   updatePlacementInfo();
+  renderPlayers();
 }
 
 function setupSocketEvents() {
   socket.on('connect', () => {
     state.playerId = socket.id;
+    renderPlayers();
   });
 
   socket.on('playerJoined', () => {
@@ -564,10 +711,12 @@ function setupSocketEvents() {
   socket.on('gameStarted', ({ turn }) => {
     state.phase = 'playing';
     state.myTurn = turn === state.playerId;
+    state.turn = turn;
     setStatus('Battle commences!');
     setTurnInfo(state.myTurn ? 'Your turn' : "Opponent's turn");
     elements.orientationControls.hidden = true;
     updatePlacementInfo();
+    renderPlayers();
   });
 
   socket.on('attackResult', (payload) => {
@@ -581,14 +730,29 @@ function setupSocketEvents() {
   socket.on('playerLeft', () => {
     setStatus('Your opponent left the room. Create a new game to continue.');
     state.phase = 'finished';
+    state.myTurn = false;
+    state.turn = null;
     setTurnInfo('Opponent disconnected');
     updatePlacementInfo();
+    renderPlayers();
   });
 
   socket.on('usernameUpdate', ({ players }) => {
     players.forEach(({ id, username }) => {
       state.playerNames.set(id, username);
     });
+    renderPlayers();
+  });
+
+  socket.on('roomState', ({ players, turn }) => {
+    state.players = players;
+    state.turn = turn;
+    state.playerNames = new Map(players.map((player) => [player.id, player.username]));
+    if (state.phase === 'playing' && typeof turn === 'string') {
+      state.myTurn = turn === state.playerId;
+      setTurnInfo(state.myTurn ? 'Your turn' : "Opponent's turn");
+    }
+    renderPlayers();
   });
 }
 
@@ -598,6 +762,25 @@ function init() {
   ensureScene();
   setStatus('Waiting to create or join a game.');
   updatePlacementInfo();
+  updateRoomCodeDisplay();
+  syncOrientationButtons();
+  renderPlayers();
+  window.addEventListener('keydown', handleKeydown);
+}
+
+function handleKeydown(event) {
+  const activeTag = document.activeElement?.tagName?.toLowerCase();
+  if (activeTag === 'input' || activeTag === 'textarea') return;
+  if (state.phase !== 'placement') return;
+
+  const key = event.key.toLowerCase();
+  if (['x', 'y', 'z'].includes(key)) {
+    setOrientation(key);
+  }
+  if (key === 'r') {
+    resetPlacement();
+    setStatus('Placement reset. Arrange your fleet again.');
+  }
 }
 
 init();
