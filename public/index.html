@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>3D Battleship</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+  </head>
+  <body>
+    <main class="layout">
+      <section class="panel" id="menuPanel">
+        <h1>3D Battleship</h1>
+        <div class="menu-block">
+          <h2>Create Game</h2>
+          <button id="createGameBtn" class="primary">Create</button>
+          <div class="code-display" id="roomCodeDisplay"></div>
+        </div>
+        <div class="menu-block">
+          <h2>Join Game</h2>
+          <form id="joinForm">
+            <input
+              id="joinCodeInput"
+              maxlength="6"
+              placeholder="Enter room code"
+              autocomplete="off"
+            />
+            <button type="submit">Join</button>
+          </form>
+        </div>
+        <div class="menu-block" id="usernameBlock" hidden>
+          <h2>Set Username</h2>
+          <form id="usernameForm">
+            <input id="usernameInput" maxlength="12" placeholder="Your name" />
+            <button type="submit">Save</button>
+          </form>
+          <p class="hint">Usernames help players identify each other in chat.</p>
+        </div>
+        <div class="menu-block status">
+          <h2>Status</h2>
+          <p id="statusText">Waiting to create or join a game.</p>
+          <p id="turnText"></p>
+        </div>
+      </section>
+      <section class="panel" id="gamePanel">
+        <div class="canvas-wrapper">
+          <canvas id="gameCanvas"></canvas>
+        </div>
+        <div class="controls">
+          <div class="controls-block">
+            <h2>Ship Placement</h2>
+            <p id="placementInfo">Create or join a game to start.</p>
+            <div class="orientation-controls" id="orientationControls" hidden>
+              <span>Orientation:</span>
+              <button data-axis="x">X</button>
+              <button data-axis="y" class="active">Y</button>
+              <button data-axis="z">Z</button>
+            </div>
+            <button id="resetPlacementBtn" hidden>Reset Placement</button>
+          </div>
+          <div class="controls-block chat">
+            <h2>Chat</h2>
+            <div id="chatLog" class="chat-log"></div>
+            <form id="chatForm" class="chat-form" hidden>
+              <input id="chatInput" maxlength="120" placeholder="Type a message" />
+              <button type="submit">Send</button>
+            </form>
+          </div>
+        </div>
+      </section>
+    </main>
+    <template id="chatMessageTemplate">
+      <div class="chat-message">
+        <span class="sender"></span>
+        <span class="content"></span>
+      </div>
+    </template>
+    <script src="app.js" type="module"></script>
+  </body>
+</html>
