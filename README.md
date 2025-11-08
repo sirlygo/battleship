@@ -9,6 +9,8 @@ A room-based multiplayer Battleship experience with a fully interactive 3D grid 
 - **Real-Time Multiplayer** – Socket.IO keeps both players in sync for placement, turns, and attacks.
 - **Turn-Based Combat** – Receive immediate hit, miss, and ship-sunk feedback with win detection.
 - **In-Game Chat** – Chat with your opponent while you play.
+- **Auto Fleet Placement** – Instantly arrange a legal fleet layout when you want a speedy start.
+- **Server-Side Validation** – Hardened placement checks prevent cheating or malformed boards.
 
 ## Getting Started
 
