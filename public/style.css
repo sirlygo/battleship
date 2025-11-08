@@ -251,7 +251,9 @@ input:focus {
 }
 
 #autoPlacementBtn,
-#resetPlacementBtn {
+#resetPlacementBtn,
+#undoPlacementBtn,
+#confirmPlacementBtn {
   flex: 1 1 140px;
 }
 
@@ -261,9 +263,22 @@ input:focus {
   border: 1px solid rgba(92, 163, 255, 0.25);
 }
 
-#resetPlacementBtn {
+#undoPlacementBtn,
+#resetPlacementBtn,
+#confirmPlacementBtn {
   border-radius: 10px;
   padding: 0.5rem 0.75rem;
+}
+
+#confirmPlacementBtn {
+  box-shadow: 0 12px 24px rgba(58, 125, 248, 0.25);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .controls-block.stats {
