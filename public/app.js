@@ -15,6 +15,11 @@ const state = {
   playerNames: new Map(),
   players: [],
   turn: null,
+  fleetStatus: {
+    totalShips: 0,
+    self: { shipsRemaining: 0, hitsTaken: 0 },
+    opponent: { shipsRemaining: 0, hitsLanded: 0 },
+  },
 };
 
 const elements = {
@@ -42,6 +47,11 @@ const elements = {
   usernameInput: document.getElementById('usernameInput'),
   playersList: document.getElementById('playersList'),
   playersHint: document.getElementById('playersHint'),
+  statsBlock: document.getElementById('statsBlock'),
+  selfShipsRemaining: document.getElementById('selfShipsRemaining'),
+  selfHitsTaken: document.getElementById('selfHitsTaken'),
+  opponentShipsRemaining: document.getElementById('opponentShipsRemaining'),
+  opponentHitsLanded: document.getElementById('opponentHitsLanded'),
 };
 
 const boards = {
@@ -120,6 +130,51 @@ function createBoardStates() {
   boards.self.cells.forEach((_, key) => boards.self.states.set(key, 'empty'));
   boards.opponent.states.clear();
   boards.opponent.cells.forEach((_, key) => boards.opponent.states.set(key, 'unknown'));
+}
+
+function resetFleetStatus() {
+  const totalShips = Array.isArray(state.shipsConfig) ? state.shipsConfig.length : 0;
+  state.fleetStatus = {
+    totalShips,
+    self: { shipsRemaining: totalShips, hitsTaken: 0 },
+    opponent: { shipsRemaining: totalShips, hitsLanded: 0 },
+  };
+  renderFleetStatus();
+}
+
+function renderFleetStatus() {
+  const {
+    statsBlock,
+    selfShipsRemaining,
+    selfHitsTaken,
+    opponentShipsRemaining,
+    opponentHitsLanded,
+  } = elements;
+  if (!statsBlock) return;
+
+  const totalShips =
+    state.fleetStatus?.totalShips ??
+    (Array.isArray(state.shipsConfig) ? state.shipsConfig.length : 0);
+  const selfStatus = state.fleetStatus?.self ?? { shipsRemaining: 0, hitsTaken: 0 };
+  const opponentStatus = state.fleetStatus?.opponent ?? {
+    shipsRemaining: 0,
+    hitsLanded: 0,
+  };
+
+  statsBlock.hidden = !state.roomCode;
+
+  if (selfShipsRemaining) {
+    selfShipsRemaining.textContent = `${selfStatus.shipsRemaining} / ${totalShips}`;
+  }
+  if (selfHitsTaken) {
+    selfHitsTaken.textContent = `${selfStatus.hitsTaken}`;
+  }
+  if (opponentShipsRemaining) {
+    opponentShipsRemaining.textContent = `${opponentStatus.shipsRemaining} / ${totalShips}`;
+  }
+  if (opponentHitsLanded) {
+    opponentHitsLanded.textContent = `${opponentStatus.hitsLanded}`;
+  }
 }
 
 function createBoardGeometry(boardKey, offsetX) {
@@ -300,6 +355,7 @@ function resetPlacement() {
   state.placements = [];
   state.placementIndex = 0;
   state.selfOccupied.clear();
+  resetFleetStatus();
   setOrientation('y', { updateInfo: false });
   syncOrientationButtons();
   boards.self.states.forEach((_, key) => {
@@ -756,6 +812,31 @@ function handleAttackResult({ attacker, target, result, shipName, nextTurn, winn
     setStatus(message);
   }
 
+  if (state.fleetStatus?.opponent && state.fleetStatus?.self) {
+    if (attacker === state.playerId) {
+      if (result === 'hit' || result === 'sunk') {
+        state.fleetStatus.opponent.hitsLanded += 1;
+      }
+      if (result === 'sunk') {
+        state.fleetStatus.opponent.shipsRemaining = Math.max(
+          0,
+          state.fleetStatus.opponent.shipsRemaining - 1
+        );
+      }
+    } else {
+      if (result === 'hit' || result === 'sunk') {
+        state.fleetStatus.self.hitsTaken += 1;
+      }
+      if (result === 'sunk') {
+        state.fleetStatus.self.shipsRemaining = Math.max(
+          0,
+          state.fleetStatus.self.shipsRemaining - 1
+        );
+      }
+    }
+    renderFleetStatus();
+  }
+
   if (winner) {
     state.phase = 'finished';
     state.myTurn = false;
@@ -816,6 +897,7 @@ function setupSocketEvents() {
     setTurnInfo('Opponent disconnected');
     updatePlacementInfo();
     renderPlayers();
+    renderFleetStatus();
   });
 
   socket.on('usernameUpdate', ({ players }) => {
@@ -846,6 +928,7 @@ function init() {
   updateRoomCodeDisplay();
   syncOrientationButtons();
   renderPlayers();
+  renderFleetStatus();
   window.addEventListener('keydown', handleKeydown);
 }
 
