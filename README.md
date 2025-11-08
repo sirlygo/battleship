@@ -9,6 +9,7 @@ A room-based multiplayer Battleship experience with a fully interactive 3D grid 
 - **Real-Time Multiplayer** – Socket.IO keeps both players in sync for placement, turns, and attacks.
 - **Turn-Based Combat** – Receive immediate hit, miss, and ship-sunk feedback with win detection.
 - **In-Game Chat** – Chat with your opponent while you play.
+- **Rich Chat Experience** – Persistent history, system notifications, and username change callouts keep both players informed.
 - **Auto Fleet Placement** – Instantly arrange a legal fleet layout when you want a speedy start.
 - **Server-Side Validation** – Hardened placement checks prevent cheating or malformed boards.
 
@@ -18,15 +19,18 @@ A room-based multiplayer Battleship experience with a fully interactive 3D grid 
 
 - Node.js 18+
 
-### Installation
+### One-Click Setup
+
+```bash
+npm run setup
+```
+
+The setup script installs dependencies (if needed) and launches the development server at <http://localhost:3000>.
+
+### Manual Setup
 
 ```bash
 npm install
-```
-
-### Running Locally
-
-```bash
 npm start
 ```
 
