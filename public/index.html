@@ -68,6 +68,33 @@
               <button id="resetPlacementBtn" hidden>Reset Placement</button>
             </div>
           </div>
+          <div class="controls-block stats" id="statsBlock" hidden>
+            <h2>Battle Stats</h2>
+            <div class="stats-grid">
+              <div class="stats-card">
+                <h3>Your Fleet</h3>
+                <div class="stat">
+                  <span class="label">Ships afloat</span>
+                  <span class="value" id="selfShipsRemaining">0 / 0</span>
+                </div>
+                <div class="stat">
+                  <span class="label">Hits taken</span>
+                  <span class="value" id="selfHitsTaken">0</span>
+                </div>
+              </div>
+              <div class="stats-card">
+                <h3>Enemy Fleet</h3>
+                <div class="stat">
+                  <span class="label">Ships afloat</span>
+                  <span class="value" id="opponentShipsRemaining">0 / 0</span>
+                </div>
+                <div class="stat">
+                  <span class="label">Hits landed</span>
+                  <span class="value" id="opponentHitsLanded">0</span>
+                </div>
+              </div>
+            </div>
+          </div>
           <div class="controls-block chat">
             <h2>Chat</h2>
             <div id="chatLog" class="chat-log"></div>
