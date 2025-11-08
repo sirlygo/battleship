@@ -23,6 +23,23 @@ const SHIPS = [
 
 const rooms = new Map();
 
+function emitRoomState(code) {
+  const room = rooms.get(code);
+  if (!room) return;
+
+  const players = room.players.map((player) => ({
+    id: player.id,
+    username: player.username,
+    ready: player.ready,
+  }));
+
+  io.to(code).emit('roomState', {
+    players,
+    turn: room.turn,
+    started: Boolean(room.turn),
+  });
+}
+
 function generateRoomCode() {
   let code;
   do {
@@ -60,13 +77,18 @@ function getPlayer(room, socketId) {
 
 function removePlayerFromRoom(roomCode, socketId) {
   const room = rooms.get(roomCode);
-  if (!room) return;
-  room.players = room.players.filter((player) => player.id !== socketId);
-  if (room.players.length === 0) {
+  if (!room) return null;
+
+  const remainingPlayers = room.players.filter((player) => player.id !== socketId);
+
+  if (remainingPlayers.length === 0) {
     rooms.delete(roomCode);
-  } else {
-    rooms.set(roomCode, room);
+    return null;
   }
+
+  room.players = remainingPlayers;
+  rooms.set(roomCode, room);
+  return room;
 }
 
 io.on('connection', (socket) => {
@@ -91,6 +113,7 @@ io.on('connection', (socket) => {
     rooms.set(code, newRoom);
     socket.join(code);
     callback({ code, ships: SHIPS, boardSize: BOARD_SIZE });
+    emitRoomState(code);
   });
 
   socket.on('joinGame', ({ code }, callback) => {
@@ -119,6 +142,7 @@ io.on('connection', (socket) => {
 
     callback({ success: true, ships: SHIPS, boardSize: BOARD_SIZE });
     io.to(code).emit('playerJoined');
+    emitRoomState(code);
   });
 
   socket.on('setUsername', ({ code, username }) => {
@@ -127,6 +151,7 @@ io.on('connection', (socket) => {
     const player = getPlayer(room, socket.id);
     if (!player) return;
     player.username = username;
+    emitRoomState(code);
     io.to(code).emit('usernameUpdate', {
       players: room.players.map((p) => ({ id: p.id, username: p.username })),
     });
@@ -176,10 +201,12 @@ io.on('connection', (socket) => {
     rooms.set(code, room);
 
     callback({ success: true });
+    emitRoomState(code);
 
     if (room.players.length === 2 && room.players.every((p) => p.ready)) {
       room.turn = room.players[0].id;
       io.to(code).emit('gameStarted', { turn: room.turn });
+      emitRoomState(code);
     } else {
       io.to(code).emit('playerReady');
     }
@@ -260,6 +287,7 @@ io.on('connection', (socket) => {
     rooms.set(code, room);
 
     io.to(code).emit('attackResult', payload);
+    emitRoomState(code);
     callback(payload);
   });
 
@@ -284,13 +312,15 @@ io.on('connection', (socket) => {
       const room = rooms.get(code);
       if (!room) return;
       const opponent = getOpponent(room, socket.id);
-      removePlayerFromRoom(code, socket.id);
+      const wasTurn = room.turn === socket.id;
+      const updatedRoom = removePlayerFromRoom(code, socket.id);
       io.to(code).emit('playerLeft', { leaver: socket.id });
-      if (!opponent) {
-        rooms.delete(code);
-      } else {
-        room.turn = opponent.id;
+      if (!updatedRoom) return;
+      if (wasTurn) {
+        updatedRoom.turn = opponent ? opponent.id : updatedRoom.players[0]?.id || null;
       }
+      rooms.set(code, updatedRoom);
+      emitRoomState(code);
     });
   });
 });

@@ -16,6 +16,7 @@
           <h2>Create Game</h2>
           <button id="createGameBtn" class="primary">Create</button>
           <div class="code-display" id="roomCodeDisplay"></div>
+          <button id="copyCodeBtn" class="ghost" hidden>Copy Code</button>
         </div>
         <div class="menu-block">
           <h2>Join Game</h2>
@@ -36,6 +37,11 @@
             <button type="submit">Save</button>
           </form>
           <p class="hint">Usernames help players identify each other in chat.</p>
+        </div>
+        <div class="menu-block players" id="playersBlock">
+          <h2>Players</h2>
+          <ul id="playersList" class="players-list"></ul>
+          <p class="hint" id="playersHint">Players will appear here once a room is active.</p>
         </div>
         <div class="menu-block status">
           <h2>Status</h2>
@@ -74,6 +80,7 @@
       <div class="chat-message">
         <span class="sender"></span>
         <span class="content"></span>
+        <span class="timestamp"></span>
       </div>
     </template>
     <script src="app.js" type="module"></script>
