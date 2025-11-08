@@ -22,6 +22,68 @@ const SHIPS = [
 ];
 
 const rooms = new Map();
+const MAX_CHAT_MESSAGES = 200;
+const MAX_CHAT_LENGTH = 200;
+
+function createChatEntry({ id, username, message, kind = 'user' }) {
+  return {
+    id,
+    username,
+    message,
+    kind,
+    timestamp: Date.now(),
+  };
+}
+
+function trimChatHistory(room) {
+  if (room.chat.length <= MAX_CHAT_MESSAGES) return;
+  const excess = room.chat.length - MAX_CHAT_MESSAGES;
+  room.chat.splice(0, excess);
+}
+
+function recordAndBroadcastChat(room, code, entry) {
+  room.chat.push(entry);
+  trimChatHistory(room);
+  rooms.set(code, room);
+  io.to(code).emit('chatUpdate', entry);
+}
+
+function emitSystemChat(room, code, message) {
+  if (!message) return;
+  const entry = createChatEntry({
+    id: 'system',
+    username: 'System',
+    message,
+    kind: 'system',
+  });
+  recordAndBroadcastChat(room, code, entry);
+}
+
+function sanitizeChatMessage(raw) {
+  if (typeof raw !== 'string') {
+    return { error: 'Chat message must be text.' };
+  }
+  const normalized = raw.replace(/\s+/g, ' ').trim();
+  if (!normalized) {
+    return { error: 'Chat messages must contain visible characters.' };
+  }
+  if (normalized.length > MAX_CHAT_LENGTH) {
+    return {
+      error: `Chat messages must be ${MAX_CHAT_LENGTH} characters or fewer.`,
+    };
+  }
+  return { value: normalized };
+}
+
+function serializeChatHistory(room) {
+  return room.chat.map(({ id, username, message, timestamp, kind }) => ({
+    id,
+    username,
+    message,
+    timestamp,
+    kind: kind || 'user',
+  }));
+}
 
 function emitRoomState(code) {
   const room = rooms.get(code);
@@ -112,8 +174,9 @@ io.on('connection', (socket) => {
     };
     rooms.set(code, newRoom);
     socket.join(code);
-    callback({ code, ships: SHIPS, boardSize: BOARD_SIZE });
+    callback({ code, ships: SHIPS, boardSize: BOARD_SIZE, chat: serializeChatHistory(newRoom) });
     emitRoomState(code);
+    emitSystemChat(newRoom, code, 'Room created. Share the code to invite an opponent.');
   });
 
   socket.on('joinGame', ({ code }, callback) => {
@@ -140,8 +203,10 @@ io.on('connection', (socket) => {
     rooms.set(code, room);
     socket.join(code);
 
-    callback({ success: true, ships: SHIPS, boardSize: BOARD_SIZE });
+    const chatHistory = serializeChatHistory(room);
+    callback({ success: true, ships: SHIPS, boardSize: BOARD_SIZE, chat: chatHistory });
     io.to(code).emit('playerJoined');
+    emitSystemChat(room, code, 'A commander joined the battle.');
     emitRoomState(code);
   });
 
@@ -150,11 +215,19 @@ io.on('connection', (socket) => {
     if (!room) return;
     const player = getPlayer(room, socket.id);
     if (!player) return;
-    player.username = username;
+    const previousName = player.username?.trim() || null;
+    const trimmed = typeof username === 'string' ? username.trim() : '';
+    const limited = trimmed.slice(0, 20);
+    player.username = limited || null;
     emitRoomState(code);
     io.to(code).emit('usernameUpdate', {
       players: room.players.map((p) => ({ id: p.id, username: p.username })),
     });
+    if (player.username && player.username !== previousName) {
+      emitSystemChat(room, code, previousName
+        ? `${previousName} is now known as ${player.username}.`
+        : `${player.username} reported for duty.`);
+    }
   });
 
   socket.on('placeShips', ({ code, ships }, callback) => {
@@ -362,19 +435,31 @@ io.on('connection', (socket) => {
     callback(payload);
   });
 
-  socket.on('chatMessage', ({ code, message }) => {
+  socket.on('chatMessage', ({ code, message }, callback = null) => {
+    const respond = typeof callback === 'function' ? callback : () => {};
     const room = rooms.get(code);
-    if (!room) return;
+    if (!room) {
+      respond({ error: 'Room not found.' });
+      return;
+    }
     const player = getPlayer(room, socket.id);
-    if (!player) return;
-    const entry = {
+    if (!player) {
+      respond({ error: 'Player not part of room.' });
+      return;
+    }
+    const { value, error } = sanitizeChatMessage(message);
+    if (error) {
+      respond({ error });
+      return;
+    }
+    const username = player.username?.trim() || 'Player';
+    const entry = createChatEntry({
       id: socket.id,
-      username: player.username || 'Player',
-      message,
-      timestamp: Date.now(),
-    };
-    room.chat.push(entry);
-    io.to(code).emit('chatUpdate', entry);
+      username,
+      message: value,
+    });
+    recordAndBroadcastChat(room, code, entry);
+    respond({ success: true });
   });
 
   socket.on('disconnecting', () => {
@@ -382,6 +467,7 @@ io.on('connection', (socket) => {
     roomCodes.forEach((code) => {
       const room = rooms.get(code);
       if (!room) return;
+      const departingPlayer = getPlayer(room, socket.id);
       const opponent = getOpponent(room, socket.id);
       const wasTurn = room.turn === socket.id;
       const updatedRoom = removePlayerFromRoom(code, socket.id);
@@ -390,6 +476,8 @@ io.on('connection', (socket) => {
       if (wasTurn) {
         updatedRoom.turn = opponent ? opponent.id : updatedRoom.players[0]?.id || null;
       }
+      const name = departingPlayer?.username?.trim() || 'A commander';
+      emitSystemChat(updatedRoom, code, `${name} left the battle.`);
       rooms.set(code, updatedRoom);
       emitRoomState(code);
     });

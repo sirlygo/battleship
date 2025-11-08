@@ -4,7 +4,8 @@
   "description": "3D multiplayer Battleship game with room-based matchmaking",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "setup": "node scripts/setup.js"
   },
   "dependencies": {
     "express": "^4.18.2",

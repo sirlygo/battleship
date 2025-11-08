@@ -20,6 +20,7 @@ const state = {
     self: { shipsRemaining: 0, hitsTaken: 0 },
     opponent: { shipsRemaining: 0, hitsLanded: 0 },
   },
+  chat: [],
 };
 
 const elements = {
@@ -72,6 +73,9 @@ const boards = {
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 let hoveredCells = [];
+
+const CHAT_MAX_LENGTH = 200;
+const CHAT_HISTORY_LIMIT = 200;
 
 const colorPalettes = {
   self: {
@@ -668,17 +672,68 @@ function handleCanvasClick(event) {
   }
 }
 
-function addChatEntry({ username, message, id, timestamp }) {
-  const template = elements.chatMessageTemplate.content.firstElementChild.cloneNode(true);
-  const senderLabel = username || (id === state.playerId ? 'You' : 'Player');
-  template.querySelector('.sender').textContent = senderLabel;
-  template.querySelector('.content').textContent = message;
+function resetChatLog() {
+  state.chat = [];
+  if (elements.chatLog) {
+    elements.chatLog.innerHTML = '';
+  }
+}
+
+function loadChatHistory(entries = []) {
+  resetChatLog();
+  const list = Array.isArray(entries) ? entries : [];
+  list.forEach((entry) => addChatEntry(entry));
+  if (elements.chatInput) {
+    elements.chatInput.value = '';
+  }
+}
+
+function addChatEntry(entry) {
+  if (!entry || !elements.chatMessageTemplate) return;
+  const { username, message, id, timestamp, kind = 'user' } = entry;
+  const templateRoot = elements.chatMessageTemplate.content.firstElementChild;
+  if (!templateRoot) return;
+
+  state.chat.push({ username, message, id, timestamp, kind });
+  if (state.chat.length > CHAT_HISTORY_LIMIT) {
+    state.chat.shift();
+    if (elements.chatLog?.firstElementChild) {
+      elements.chatLog.removeChild(elements.chatLog.firstElementChild);
+    }
+  }
+
+  const template = templateRoot.cloneNode(true);
+  const isSystem = kind === 'system';
+  const isSelf = !isSystem && id === state.playerId;
+  template.classList.toggle('system', isSystem);
+  template.classList.toggle('self', isSelf);
+
+  const sender = template.querySelector('.sender');
+  if (sender) {
+    if (isSystem) {
+      sender.textContent = 'System';
+    } else if (isSelf) {
+      sender.textContent = 'You';
+    } else {
+      sender.textContent = username?.trim() || 'Player';
+    }
+  }
+
+  const content = template.querySelector('.content');
+  if (content) {
+    content.textContent = message;
+  }
+
   const stamp = template.querySelector('.timestamp');
   if (stamp) {
     stamp.textContent = formatTimestamp(timestamp);
+    stamp.hidden = !timestamp;
   }
-  elements.chatLog.appendChild(template);
-  elements.chatLog.scrollTop = elements.chatLog.scrollHeight;
+
+  if (elements.chatLog) {
+    elements.chatLog.appendChild(template);
+    elements.chatLog.scrollTop = elements.chatLog.scrollHeight;
+  }
 }
 
 function renderPlayers() {
@@ -752,6 +807,7 @@ function setupUiEvents() {
         ensureScene();
         enterPlacementPhase();
         elements.chatForm.hidden = false;
+        loadChatHistory(response.chat || []);
         updatePlacementInfo();
         updateRoomCodeDisplay();
       }
@@ -780,6 +836,7 @@ function setupUiEvents() {
       ensureScene();
       enterPlacementPhase();
       elements.chatForm.hidden = false;
+      loadChatHistory(response.chat || []);
       updatePlacementInfo();
       updateRoomCodeDisplay();
     });
@@ -834,9 +891,21 @@ function setupUiEvents() {
   elements.chatForm.addEventListener('submit', (event) => {
     event.preventDefault();
     if (!state.roomCode) return;
-    const message = elements.chatInput.value.trim();
-    if (!message) return;
-    socket.emit('chatMessage', { code: state.roomCode, message });
+    const rawMessage = elements.chatInput.value || '';
+    const normalized = rawMessage.replace(/\s+/g, ' ').trim();
+    if (!normalized) {
+      elements.chatInput.value = '';
+      return;
+    }
+    if (normalized.length > CHAT_MAX_LENGTH) {
+      setStatus(`Chat messages must be ${CHAT_MAX_LENGTH} characters or fewer.`);
+      return;
+    }
+    socket.emit('chatMessage', { code: state.roomCode, message: normalized }, (response) => {
+      if (response?.error) {
+        setStatus(response.error);
+      }
+    });
     elements.chatInput.value = '';
   });
 
@@ -1029,6 +1098,7 @@ function init() {
   syncPlacementButtons();
   renderPlayers();
   renderFleetStatus();
+  resetChatLog();
   window.addEventListener('keydown', handleKeydown);
 }
 
