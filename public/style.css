@@ -243,6 +243,29 @@ input:focus {
   font-weight: 600;
 }
 
+.placement-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+#autoPlacementBtn,
+#resetPlacementBtn {
+  flex: 1 1 140px;
+}
+
+#autoPlacementBtn {
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid rgba(92, 163, 255, 0.25);
+}
+
+#resetPlacementBtn {
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+}
+
 .chat-log {
   max-height: 220px;
   overflow-y: auto;

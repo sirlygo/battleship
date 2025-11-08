@@ -29,6 +29,7 @@ const elements = {
   orientationButtons: Array.from(
     document.querySelectorAll('#orientationControls button')
   ),
+  autoPlacementBtn: document.getElementById('autoPlacementBtn'),
   resetPlacementBtn: document.getElementById('resetPlacementBtn'),
   turnText: document.getElementById('turnText'),
   gameCanvas: document.getElementById('gameCanvas'),
@@ -233,14 +234,56 @@ function getShipCells(start, axis, length) {
   return cells;
 }
 
-function canPlaceShip(cells) {
+function cellsAreValid(cells, occupiedSet = state.selfOccupied) {
   return cells.every((cell) => {
     const { x, y, z } = cell;
+    if (![x, y, z].every((coord) => Number.isInteger(coord))) return false;
     if (x < 0 || y < 0 || z < 0) return false;
     if (x >= state.boardSize || y >= state.boardSize || z >= state.boardSize) return false;
-    if (state.selfOccupied.has(toKey(cell))) return false;
-    return true;
+    return occupiedSet ? !occupiedSet.has(toKey(cell)) : true;
   });
+}
+
+function canPlaceShip(cells) {
+  return cellsAreValid(cells);
+}
+
+function generateAutomaticPlacements() {
+  if (!Array.isArray(state.shipsConfig) || !state.shipsConfig.length) {
+    return null;
+  }
+
+  const placements = [];
+  const occupied = new Set();
+  const axes = ['x', 'y', 'z'];
+  const size = state.boardSize;
+
+  for (const ship of state.shipsConfig) {
+    let placed = false;
+    let attempts = 0;
+    while (!placed && attempts < 400) {
+      attempts += 1;
+      const axis = axes[Math.floor(Math.random() * axes.length)];
+      const axisSpan = Math.max(size - ship.length + 1, 1);
+      const start = {
+        x: Math.floor(Math.random() * (axis === 'x' ? axisSpan : size)),
+        y: Math.floor(Math.random() * (axis === 'y' ? axisSpan : size)),
+        z: Math.floor(Math.random() * (axis === 'z' ? axisSpan : size)),
+      };
+      const cells = getShipCells(start, axis, ship.length);
+      if (!cellsAreValid(cells, occupied)) {
+        continue;
+      }
+      cells.forEach((cell) => occupied.add(toKey(cell)));
+      placements.push({ name: ship.name, cells });
+      placed = true;
+    }
+    if (!placed) {
+      return null;
+    }
+  }
+
+  return placements;
 }
 
 function applyShipPlacement(ship, cells) {
@@ -263,6 +306,16 @@ function resetPlacement() {
     setCellState('self', key, 'empty');
   });
   state.phase = 'placement';
+  if (elements.orientationControls) {
+    elements.orientationControls.hidden = false;
+  }
+  if (elements.autoPlacementBtn) {
+    elements.autoPlacementBtn.hidden = !state.roomCode;
+    elements.autoPlacementBtn.disabled = !state.roomCode;
+  }
+  if (elements.resetPlacementBtn) {
+    elements.resetPlacementBtn.hidden = !state.roomCode;
+  }
   updatePlacementInfo();
   renderPlayers();
 }
@@ -271,6 +324,9 @@ function lockPlacement() {
   state.phase = 'waiting';
   elements.orientationControls.hidden = true;
   elements.resetPlacementBtn.hidden = false;
+  if (elements.autoPlacementBtn) {
+    elements.autoPlacementBtn.hidden = true;
+  }
   updatePlacementInfo();
   renderPlayers();
   socket.emit(
@@ -297,8 +353,11 @@ function updatePlacementInfo() {
   if (state.phase === 'placement') {
     const ship = state.shipsConfig[state.placementIndex];
     if (ship) {
+      const autoPlacementAvailable =
+        Boolean(elements.autoPlacementBtn) && !elements.autoPlacementBtn.hidden;
+      const autoHint = autoPlacementAvailable ? ' You can also use Auto Place Fleet for a quick layout.' : '';
       elements.placementInfo.textContent = `Place your ${ship.name} (${ship.length} cells). Orientation: ${state.orientation
-        .toUpperCase()} (press X/Y/Z to change).`;
+        .toUpperCase()} (press X/Y/Z to change).${autoHint}`;
     } else {
       elements.placementInfo.textContent = 'All ships placed. Confirming with server...';
     }
@@ -327,6 +386,10 @@ function enterPlacementPhase() {
   resetPlacement();
   elements.orientationControls.hidden = false;
   elements.resetPlacementBtn.hidden = false;
+  if (elements.autoPlacementBtn) {
+    elements.autoPlacementBtn.hidden = false;
+    elements.autoPlacementBtn.disabled = false;
+  }
   updatePlacementInfo();
   renderPlayers();
 }
@@ -597,6 +660,24 @@ function setupUiEvents() {
     resetPlacement();
     setStatus('Placement reset. Arrange your fleet again.');
   });
+
+  if (elements.autoPlacementBtn) {
+    elements.autoPlacementBtn.addEventListener('click', () => {
+      if (!state.roomCode) return;
+      const placements = generateAutomaticPlacements();
+      if (!placements) {
+        setStatus('Unable to auto-arrange a valid fleet. Try again.');
+        return;
+      }
+      resetPlacement();
+      placements.forEach(({ name, cells }) => {
+        applyShipPlacement({ name }, cells);
+      });
+      clearHover();
+      setStatus('Fleet automatically arranged. Locking in...');
+      lockPlacement();
+    });
+  }
 
   elements.chatForm.addEventListener('submit', (event) => {
     event.preventDefault();

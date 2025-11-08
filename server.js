@@ -170,18 +170,86 @@ io.on('connection', (socket) => {
       return;
     }
 
+    if (!Array.isArray(ships)) {
+      callback({ error: 'Invalid ship data submitted.' });
+      return;
+    }
+
+    if (ships.length !== SHIPS.length) {
+      callback({ error: 'All ships must be placed before locking in.' });
+      return;
+    }
+
     const board = createEmptyBoard();
     const occupied = new Set();
+    const expectedShips = new Map(SHIPS.map((ship) => [ship.name, ship.length]));
+    const seenNames = new Set();
+    const sanitizedShips = [];
 
     try {
       ships.forEach((ship) => {
-        if (!SHIPS.some((config) => config.name === ship.name && config.length === ship.cells.length)) {
+        if (!ship || typeof ship.name !== 'string' || !Array.isArray(ship.cells)) {
           throw new Error('Invalid ship configuration');
         }
-        ship.cells.forEach(({ x, y, z }) => {
+
+        const requiredLength = expectedShips.get(ship.name);
+        if (!requiredLength) {
+          throw new Error('Unexpected ship provided.');
+        }
+
+        if (seenNames.has(ship.name)) {
+          throw new Error('Duplicate ship entries are not allowed.');
+        }
+
+        if (ship.cells.length !== requiredLength) {
+          throw new Error(`${ship.name} must occupy exactly ${requiredLength} cells.`);
+        }
+
+        const normalizedCells = ship.cells.map((cell) => {
+          const x = Number(cell?.x);
+          const y = Number(cell?.y);
+          const z = Number(cell?.z);
+          if (![x, y, z].every(Number.isInteger)) {
+            throw new Error('Ship coordinates must be whole numbers.');
+          }
           if (x < 0 || y < 0 || z < 0 || x >= BOARD_SIZE || y >= BOARD_SIZE || z >= BOARD_SIZE) {
             throw new Error('Ship out of bounds');
           }
+          return { x, y, z };
+        });
+
+        if (normalizedCells.length > 1) {
+          const axes = ['x', 'y', 'z'];
+          const varyingAxes = axes.filter((axis) => {
+            const values = new Set(normalizedCells.map((cell) => cell[axis]));
+            return values.size > 1;
+          });
+
+          if (varyingAxes.length !== 1) {
+            throw new Error('Ships must be placed in a straight line.');
+          }
+
+          const axis = varyingAxes[0];
+          const sortedValues = normalizedCells
+            .map((cell) => cell[axis])
+            .sort((a, b) => a - b);
+          for (let index = 1; index < sortedValues.length; index += 1) {
+            if (sortedValues[index] !== sortedValues[index - 1] + 1) {
+              throw new Error('Ships must occupy consecutive cells.');
+            }
+          }
+
+          axes
+            .filter((axisKey) => axisKey !== axis)
+            .forEach((axisKey) => {
+              const values = new Set(normalizedCells.map((cell) => cell[axisKey]));
+              if (values.size !== 1) {
+                throw new Error('Ships must align to a single axis.');
+              }
+            });
+        }
+
+        normalizedCells.forEach(({ x, y, z }) => {
           const key = `${x}:${y}:${z}`;
           if (occupied.has(key)) {
             throw new Error('Ships cannot overlap');
@@ -189,6 +257,9 @@ io.on('connection', (socket) => {
           occupied.add(key);
           board[x][y][z] = ship.name;
         });
+
+        sanitizedShips.push({ name: ship.name, cells: normalizedCells });
+        seenNames.add(ship.name);
       });
     } catch (error) {
       callback({ error: error.message });
@@ -196,7 +267,7 @@ io.on('connection', (socket) => {
     }
 
     player.board = board;
-    player.ships = ships;
+    player.ships = sanitizedShips;
     player.ready = true;
     rooms.set(code, room);
 
