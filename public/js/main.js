@@ -64,6 +64,7 @@ const app = {
   turnCuePending: false,
   gameOverShownRound: null,
   holdSunk: new Set(),
+  dockPlaced: new Set(),
   demo: null,
 };
 
@@ -131,6 +132,7 @@ const el = {
   goLeaveBtn: $('goLeaveBtn'),
   goViewBtn: $('goViewBtn'),
   net: $('netStatus'),
+  flash: $('screenFlash'),
 };
 
 const coord = (x, y) => `${ROWS[y]}${x + 1}`;
@@ -429,12 +431,18 @@ function onState(snap) {
     snap.me.ships.forEach((s) => app.placement.ships.set(s.name, { ...s }));
     app.placement.selected = nextUnplaced();
     app.placement.dir = 'h';
+    app.dockPlaced = new Set(app.placement.ships.keys());
     app.manualView = null;
   }
 
   if (!prev || prev.phase !== snap.phase) {
     app.manualView = null;
     app.aim = null;
+    if (snap.phase === 'placement') scene.scanBoard('self');
+    if (snap.phase === 'battle') {
+      scene.scanBoard('enemy');
+      setTimeout(() => scene.scanBoard('self'), 350);
+    }
     if (snap.phase === 'placement' && prev && (prev.phase === 'lobby' || prev.phase === 'over')) {
       sound.joined();
       bigText(snap.round > 1 ? `ROUND ${snap.round}` : 'DEPLOY YOUR FLEET', 'Position all five ships, then hit Ready', 'info');
@@ -482,7 +490,7 @@ function autoView() {
     case 'battle':
       return s.turn === 'you' ? 'enemy' : 'self';
     case 'over':
-      return 'overview';
+      return 'finale';
     default:
       return 'overview';
   }
@@ -498,6 +506,7 @@ function renderAll() {
   if (!app.playing && app.turnCuePending && myTurnReady()) {
     app.turnCuePending = false;
     sound.yourTurn();
+    if (app.snap.me.stats.shots > 0) bigText('YOUR TURN', 'Pick a target', 'turn');
   }
   maybeShowGameOver();
 }
@@ -574,15 +583,36 @@ function renderCursor() {
 }
 
 function renderPips(container, spec, sunkNames) {
-  container.innerHTML = '';
-  spec.forEach((ship) => {
-    const pip = document.createElement('span');
-    pip.className = 'pip';
+  while (container.children.length > spec.length) container.lastElementChild.remove();
+  spec.forEach((ship, i) => {
+    let pip = container.children[i];
+    if (!pip) {
+      pip = document.createElement('span');
+      pip.className = 'pip';
+      pip.addEventListener('animationend', () => pip.classList.remove('sinking'));
+      container.appendChild(pip);
+    }
     pip.title = ship.name;
     pip.style.setProperty('--len', ship.length);
-    if (sunkNames.has(ship.name)) pip.classList.add('sunk');
-    container.appendChild(pip);
+    const sunk = sunkNames.has(ship.name);
+    if (sunk && !pip.classList.contains('sunk')) pip.classList.add('sinking');
+    pip.classList.toggle('sunk', sunk);
   });
+}
+
+// Restart a CSS animation class whenever the element's value changes.
+function setAnimated(node, text, className = 'pop') {
+  if (node.textContent === String(text)) return;
+  node.textContent = text;
+  node.classList.remove(className);
+  void node.offsetWidth;
+  node.classList.add(className);
+}
+
+function screenFlash(kind) {
+  el.flash.className = 'screen-flash';
+  void el.flash.offsetWidth;
+  el.flash.className = `screen-flash flash-${kind}`;
 }
 
 function renderHud() {
@@ -660,6 +690,11 @@ function renderBanner() {
     sub = s.winner === 'you' ? 'The enemy fleet is at the bottom of the sea' : 'Your fleet has been sunk';
     kind = s.winner === 'you' ? 'friendly' : 'hostile';
   }
+  if (el.bannerTitle.textContent !== title) {
+    el.banner.classList.remove('banner-in');
+    void el.banner.offsetWidth;
+    el.banner.classList.add('banner-in');
+  }
   el.bannerTitle.textContent = title;
   el.bannerSub.textContent = sub;
   el.banner.dataset.kind = kind;
@@ -675,6 +710,7 @@ function renderPlacementPanel() {
     btn.type = 'button';
     btn.className = 'dock-ship';
     if (p.ships.has(spec.name)) btn.classList.add('placed');
+    if (p.ships.has(spec.name) && !app.dockPlaced.has(spec.name)) btn.classList.add('pop');
     if (p.selected === spec.name) btn.classList.add('selected');
     btn.disabled = !editable;
     const name = document.createElement('span');
@@ -688,6 +724,7 @@ function renderPlacementPanel() {
     el.dock.appendChild(btn);
   });
 
+  app.dockPlaced = new Set(p.ships.keys());
   const allPlaced = p.ships.size === fleetSpec().length;
   el.placementActions.hidden = !editable;
   el.readyBtn.disabled = !allPlaced;
@@ -704,9 +741,9 @@ function renderBattlePanel() {
   const s = app.snap;
   const shots = s.me.stats.shots;
   const hits = s.me.stats.hits;
-  el.statShots.textContent = shots;
-  el.statHits.textContent = hits;
-  el.statAcc.textContent = shots ? `${Math.round((hits / shots) * 100)}%` : '—';
+  setAnimated(el.statShots, shots);
+  setAnimated(el.statHits, hits);
+  setAnimated(el.statAcc, shots ? `${Math.round((hits / shots) * 100)}%` : '—');
   const viewing = app.manualView || autoView();
   el.viewBtn.textContent = viewing === 'enemy' ? 'View my fleet' : 'View enemy waters';
   const showFire = isCoarse && s.turn === 'you' && Boolean(app.aim);
@@ -991,11 +1028,13 @@ function announceShot(ev) {
   }
   if (ev.result === 'sunk') {
     sound.sunk();
+    screenFlash(ev.by === 'you' ? 'strike' : 'damage');
     if (ev.by === 'you') bigText('SUNK!', `Enemy ${ev.sunkShip?.name || 'ship'} destroyed`, 'sunk');
     else bigText(`${(ev.sunkShip?.name || 'SHIP').toUpperCase()} LOST`, `${enemyName} sank your ${ev.sunkShip?.name}`, 'lost');
     return;
   }
   sound.explosion();
+  screenFlash(ev.by === 'you' ? 'strike' : 'damage');
   if (ev.by === 'you') bigText('HIT!', bonus ? `${where} — fire again!` : where, 'hit');
   else bigText('YOU\'RE HIT', `${enemyName} struck your ${describeShipAt(ev.x, ev.y)} at ${where}`, 'lost');
 }

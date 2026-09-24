@@ -138,6 +138,33 @@ const skyFragment = /* glsl */ `
   }
 `;
 
+const radarVertex = /* glsl */ `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const radarFragment = /* glsl */ `
+  uniform float uTime;
+  uniform float uOpacity;
+  uniform vec3 uColor;
+  varying vec2 vUv;
+  void main() {
+    vec2 p = vUv - 0.5;
+    float r = length(p);
+    float a = atan(p.y, p.x);
+    float sweep = mod(a + uTime * 1.4, 6.2831853);
+    float beam = exp(-sweep * 2.4) * 0.5 + smoothstep(0.035, 0.0, sweep) * 0.5;
+    float rings = 1.0 - smoothstep(0.0, 0.012, abs(fract(r * 5.0) - 0.5) - 0.485);
+    float edge = smoothstep(0.72, 0.55, r);
+    float alpha = (beam * (0.75 + rings * 0.5)) * edge * uOpacity;
+    gl_FragColor = vec4(uColor, alpha * 0.55);
+    #include <colorspace_fragment>
+  }
+`;
+
 // ---------------------------------------------------------------------------
 // Textures
 // ---------------------------------------------------------------------------
@@ -430,14 +457,21 @@ function setShipMaterial(group, material) {
   });
 }
 
-function placeShipGroup(group, board, ship) {
+function shipTransform(board, ship) {
   const length = ship.length;
   const dir = ship.dir;
   const midX = dir === 'h' ? ship.x + (length - 1) / 2 : ship.x;
   const midY = dir === 'v' ? ship.y + (length - 1) / 2 : ship.y;
   const pos = cellToWorld(board, midX, midY, 0);
-  group.position.set(pos.x, 0, pos.z);
-  group.rotation.set(0, dir === 'v' ? Math.PI / 2 : 0, 0);
+  return { x: pos.x, z: pos.z, yaw: dir === 'v' ? Math.PI / 2 : 0 };
+}
+
+function shipCellList(ship) {
+  const cells = [];
+  for (let i = 0; i < ship.length; i += 1) {
+    cells.push({ x: ship.x + (ship.dir === 'h' ? i : 0), y: ship.y + (ship.dir === 'v' ? i : 0) });
+  }
+  return cells;
 }
 
 // ---------------------------------------------------------------------------
@@ -445,7 +479,7 @@ function placeShipGroup(group, board, ship) {
 // ---------------------------------------------------------------------------
 
 class Particles {
-  constructor(scene, texture, max = 900) {
+  constructor(scene, texture, max = 1400) {
     this.scene = scene;
     this.texture = texture;
     this.max = max;
@@ -545,7 +579,7 @@ export class BattleScene {
     this.clock = new THREE.Clock();
     this.time = 0;
     this.view = 'lobby';
-    this.lobbyAngle = 0.4;
+    this.orbitAngle = 0.4;
     this.camPos = new THREE.Vector3(0, 20, 30);
     this.camLook = new THREE.Vector3(0, 0, 0);
     this.goalPos = new THREE.Vector3();
@@ -564,10 +598,17 @@ export class BattleScene {
     this.ghostCache = new Map();
     this.ghost = null;
     this.handlers = { hover: null, click: null, rotate: null };
+    this.anims = [];
+    this.debris = [];
+    this.reticleLock = 1;
+    this.hoverKey = null;
+    this.reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     this.buildEnvironment();
     this.buildBoards();
     this.buildCursors();
+    this.buildGulls();
+    this.buildDebris();
     this.bindInput();
     this.resize();
     window.addEventListener('resize', () => this.resize());
@@ -735,8 +776,27 @@ export class BattleScene {
       title.position.set(0, BOARD_Y, HALF + 0.75);
       group.add(title);
 
+      const radar = new THREE.Mesh(
+        new THREE.PlaneGeometry(BOARD_SIZE, BOARD_SIZE),
+        new THREE.ShaderMaterial({
+          vertexShader: radarVertex,
+          fragmentShader: radarFragment,
+          transparent: true,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+          uniforms: {
+            uTime: { value: 0 },
+            uOpacity: { value: 0 },
+            uColor: { value: accent.clone() },
+          },
+        })
+      );
+      radar.rotation.x = -Math.PI / 2;
+      radar.position.y = BOARD_Y + 0.004;
+      group.add(radar);
+
       this.scene.add(group);
-      this.boardVisuals[key] = { group, lines, frameMat, glow, base };
+      this.boardVisuals[key] = { group, lines, frameMat, glow, base, radar };
     });
   }
 
@@ -782,6 +842,62 @@ export class BattleScene {
     this.ghostFootprint.rotation.x = -Math.PI / 2;
     this.ghostFootprint.visible = false;
     this.scene.add(this.ghostFootprint);
+  }
+
+  buildDebris() {
+    this.debrisGeo = new THREE.BoxGeometry(0.1, 0.05, 0.15);
+    this.debrisMat = new THREE.MeshStandardMaterial({ color: 0x3d4148, roughness: 0.7, metalness: 0.4, emissive: 0x802000, emissiveIntensity: 0.6 });
+  }
+
+  buildGulls() {
+    const mat = new THREE.MeshStandardMaterial({ color: 0xeef2f5, roughness: 0.8, side: THREE.DoubleSide });
+    const tipMat = new THREE.MeshStandardMaterial({ color: 0x3a3f45, roughness: 0.8, side: THREE.DoubleSide });
+    const wingGeo = new THREE.BufferGeometry();
+    wingGeo.setAttribute('position', new THREE.Float32BufferAttribute([
+      0, 0, -0.1, 0, 0, 0.12, 0.5, 0, 0.04,
+      0, 0, -0.1, 0.5, 0, 0.04, 0.46, 0, -0.08,
+    ], 3));
+    wingGeo.computeVertexNormals();
+    const tipGeo = new THREE.BufferGeometry();
+    tipGeo.setAttribute('position', new THREE.Float32BufferAttribute([
+      0, 0, -0.08, 0, 0, 0.04, 0.3, 0, -0.02,
+    ], 3));
+    tipGeo.computeVertexNormals();
+    const bodyGeo = new THREE.SphereGeometry(0.1, 10, 8);
+
+    this.gulls = [];
+    for (let i = 0; i < 6; i += 1) {
+      const g = new THREE.Group();
+      const body = new THREE.Mesh(bodyGeo, mat);
+      body.scale.set(0.8, 0.75, 2.2);
+      g.add(body);
+      const wings = [1, -1].map((side) => {
+        const pivot = new THREE.Group();
+        pivot.position.set(0.04 * side, 0.02, 0);
+        const wing = new THREE.Mesh(wingGeo, mat);
+        const tip = new THREE.Mesh(tipGeo, tipMat);
+        const tipPivot = new THREE.Group();
+        tipPivot.position.x = 0.46;
+        tipPivot.add(tip);
+        pivot.add(wing, tipPivot);
+        pivot.scale.x = side;
+        g.add(pivot);
+        return { pivot, tipPivot };
+      });
+      g.scale.setScalar(0.9);
+      this.scene.add(g);
+      // Circle beyond the far edge of the boards so the birds never cover play.
+      this.gulls.push({
+        group: g,
+        wings,
+        center: new THREE.Vector3(rand(-20, 20), 0, rand(-24, -14)),
+        radius: rand(4, 8),
+        height: rand(6, 10),
+        speed: rand(0.22, 0.38) * (Math.random() < 0.5 ? 1 : -1),
+        angle: Math.random() * Math.PI * 2,
+        phase: Math.random() * 10,
+      });
+    }
   }
 
   bindInput() {
@@ -853,8 +969,16 @@ export class BattleScene {
 
   setView(view, { instant = false } = {}) {
     if (this.view === view && !instant) return;
+    if (view === 'lobby' || view === 'finale') {
+      // Continue the orbit from the camera's current bearing for a smooth hand-off.
+      this.orbitAngle = Math.atan2(this.camPos.x, this.camPos.z);
+    }
     this.view = view;
     this.updateViewGoal(instant);
+  }
+
+  tween(duration, update, done) {
+    this.anims.push({ t: 0, duration, update, done });
   }
 
   frameArea(cx, cz, halfW, halfD) {
@@ -898,7 +1022,39 @@ export class BattleScene {
   }
 
   shake(amount) {
+    if (this.reduceMotion) return;
     this.shakeAmount = Math.max(this.shakeAmount, amount);
+  }
+
+  // Bright scan line that sweeps across a board, e.g. when a phase begins.
+  scanBoard(board) {
+    const v = this.boardVisuals[board];
+    const cfg = BOARDS[board];
+    const beam = new THREE.Mesh(
+      new THREE.PlaneGeometry(BOARD_SIZE + 0.4, 0.9),
+      new THREE.MeshBasicMaterial({
+        color: cfg.accent,
+        map: this.softTexture,
+        transparent: true,
+        opacity: 0.9,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      })
+    );
+    beam.rotation.x = -Math.PI / 2;
+    beam.position.set(cfg.center.x, BOARD_Y + 0.03, cfg.center.z - HALF);
+    this.scene.add(beam);
+    v.lines.material.opacity = 1;
+    v.frameMat.opacity = 1;
+    this.tween(1.1, (t) => {
+      const e = easeInOutCubic(t);
+      beam.position.z = cfg.center.z - HALF + e * BOARD_SIZE;
+      beam.material.opacity = 0.9 * Math.sin(Math.PI * Math.min(1, t * 1.15));
+    }, () => {
+      this.scene.remove(beam);
+      beam.geometry.dispose();
+      beam.material.dispose();
+    });
   }
 
   // ---- ships -------------------------------------------------------------
@@ -909,6 +1065,7 @@ export class BattleScene {
     map.forEach((entry, name) => {
       if (!wanted.has(name)) {
         this.scene.remove(entry.group);
+        this.removeSlick(entry);
         map.delete(name);
       }
     });
@@ -917,32 +1074,132 @@ export class BattleScene {
       if (!entry) {
         const group = buildShip(ship.name, ship.length);
         this.scene.add(group);
-        entry = { group, phase: Math.random() * Math.PI * 2, sinkT: 0, spawnT: 0 };
+        entry = {
+          group,
+          board,
+          phase: Math.random() * Math.PI * 2,
+          sinkT: 0,
+          spawnT: 0,
+          splashed: false,
+          jolt: 0,
+          recoil: 0,
+          pos: new THREE.Vector3(),
+          yaw: 0,
+          target: null,
+        };
         map.set(ship.name, entry);
       }
       const key = `${ship.x},${ship.y},${ship.dir}`;
       if (entry.key !== key) {
+        const moved = Boolean(entry.key);
         entry.key = key;
-        entry.cells = new Set();
-        for (let i = 0; i < ship.length; i += 1) {
-          entry.cells.add(`${ship.x + (ship.dir === 'h' ? i : 0)},${ship.y + (ship.dir === 'v' ? i : 0)}`);
+        entry.ship = { ...ship };
+        entry.cells = new Set(shipCellList(ship).map((c) => `${c.x},${c.y}`));
+        entry.target = shipTransform(board, ship);
+        if (!moved) {
+          entry.pos.set(entry.target.x, 0, entry.target.z);
+          entry.yaw = entry.target.yaw;
+          entry.spawnT = 0;
+          entry.splashed = false;
+        } else {
+          this.shipSplash(board, ship, 0.6);
         }
-        placeShipGroup(entry.group, board, ship);
-        entry.spawnT = 0;
       }
       if (ship.sunk && !entry.sunk) {
         entry.sunk = true;
+        entry.sinkT = 0;
         setShipMaterial(entry.group, sunkMaterial);
+        this.addSlick(entry);
       } else if (!ship.sunk && entry.sunk) {
         entry.sunk = false;
         entry.sinkT = 0;
         setShipMaterial(entry.group, null);
+        this.removeSlick(entry);
       }
     });
   }
 
+  addSlick(entry) {
+    this.removeSlick(entry);
+    const slick = new THREE.Mesh(
+      new THREE.CircleGeometry(0.5, 24),
+      new THREE.MeshBasicMaterial({ color: 0x07090c, map: this.softTexture, transparent: true, opacity: 0, depthWrite: false })
+    );
+    slick.rotation.x = -Math.PI / 2;
+    slick.rotation.z = entry.target.yaw;
+    slick.position.set(entry.target.x, BOARD_Y + 0.004, entry.target.z);
+    slick.scale.set(0.01, 0.01, 1);
+    this.scene.add(slick);
+    entry.slick = slick;
+  }
+
+  removeSlick(entry) {
+    if (!entry.slick) return;
+    this.scene.remove(entry.slick);
+    entry.slick.geometry.dispose();
+    entry.slick.material.dispose();
+    entry.slick = null;
+  }
+
+  shipSplash(board, ship, power = 1) {
+    shipCellList(ship).forEach(({ x, y }) => {
+      const pos = cellToWorld(board, x, y, 0.15);
+      for (let i = 0; i < 7 * power; i += 1) {
+        const a = Math.random() * Math.PI * 2;
+        this.particles.spawn({
+          position: pos.clone().add(new THREE.Vector3(rand(-0.35, 0.35), 0, rand(-0.35, 0.35))),
+          velocity: new THREE.Vector3(Math.cos(a) * 0.9, rand(1.5, 3) * power, Math.sin(a) * 0.9),
+          life: rand(0.5, 0.8),
+          size: [0.14, 0.38],
+          color: [0xffffff, 0xa8dcff],
+          opacity: [0.85, 0],
+          gravity: -9,
+        });
+      }
+    });
+    const mid = shipTransform(board, ship);
+    this.ripple(new THREE.Vector3(mid.x, 0, mid.z), {
+      scaleX: ship.dir === 'h' ? ship.length * 0.55 : 0.6,
+      scaleZ: ship.dir === 'v' ? ship.length * 0.55 : 0.6,
+      grow: 1.8,
+    });
+  }
+
+  // Muzzle flash, smoke and recoil on a firing ship; returns the shell's launch point.
+  muzzleFlash(entry) {
+    const g = entry.group;
+    g.updateMatrixWorld(true);
+    const length = entry.ship?.length || 3;
+    const muzzle = g.localToWorld(new THREE.Vector3(length * 0.32, 0.5, 0));
+    const forward = new THREE.Vector3(Math.cos(entry.yaw), 0, -Math.sin(entry.yaw));
+    this.particles.spawn({
+      position: muzzle,
+      life: 0.18,
+      size: [0.9, 1.8],
+      color: [0xfff4d0, 0xffa040],
+      opacity: [1, 0],
+      additive: true,
+    });
+    for (let i = 0; i < 10; i += 1) {
+      this.particles.spawn({
+        position: muzzle,
+        velocity: forward.clone().multiplyScalar(rand(0.5, 2)).add(new THREE.Vector3(rand(-0.4, 0.4), rand(0.4, 1.2), rand(-0.4, 0.4))),
+        life: rand(0.9, 1.5),
+        size: [0.25, rand(0.8, 1.2)],
+        color: [0x9a948c, 0x3c3b3b],
+        opacity: [0.6, 0],
+        drag: 1.8,
+      });
+    }
+    this.flashLight.position.copy(muzzle).setY(muzzle.y + 0.8);
+    this.flashLight.intensity = Math.max(this.flashLight.intensity, 25);
+    entry.recoil = 1;
+    return muzzle;
+  }
+
   setGhost(ghost) {
-    if (this.ghost) this.ghost.group.visible = false;
+    const previous = this.ghost;
+    if (previous && (!ghost || previous !== this.ghostCache.get(ghost.name))) previous.group.visible = false;
     if (!ghost) {
       this.ghost = null;
       this.ghostFootprint.visible = false;
@@ -959,7 +1216,11 @@ export class BattleScene {
       cached.valid = ghost.valid;
       setShipMaterial(cached.group, ghost.valid ? this.ghostMaterials.valid : this.ghostMaterials.invalid);
     }
-    placeShipGroup(cached.group, 'self', ghost);
+    cached.target = shipTransform('self', ghost);
+    if (!cached.group.visible || previous !== cached) {
+      cached.pos = new THREE.Vector3(cached.target.x, 0, cached.target.z);
+      cached.yaw = cached.target.yaw;
+    }
     cached.group.visible = true;
     this.ghost = cached;
 
@@ -982,11 +1243,17 @@ export class BattleScene {
     if (!cell) {
       this.hoverTile.visible = false;
       this.reticle.visible = false;
+      this.hoverKey = null;
       return;
     }
     const pos = cellToWorld(cell.board, cell.x, cell.y, BOARD_Y + 0.01);
     this.hoverTile.position.copy(pos);
     this.hoverTile.visible = true;
+    const key = `${cell.board}:${cell.x},${cell.y}`;
+    if (key !== this.hoverKey) {
+      this.hoverKey = key;
+      this.reticleLock = 0;
+    }
     if (style === 'aim' || style === 'blocked') {
       this.reticle.position.copy(pos).setY(BOARD_Y + 0.03);
       this.reticle.visible = true;
@@ -1045,6 +1312,7 @@ export class BattleScene {
       ring.position.y = BOARD_Y + 0.01;
       const peg = cylinder(0.075, 0.09, 0.22, new THREE.MeshStandardMaterial({ color: 0xf2f6fa, roughness: 0.4 }), 0, BOARD_Y + 0.08, 0, 10);
       group.add(ring, peg);
+      group.userData.peg = peg;
     } else {
       const pegMat = new THREE.MeshStandardMaterial({ color: 0xff3b2f, emissive: 0xff2a10, emissiveIntensity: 1.4, roughness: 0.3 });
       const peg = cylinder(0.08, 0.1, 0.26, pegMat, 0, (onShip ? 0.32 : BOARD_Y) + 0.1, 0, 10);
@@ -1055,6 +1323,8 @@ export class BattleScene {
       scorch.rotation.x = -Math.PI / 2;
       scorch.position.y = BOARD_Y + 0.02;
       group.add(scorch, peg);
+      group.userData.peg = peg;
+      group.userData.pegMat = pegMat;
       this.emitters.set(`${board}:${key}`, {
         pos: new THREE.Vector3(pos.x, onShip ? 0.45 : 0.3, pos.z),
         fire: Math.random(),
@@ -1062,6 +1332,9 @@ export class BattleScene {
       });
     }
     group.userData.phase = Math.random() * Math.PI * 2;
+    group.userData.born = this.time;
+    group.userData.pegY = group.userData.peg.position.y;
+    group.scale.setScalar(0.01);
     this.scene.add(group);
     this.markers[board].set(key, { group, result });
   }
@@ -1097,57 +1370,95 @@ export class BattleScene {
 
   async playShot({ board, x, y, result, sunkShip = null }) {
     const target = cellToWorld(board, x, y, 0.3);
-    const fromSide = board === 'enemy' ? -1 : 1;
-    const start = new THREE.Vector3(target.x + fromSide * 16, 2.5, target.z + 6);
-    const peak = Math.max(7, start.distanceTo(target) * 0.35);
-    const duration = 950;
 
-    const shell = new THREE.Mesh(
-      new THREE.SphereGeometry(0.1, 10, 8),
-      new THREE.MeshBasicMaterial({ color: 0xffe2a0 })
+    // Fire from a real surviving ship on the other board when one is visible.
+    const shooterBoard = board === 'enemy' ? 'self' : 'enemy';
+    const shooters = [...this.ships[shooterBoard].values()].filter((e) => !e.sunk && e.ship);
+    let start;
+    if (shooters.length) {
+      start = this.muzzleFlash(shooters[Math.floor(Math.random() * shooters.length)]);
+      await wait(90);
+    } else {
+      const fromSide = board === 'enemy' ? -1 : 1;
+      start = new THREE.Vector3(target.x + fromSide * 16, 2.5, target.z + 6);
+    }
+    const dist = start.distanceTo(target);
+    const peak = Math.max(4.5, dist * 0.34);
+    const duration = Math.min(1.35, 0.65 + dist * 0.03);
+
+    // Incoming-fire warning ring that closes in on the target.
+    const warn = new THREE.Mesh(
+      new THREE.RingGeometry(0.42, 0.5, 40),
+      new THREE.MeshBasicMaterial({ color: 0xff4d3a, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending })
     );
+    warn.rotation.x = -Math.PI / 2;
+    warn.position.set(target.x, BOARD_Y + 0.035, target.z);
+    this.scene.add(warn);
+
+    const shell = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), new THREE.MeshBasicMaterial({ color: 0xfff0c8 }));
+    const glow = new THREE.Sprite(
+      new THREE.SpriteMaterial({ map: this.softTexture, color: 0xffb347, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })
+    );
+    glow.scale.setScalar(0.9);
+    shell.add(glow);
     this.scene.add(shell);
 
+    const prev = start.clone();
     await new Promise((resolve) => {
-      const startTime = performance.now();
-      const step = () => {
-        const t = Math.min((performance.now() - startTime) / duration, 1);
+      this.tween(duration, (t) => {
         const p = new THREE.Vector3().lerpVectors(start, target, t);
         p.y += Math.sin(Math.PI * t) * peak;
-        shell.position.copy(p);
-        this.particles.spawn({
-          position: p,
-          velocity: new THREE.Vector3(rand(-0.2, 0.2), rand(0, 0.3), rand(-0.2, 0.2)),
-          life: 0.45,
-          size: [0.32, 0.08],
-          color: [0xffd27a, 0xff5a1f],
-          opacity: [0.9, 0],
-          additive: true,
-        });
-        if (t < 1) {
-          requestAnimationFrame(step);
-        } else {
-          resolve();
+        // Fill the gap since the last frame so the tracer stays continuous.
+        const steps = Math.max(1, Math.ceil(prev.distanceTo(p) / 0.25));
+        for (let i = 1; i <= steps; i += 1) {
+          const q = prev.clone().lerp(p, i / steps);
+          this.particles.spawn({
+            position: q,
+            velocity: new THREE.Vector3(rand(-0.15, 0.15), rand(0, 0.2), rand(-0.15, 0.15)),
+            life: 0.4,
+            size: [0.3, 0.06],
+            color: [0xffd27a, 0xff5a1f],
+            opacity: [0.9, 0],
+            additive: true,
+          });
+          if (i === steps && Math.random() < 0.5) {
+            this.particles.spawn({
+              position: q,
+              velocity: new THREE.Vector3(rand(-0.1, 0.1), rand(0.1, 0.3), rand(-0.1, 0.1)),
+              life: rand(0.8, 1.2),
+              size: [0.15, 0.5],
+              color: [0x8c8c8c, 0x404040],
+              opacity: [0.35, 0],
+            });
+          }
         }
-      };
-      requestAnimationFrame(step);
+        prev.copy(p);
+        shell.position.copy(p);
+        glow.material.opacity = 0.7 + Math.random() * 0.3;
+        const closing = 1 - t;
+        warn.scale.setScalar(0.6 + closing * 1.6);
+        warn.material.opacity = Math.min(1, t * 3) * (0.55 + 0.45 * Math.sin(t * 40));
+      }, resolve);
     });
 
-    this.scene.remove(shell);
+    [shell, warn].forEach((m) => this.scene.remove(m));
     shell.geometry.dispose();
     shell.material.dispose();
+    glow.material.dispose();
+    warn.geometry.dispose();
+    warn.material.dispose();
 
     const impact = cellToWorld(board, x, y, 0.25);
     if (result === 'miss') {
       this.splash(impact);
     } else {
       this.explode(impact, result === 'sunk' ? 1.6 : 1);
+      const hitShip = [...this.ships[board].values()].find((e) => e.cells?.has(`${x},${y}`));
+      if (hitShip) hitShip.jolt = 1;
       if (result === 'sunk' && sunkShip) {
-        for (let i = 0; i < sunkShip.length; i += 1) {
-          const cx = sunkShip.x + (sunkShip.dir === 'h' ? i : 0);
-          const cy = sunkShip.y + (sunkShip.dir === 'v' ? i : 0);
+        shipCellList(sunkShip).forEach(({ x: cx, y: cy }, i) => {
           setTimeout(() => this.explode(cellToWorld(board, cx, cy, 0.3), 0.8), 140 + i * 160);
-        }
+        });
       }
     }
     return wait(result === 'sunk' ? 500 : 250);
@@ -1167,38 +1478,53 @@ export class BattleScene {
         gravity: -11,
       });
     }
+    // Tall water column
+    for (let i = 0; i < 16; i += 1) {
+      this.particles.spawn({
+        position: pos.clone().add(new THREE.Vector3(rand(-0.12, 0.12), 0, rand(-0.12, 0.12))),
+        velocity: new THREE.Vector3(rand(-0.25, 0.25), rand(6.5, 9.5), rand(-0.25, 0.25)),
+        life: rand(1.1, 1.4),
+        size: [0.28, rand(0.8, 1.1)],
+        color: [0xffffff, 0xbfe6ff],
+        opacity: [0.9, 0],
+        gravity: -13,
+        drag: 0.4,
+      });
+    }
     this.ripple(pos);
+    setTimeout(() => this.ripple(pos, { grow: 2.6, duration: 1.4 }), 260);
   }
 
-  ripple(pos) {
+  ripple(pos, { scaleX = 1, scaleZ = 1, grow = 3.5, duration = 1.1, color = 0xe8f7ff, additive = false } = {}) {
     const ring = new THREE.Mesh(
       new THREE.RingGeometry(0.3, 0.38, 36),
-      new THREE.MeshBasicMaterial({ color: 0xe8f7ff, transparent: true, opacity: 0.8, depthWrite: false })
+      new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0.8,
+        depthWrite: false,
+        blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,
+      })
     );
     ring.rotation.x = -Math.PI / 2;
     ring.position.set(pos.x, BOARD_Y + 0.02, pos.z);
     this.scene.add(ring);
-    const start = performance.now();
-    const step = () => {
-      const t = (performance.now() - start) / 1100;
-      if (t >= 1) {
-        this.scene.remove(ring);
-        ring.geometry.dispose();
-        ring.material.dispose();
-        return;
-      }
-      const s = 1 + t * 3.5;
-      ring.scale.set(s, s, s);
+    this.tween(duration, (t) => {
+      const s = 1 + easeOutCubic(t) * grow;
+      ring.scale.set(s * scaleX, s * scaleZ, 1);
       ring.material.opacity = 0.8 * (1 - t);
-      requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
+    }, () => {
+      this.scene.remove(ring);
+      ring.geometry.dispose();
+      ring.material.dispose();
+    });
   }
 
   explode(pos, power = 1) {
     this.flashLight.position.copy(pos).setY(pos.y + 1);
     this.flashLight.intensity = 60 * power;
     this.shake(0.35 * power);
+    this.ripple(pos, { grow: 5 * power, duration: 0.55, color: 0xff8a3c, additive: true });
     this.particles.spawn({
       position: pos.clone().setY(pos.y + 0.3),
       life: 0.35,
@@ -1244,6 +1570,18 @@ export class BattleScene {
         additive: true,
       });
     }
+    // Tumbling hull fragments
+    for (let i = 0; i < Math.round(7 * power); i += 1) {
+      const mesh = new THREE.Mesh(this.debrisGeo, this.debrisMat);
+      mesh.position.copy(pos).setY(pos.y + 0.2);
+      mesh.scale.setScalar(rand(0.6, 1.4));
+      this.scene.add(mesh);
+      this.debris.push({
+        mesh,
+        vel: new THREE.Vector3(rand(-2.2, 2.2), rand(3.5, 6.5), rand(-2.2, 2.2)),
+        spin: new THREE.Vector3(rand(-12, 12), rand(-12, 12), rand(-12, 12)),
+      });
+    }
   }
 
   celebrate(board) {
@@ -1276,17 +1614,32 @@ export class BattleScene {
   tick() {
     const rawDt = this.clock.getDelta();
     const dt = Math.min(rawDt, 0.05);
-    // The camera uses real elapsed time so it still settles on slow devices.
+    // The camera and tweens use real elapsed time so they still finish on slow devices.
     const camDt = Math.min(rawDt, 0.5);
+    const animDt = Math.min(rawDt, 0.1);
     this.time += dt;
     const t = this.time;
     this.oceanUniforms.uTime.value = t;
 
+    // Tweens
+    for (let i = this.anims.length - 1; i >= 0; i -= 1) {
+      const a = this.anims[i];
+      a.t += animDt;
+      const p = Math.min(a.t / a.duration, 1);
+      a.update(p);
+      if (p >= 1) {
+        this.anims.splice(i, 1);
+        a.done?.();
+      }
+    }
+
     // Camera
-    if (this.view === 'lobby') {
-      this.lobbyAngle += camDt * 0.045;
-      const r = this.camera.aspect < 0.8 ? 36 : 27;
-      this.goalPos.set(Math.sin(this.lobbyAngle) * r, 11 + Math.sin(t * 0.2) * 1.2, Math.cos(this.lobbyAngle) * r);
+    if (this.view === 'lobby' || this.view === 'finale') {
+      const finale = this.view === 'finale';
+      this.orbitAngle += camDt * (finale ? 0.07 : 0.045);
+      const r = (this.camera.aspect < 0.8 ? 36 : 27) * (finale ? 0.95 : 1);
+      const h = finale ? 14 : 11;
+      this.goalPos.set(Math.sin(this.orbitAngle) * r, h + Math.sin(t * 0.2) * 1.2, Math.cos(this.orbitAngle) * r);
       this.goalLook.set(0, 0, 0);
     }
     const k = 1 - Math.exp(-camDt * 2.6);
@@ -1294,8 +1647,8 @@ export class BattleScene {
     this.camLook.lerp(this.goalLook, k);
     this.parallax.lerp(this.parallaxGoal, 1 - Math.exp(-dt * 2));
     this.camera.position.copy(this.camPos);
-    this.camera.position.x += this.parallax.x * 0.6;
-    this.camera.position.y += this.parallax.y * 0.4;
+    this.camera.position.x += this.parallax.x * 0.6 + Math.sin(t * 0.37) * 0.12;
+    this.camera.position.y += this.parallax.y * 0.4 + Math.sin(t * 0.5) * 0.15;
     if (this.shakeAmount > 0.001) {
       this.camera.position.x += rand(-1, 1) * this.shakeAmount;
       this.camera.position.y += rand(-1, 1) * this.shakeAmount * 0.6;
@@ -1310,44 +1663,149 @@ export class BattleScene {
       v.frameMat.opacity += ((active ? 1 : 0.55) - v.frameMat.opacity) * k;
       v.glow.material.opacity += ((active ? pulse * 0.5 : 0.06) - v.glow.material.opacity) * k * 2;
       v.lines.material.opacity += ((active ? 0.55 : 0.32) - v.lines.material.opacity) * k;
+      const radar = v.radar.material.uniforms;
+      radar.uTime.value = t;
+      radar.uOpacity.value += ((active ? 1 : 0) - radar.uOpacity.value) * k;
+      v.radar.visible = radar.uOpacity.value > 0.01;
     });
 
-    // Ships bob on the swell
+    // Ships: glide into place, drop in with a splash, bob, recoil, jolt and sink
+    const glide = 1 - Math.exp(-dt * 14);
     ['self', 'enemy'].forEach((board) => {
       this.ships[board].forEach((entry) => {
         const g = entry.group;
-        const baseY = entry.sunk ? -0.24 : 0;
-        if (entry.sunk) entry.sinkT = Math.min(entry.sinkT + dt * 0.5, 1);
-        entry.spawnT = Math.min(entry.spawnT + dt * 3, 1);
-        const drop = (1 - easeOutBack(entry.spawnT)) * 0.6;
-        const sinkRoll = entry.sunk ? entry.sinkT * 0.22 : 0;
-        g.position.y = baseY * (entry.sunk ? entry.sinkT : 1) + Math.sin(t * 1.3 + entry.phase) * 0.035 + drop;
-        const roll = Math.sin(t * 1.1 + entry.phase) * 0.025 + sinkRoll;
-        const pitch = Math.sin(t * 0.9 + entry.phase * 1.7) * 0.012 + (entry.sunk ? entry.sinkT * 0.05 : 0);
-        const yaw = g.rotation.y;
-        g.rotation.set(0, yaw, 0);
+        if (entry.target) {
+          entry.pos.x += (entry.target.x - entry.pos.x) * glide;
+          entry.pos.z += (entry.target.z - entry.pos.z) * glide;
+          entry.yaw += (entry.target.yaw - entry.yaw) * glide;
+        }
+        entry.spawnT = Math.min(entry.spawnT + dt * 2.6, 1);
+        if (!entry.splashed && entry.spawnT > 0.5 && entry.ship) {
+          entry.splashed = true;
+          this.shipSplash(board, entry.ship, 1);
+        }
+        entry.recoil *= Math.exp(-dt * 6);
+        entry.jolt *= Math.exp(-dt * 3.5);
+
+        const drop = (1 - easeOutBack(entry.spawnT)) * 1.4;
+        let y = Math.sin(t * 1.3 + entry.phase) * 0.035 + drop - entry.jolt * 0.08;
+        let roll = Math.sin(t * 1.1 + entry.phase) * 0.025 + Math.sin(t * 24) * 0.12 * entry.jolt;
+        let pitch = Math.sin(t * 0.9 + entry.phase * 1.7) * 0.012 - entry.recoil * 0.05;
+
+        if (entry.sunk) {
+          entry.sinkT = Math.min(entry.sinkT + dt * 0.3, 1);
+          const e = easeInOutCubic(entry.sinkT);
+          y += -0.3 * e;
+          roll += 0.3 * e;
+          pitch += 0.2 * e;
+          if (entry.sinkT < 1 && entry.cells && Math.random() < 0.6) {
+            const cells = [...entry.cells];
+            const [cx, cy] = cells[Math.floor(Math.random() * cells.length)].split(',').map(Number);
+            this.particles.spawn({
+              position: cellToWorld(board, cx, cy, 0.12).add(new THREE.Vector3(rand(-0.3, 0.3), 0, rand(-0.3, 0.3))),
+              velocity: new THREE.Vector3(0, rand(0.3, 0.7), 0),
+              life: rand(0.5, 0.9),
+              size: [0.08, 0.16],
+              color: [0xdff6ff, 0x9fd8ff],
+              opacity: [0.8, 0],
+            });
+          }
+          if (entry.slick) {
+            const len = entry.ship?.length || 3;
+            const sl = easeOutCubic(entry.sinkT);
+            entry.slick.scale.set(0.01 + sl * len * 1.1, 0.01 + sl * 1.7, 1);
+            entry.slick.material.opacity = 0.6 * sl;
+          }
+        }
+
+        const back = entry.recoil * 0.12;
+        g.position.set(entry.pos.x - Math.cos(entry.yaw) * back, y, entry.pos.z + Math.sin(entry.yaw) * back);
+        g.rotation.set(0, entry.yaw, 0);
         g.rotateX(roll);
         g.rotateZ(pitch);
         if (g.userData.radar && !entry.sunk) g.userData.radar.rotation.y = t * 2.2;
       });
     });
-    if (this.ghost?.group.visible) {
-      this.ghost.group.position.y = 0.12 + Math.sin(t * 3) * 0.04;
+
+    if (this.ghost?.group.visible && this.ghost.target) {
+      const gh = this.ghost;
+      const gk = 1 - Math.exp(-dt * 18);
+      gh.pos.x += (gh.target.x - gh.pos.x) * gk;
+      gh.pos.z += (gh.target.z - gh.pos.z) * gk;
+      gh.yaw += (gh.target.yaw - gh.yaw) * gk;
+      gh.group.position.set(gh.pos.x, 0.12 + Math.sin(t * 3) * 0.04, gh.pos.z);
+      gh.group.rotation.set(0, gh.yaw, Math.sin(t * 2.1) * 0.03);
     }
 
-    // Markers bob a little
+    // Markers drop in with a bounce, then bob; hit pegs flicker
     ['self', 'enemy'].forEach((board) => {
       this.markers[board].forEach((m) => {
-        m.group.position.y = Math.sin(t * 1.6 + m.group.userData.phase) * 0.025;
+        const ud = m.group.userData;
+        const age = t - ud.born;
+        const pop = Math.min(age / 0.35, 1);
+        m.group.scale.setScalar(Math.max(0.01, easeOutBack(pop)));
+        m.group.position.y = Math.sin(t * 1.6 + ud.phase) * 0.025;
+        const fall = Math.min(age / 0.6, 1);
+        ud.peg.position.y = ud.pegY + (1 - easeOutBounce(fall)) * 1.4;
+        if (ud.pegMat) ud.pegMat.emissiveIntensity = 1.2 + Math.sin(t * 13 + ud.phase) * 0.35 + Math.sin(t * 29 + ud.phase) * 0.2;
       });
     });
 
-    // Reticle spin
+    // Reticle: snaps in when the target changes, then spins
     if (this.reticle.visible) {
-      this.reticle.rotation.y = t * 1.6;
-      const s = 1 + Math.sin(t * 6) * 0.06;
+      this.reticleLock = Math.min(1, this.reticleLock + dt * 5);
+      const lock = easeOutCubic(this.reticleLock);
+      this.reticle.rotation.y = t * 1.6 + (1 - lock) * 2.5;
+      const s = (1 + (1 - lock) * 0.9) * (1 + Math.sin(t * 6) * 0.06);
       this.reticle.scale.set(s, s, s);
     }
+
+    // Debris
+    for (let i = this.debris.length - 1; i >= 0; i -= 1) {
+      const d = this.debris[i];
+      d.vel.y -= 14 * dt;
+      d.mesh.position.addScaledVector(d.vel, dt);
+      d.mesh.rotation.x += d.spin.x * dt;
+      d.mesh.rotation.y += d.spin.y * dt;
+      d.mesh.rotation.z += d.spin.z * dt;
+      if (d.mesh.position.y < 0.1 && d.vel.y < 0) {
+        for (let k2 = 0; k2 < 5; k2 += 1) {
+          this.particles.spawn({
+            position: d.mesh.position.clone().setY(0.12),
+            velocity: new THREE.Vector3(rand(-0.6, 0.6), rand(1.2, 2.2), rand(-0.6, 0.6)),
+            life: 0.5,
+            size: [0.08, 0.22],
+            color: [0xffffff, 0xa8dcff],
+            opacity: [0.8, 0],
+            gravity: -9,
+          });
+        }
+        this.scene.remove(d.mesh);
+        this.debris.splice(i, 1);
+      }
+    }
+
+    // Seagulls circling overhead
+    this.gulls.forEach((gull) => {
+      gull.angle += gull.speed * dt;
+      const a = gull.angle;
+      const gx = gull.center.x + Math.cos(a) * gull.radius;
+      const gz = gull.center.z + Math.sin(a) * gull.radius;
+      const gy = gull.height + Math.sin(t * 0.7 + gull.phase) * 0.6;
+      gull.group.position.set(gx, gy, gz);
+      const dir = Math.sign(gull.speed);
+      const vx = -Math.sin(a) * dir;
+      const vz = Math.cos(a) * dir;
+      gull.group.rotation.set(0, Math.atan2(-vx, -vz), 0);
+      gull.group.rotateZ(-0.35 * dir);
+      const flapping = 0.5 + 0.5 * Math.sin(t * 0.45 + gull.phase);
+      const amp = 0.12 + 0.5 * flapping;
+      const flap = Math.sin(t * 9 + gull.phase) * amp;
+      gull.wings.forEach(({ pivot, tipPivot }) => {
+        pivot.rotation.z = flap + 0.08;
+        tipPivot.rotation.z = flap * 0.6;
+      });
+    });
 
     // Burning hits
     this.emitters.forEach((e) => {
@@ -1382,6 +1840,23 @@ export class BattleScene {
     this.particles.update(dt);
     this.renderer.render(this.scene, this.camera);
   }
+}
+
+function easeOutCubic(x) {
+  return 1 - Math.pow(1 - x, 3);
+}
+
+function easeInOutCubic(x) {
+  return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+}
+
+function easeOutBounce(x) {
+  const n1 = 7.5625;
+  const d1 = 2.75;
+  if (x < 1 / d1) return n1 * x * x;
+  if (x < 2 / d1) return n1 * (x -= 1.5 / d1) * x + 0.75;
+  if (x < 2.5 / d1) return n1 * (x -= 2.25 / d1) * x + 0.9375;
+  return n1 * (x -= 2.625 / d1) * x + 0.984375;
 }
 
 function easeOutBack(x) {
