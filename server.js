@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const path = require('path');
 const crypto = require('crypto');
+const os = require('os');
 const { Server } = require('socket.io');
 
 const app = express();
@@ -713,6 +714,19 @@ setInterval(() => {
   });
 }, 60 * 1000).unref();
 
-server.listen(PORT, () => {
+function lanAddresses() {
+  return Object.values(os.networkInterfaces())
+    .flat()
+    .filter((net) => net && net.family === 'IPv4' && !net.internal)
+    .map((net) => net.address);
+}
+
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`Battleship server running on http://localhost:${PORT}`);
+  const addresses = lanAddresses();
+  if (addresses.length) {
+    console.log('Other devices on the same Wi-Fi can open:');
+    addresses.forEach((address) => console.log(`  http://${address}:${PORT}`));
+    console.log('If a phone cannot connect, allow Node.js through your firewall on private networks.');
+  }
 });

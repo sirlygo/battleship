@@ -29,6 +29,14 @@ npm start
 
 Open <http://localhost:3000>. Set `PORT` to use a different port.
 
+### Playing from a phone on the same Wi-Fi
+
+When the server starts, it prints the address other devices can use, for example `http://192.168.1.23:3000`. Open that address on the phone; `localhost` won't work there. If the phone can't connect:
+
+- **Windows:** open "Allow an app through Windows Firewall" and tick **Private** for Node.js JavaScript Runtime. Also set your Wi-Fi's network profile to **Private**.
+- **macOS:** allow incoming connections for `node` when asked, or under System Settings → Network → Firewall.
+- Make sure the phone is on the same network, not a guest network or mobile data. Some routers block devices from reaching each other ("AP/client isolation").
+
 ## How to play
 
 1. **Host** a game and share the room code or invite link.
