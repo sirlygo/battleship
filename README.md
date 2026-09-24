@@ -37,6 +37,16 @@ When the server starts, it prints the address other devices can use, for example
 - **macOS:** allow incoming connections for `node` when asked, or under System Settings → Network → Firewall.
 - Make sure the phone is on the same network, not a guest network or mobile data. Some routers block devices from reaching each other ("AP/client isolation").
 
+## Deploy online (free)
+
+The repo includes a `render.yaml`, so it can be hosted on [Render](https://render.com) and played from any phone or network:
+
+1. Sign in to Render with GitHub.
+2. Click **New → Blueprint**, choose this repository, and click **Apply**.
+3. When the deploy finishes, share the `https://battleship-….onrender.com` link.
+
+On Render's free plan the server sleeps after 15 minutes without visitors. The first visit after that takes about 30–60 seconds to wake it. Rooms live in memory, so they reset when the server sleeps or redeploys.
+
 ## How to play
 
 1. **Host** a game and share the room code or invite link.

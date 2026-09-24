@@ -11,6 +11,7 @@ const io = new Server(server);
 
 const PORT = process.env.PORT || 3000;
 
+app.get('/healthz', (_req, res) => res.send('ok'));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/vendor/three', express.static(path.join(__dirname, 'node_modules', 'three', 'build')));
 
