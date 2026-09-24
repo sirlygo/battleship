@@ -1,59 +1,71 @@
-# 3D Battleship
+# Battleship
 
-A room-based multiplayer Battleship experience with a fully interactive 3D grid built with Three.js and Socket.IO. Play classic Battleship rules on a 5×5×5 cube, invite a friend with a six-digit room code, and battle in real time.
+Real-time, two-player Battleship in the browser. It has a 3D ocean scene built with Three.js and uses Socket.IO for multiplayer. One player hosts a room and gets a 5-character room code. The other player types in that code, or opens the invite link, to join.
 
 ## Features
 
-- **Two Board 3D Scene** – Place and target ships on twin 3D grids rendered with Three.js.
-- **Room Codes** – Instantly host a match and share a six-digit code so friends can join.
-- **Real-Time Multiplayer** – Socket.IO keeps both players in sync for placement, turns, and attacks.
-- **Turn-Based Combat** – Receive immediate hit, miss, and ship-sunk feedback with win detection.
-- **In-Game Chat** – Chat with your opponent while you play.
-- **Rich Chat Experience** – Persistent history, system notifications, and username change callouts keep both players informed.
-- **Auto Fleet Placement** – Instantly arrange a legal fleet layout when you want a speedy start.
-- **Server-Side Validation** – Hardened placement checks prevent cheating or malformed boards.
+- **Room codes and invite links.** Host a game and share a code like `K7QX2`, or share a link that fills the code in for your friend.
+- **Classic rules.** Each player has a 10×10 grid and five ships (Carrier 5, Battleship 4, Cruiser 3, Submarine 3, Destroyer 2).
+- **Bonus shot on hit.** On by default. The host can switch it off so turns strictly alternate.
+- **3D scene.** Animated ocean with sky and sun glare. Each ship type has its own model, and ships bob on the swell. Shells fly in an arc, then you get a splash, or an explosion with fire and smoke. Sunk ships go down charred. The camera follows the action.
+- **Fleet placement.** Hover to see a ghost of the ship, click to drop it, and press `R` or right-click to rotate. Click a placed ship to pick it back up, or hit Randomize. After you're ready, you can still reposition until the battle starts.
+- **Feedback.** HIT / MISS / SUNK callouts, synthesized sound effects (with a mute button), a fleet status bar for both sides, and accuracy stats.
+- **Rematch.** Both players accept to start a new round in the same room. The loser of the last round fires first.
+- **Reconnects.** Refreshing the page or a short network drop puts you back in your seat. If your opponent leaves, the room reopens so someone new can join with the same code.
+- **Chat.** Built-in comms panel with unread badges.
+- **Server-side game state.** The server validates fleets, turns, and shots. It never sends the enemy's ship positions until a ship is sunk or the game ends, so you can't cheat by reading network traffic.
+- **Works on phones.** On touch screens, tap once to aim and tap again (or press Fire) to shoot.
 
-## Getting Started
+## Getting started
 
-### Requirements
-
-- Node.js 18+
-
-### One-Click Setup
-
-```bash
-npm run setup
-```
-
-The setup script installs dependencies (if needed) and launches the development server at <http://localhost:3000>.
-
-### Manual Setup
+Requires Node.js 18+.
 
 ```bash
+npm run setup      # installs dependencies if needed, then starts the server
+# or
 npm install
 npm start
 ```
 
-Then open your browser to <http://localhost:3000>. Create a game to generate a room code and share it with a friend, or join an existing room with its code.
+Open <http://localhost:3000>. Set `PORT` to use a different port.
 
-## Gameplay Overview
+### Playing from a phone on the same Wi-Fi
 
-1. **Create or Join** – One player hosts to receive a six-digit room code. The opponent joins with the same code.
-2. **Set Usernames** – Pick names so the in-game chat identifies each player.
-3. **Place Ships** – Each commander places the classic fleet (lengths 5, 4, 3, 3, and 2) along the X, Y, or Z axis of their cube.
-4. **Battle** – Turns alternate. Click a cube in the opponent’s grid to fire. Results appear instantly on both boards.
-5. **Victory** – Sink every enemy ship to win the match.
+When the server starts, it prints the address other devices can use, for example `http://192.168.1.23:3000`. Open that address on the phone; `localhost` won't work there. If the phone can't connect:
 
-## Project Structure
+- **Windows:** open "Allow an app through Windows Firewall" and tick **Private** for Node.js JavaScript Runtime. Also set your Wi-Fi's network profile to **Private**.
+- **macOS:** allow incoming connections for `node` when asked, or under System Settings → Network → Firewall.
+- Make sure the phone is on the same network, not a guest network or mobile data. Some routers block devices from reaching each other ("AP/client isolation").
+
+## Deploy online (free)
+
+The repo includes a `render.yaml`, so it can be hosted on [Render](https://render.com) and played from any phone or network:
+
+1. Sign in to Render with GitHub.
+2. Click **New → Blueprint**, choose this repository, and click **Apply**.
+3. When the deploy finishes, share the `https://battleship-….onrender.com` link.
+
+On Render's free plan the server sleeps after 15 minutes without visitors. The first visit after that takes about 30–60 seconds to wake it. Rooms live in memory, so they reset when the server sleeps or redeploys.
+
+## How to play
+
+1. **Host** a game and share the room code or invite link.
+2. Your friend enters the code and presses **Join**.
+3. Both players deploy their fleets and press **Ready**.
+4. Take turns firing into enemy waters. Press `V` to switch between boards.
+5. Sink all five enemy ships to win, then hit **Rematch**.
+
+## Project structure
 
 ```
 .
 ├── public
-│   ├── app.js        # Front-end logic and Three.js scene setup
-│   ├── index.html    # UI layout and containers
-│   └── style.css     # Styling for the dashboard and chat
-├── server.js         # Express + Socket.IO real-time server
-└── package.json      # Dependencies and scripts
+│   ├── index.html      # UI: lobby, HUD, panels, chat, game-over modal
+│   ├── style.css       # Styling
+│   └── js
+│       ├── main.js     # Client: networking, placement, turn flow, UI
+│       ├── scene.js    # Three.js scene: ocean, boards, ships, effects, camera
+│       └── audio.js    # Synthesized Web Audio sound effects
+├── server.js           # Express + Socket.IO game server (rooms, rules, validation)
+└── package.json
 ```
-
-Enjoy commanding your fleet!

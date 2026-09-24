@@ -2,119 +2,196 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>3D Battleship</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#08142b" />
+    <title>Battleship</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600&display=swap"
+    />
     <link rel="stylesheet" href="style.css" />
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
   </head>
   <body>
-    <main class="layout">
-      <section class="panel" id="menuPanel">
-        <h1>3D Battleship</h1>
-        <div class="menu-block">
-          <h2>Create Game</h2>
-          <button id="createGameBtn" class="primary">Create</button>
-          <div class="code-display" id="roomCodeDisplay"></div>
-          <button id="copyCodeBtn" class="ghost" hidden>Copy Code</button>
+    <canvas id="scene" aria-hidden="true"></canvas>
+    <div class="vignette" aria-hidden="true"></div>
+    <div id="screenFlash" class="screen-flash" aria-hidden="true"></div>
+
+    <!-- Title screen -->
+    <section id="lobby" class="lobby">
+      <div class="lobby-card glass">
+        <div class="brand">
+          <span class="kicker">Naval Command</span>
+          <h1>Battleship</h1>
+          <p>Hunt down the enemy fleet before they find yours.</p>
         </div>
-        <div class="menu-block">
-          <h2>Join Game</h2>
-          <form id="joinForm">
-            <input
-              id="joinCodeInput"
-              maxlength="6"
-              placeholder="Enter room code"
-              autocomplete="off"
-            />
-            <button type="submit">Join</button>
-          </form>
-        </div>
-        <div class="menu-block" id="usernameBlock" hidden>
-          <h2>Set Username</h2>
-          <form id="usernameForm">
-            <input id="usernameInput" maxlength="12" placeholder="Your name" />
-            <button type="submit">Save</button>
-          </form>
-          <p class="hint">Usernames help players identify each other in chat.</p>
-        </div>
-        <div class="menu-block players" id="playersBlock">
-          <h2>Players</h2>
-          <ul id="playersList" class="players-list"></ul>
-          <p class="hint" id="playersHint">Players will appear here once a room is active.</p>
-        </div>
-        <div class="menu-block status">
-          <h2>Status</h2>
-          <p id="statusText">Waiting to create or join a game.</p>
-          <p id="turnText"></p>
-        </div>
-      </section>
-      <section class="panel" id="gamePanel">
-        <div class="canvas-wrapper">
-          <canvas id="gameCanvas"></canvas>
-        </div>
-        <div class="controls">
-          <div class="controls-block">
-            <h2>Ship Placement</h2>
-            <p id="placementInfo">Create or join a game to start.</p>
-            <div class="orientation-controls" id="orientationControls" hidden>
-              <span>Orientation:</span>
-              <button data-axis="x">X</button>
-              <button data-axis="y" class="active">Y</button>
-              <button data-axis="z">Z</button>
-            </div>
-            <div class="placement-actions">
-              <button id="autoPlacementBtn" class="ghost" hidden>Auto Place Fleet</button>
-              <button id="undoPlacementBtn" class="ghost" hidden>Undo Last Ship</button>
-              <button id="resetPlacementBtn" hidden>Reset Placement</button>
-              <button id="confirmPlacementBtn" class="primary" hidden disabled>Confirm Fleet</button>
-            </div>
-          </div>
-          <div class="controls-block stats" id="statsBlock" hidden>
-            <h2>Battle Stats</h2>
-            <div class="stats-grid">
-              <div class="stats-card">
-                <h3>Your Fleet</h3>
-                <div class="stat">
-                  <span class="label">Ships afloat</span>
-                  <span class="value" id="selfShipsRemaining">0 / 0</span>
-                </div>
-                <div class="stat">
-                  <span class="label">Hits taken</span>
-                  <span class="value" id="selfHitsTaken">0</span>
-                </div>
-              </div>
-              <div class="stats-card">
-                <h3>Enemy Fleet</h3>
-                <div class="stat">
-                  <span class="label">Ships afloat</span>
-                  <span class="value" id="opponentShipsRemaining">0 / 0</span>
-                </div>
-                <div class="stat">
-                  <span class="label">Hits landed</span>
-                  <span class="value" id="opponentHitsLanded">0</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="controls-block chat">
-            <h2>Chat</h2>
-            <div id="chatLog" class="chat-log"></div>
-            <form id="chatForm" class="chat-form" hidden>
-              <input id="chatInput" maxlength="200" placeholder="Type a message" />
-              <button type="submit">Send</button>
-            </form>
-          </div>
-        </div>
-      </section>
-    </main>
-    <template id="chatMessageTemplate">
-      <div class="chat-message">
-        <span class="sender"></span>
-        <span class="content"></span>
-        <span class="timestamp"></span>
+
+        <label class="field">
+          <span>Your callsign</span>
+          <input id="nameInput" maxlength="16" placeholder="Captain" autocomplete="nickname" />
+        </label>
+
+        <button id="hostBtn" class="btn btn-primary btn-lg" type="button">
+          Host a game
+          <small>Get a room code to share</small>
+        </button>
+
+        <div class="divider"><span>or join a friend</span></div>
+
+        <p id="inviteNote" class="invite-note" hidden></p>
+        <form id="joinForm" class="join-row" autocomplete="off">
+          <input
+            id="codeInput"
+            class="code-input"
+            maxlength="5"
+            placeholder="CODE"
+            spellcheck="false"
+            autocapitalize="characters"
+            aria-label="Room code"
+          />
+          <button class="btn btn-secondary" type="submit">Join</button>
+        </form>
+        <p id="lobbyError" class="error" role="alert"></p>
+
+        <details class="howto">
+          <summary>How to play</summary>
+          <ol>
+            <li>One player hosts and shares the 5-letter room code (or the invite link).</li>
+            <li>The other player enters the code to join.</li>
+            <li>Both deploy five ships on a 10×10 grid. Click to drop, <kbd>R</kbd> or right-click to rotate, or hit Randomize.</li>
+            <li>Take turns firing into enemy waters. By default, a hit earns you another shot.</li>
+            <li>Sink all five enemy ships to win. Then run it back with a rematch.</li>
+          </ol>
+        </details>
       </div>
-    </template>
-    <script src="app.js" type="module"></script>
+    </section>
+
+    <!-- In-room HUD -->
+    <section id="hud" class="hud" hidden>
+      <header class="topbar">
+        <button id="roomChip" class="chip" type="button" title="Copy room code">
+          <span class="chip-label">Room</span>
+          <strong id="roomCodeLabel"></strong>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 9h10v10H9zM5 15V5h10" /></svg>
+        </button>
+
+        <div class="scoreboard">
+          <div class="side side-you">
+            <span class="side-name" id="myName"></span>
+            <div class="pips" id="myPips"></div>
+          </div>
+          <span class="vs">vs</span>
+          <div class="side side-enemy">
+            <span class="side-name" id="enemyName"></span>
+            <div class="pips" id="enemyPips"></div>
+          </div>
+        </div>
+
+        <div class="top-actions">
+          <button id="muteBtn" class="icon-btn" type="button" aria-label="Toggle sound">
+            <svg class="ico-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" /><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" /></svg>
+            <svg class="ico-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" /><path d="M17 9l5 6M22 9l-5 6" /></svg>
+          </button>
+          <button id="chatBtn" class="icon-btn" type="button" aria-label="Chat">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" /></svg>
+            <span class="badge" id="chatBadge" hidden>0</span>
+          </button>
+          <button id="leaveBtn" class="icon-btn" type="button" aria-label="Leave room" title="Leave room">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10" /></svg>
+          </button>
+        </div>
+      </header>
+
+      <div id="banner" class="banner" data-kind="neutral">
+        <div id="bannerTitle" class="banner-title"></div>
+        <div id="bannerSub" class="banner-sub"></div>
+      </div>
+      <div id="alert" class="alert" hidden></div>
+
+      <!-- Waiting for opponent -->
+      <div id="panelWaiting" class="panel glass panel-waiting" hidden>
+        <p class="kicker">Room code</p>
+        <div id="waitingCode" class="big-code"></div>
+        <div class="row">
+          <button id="copyCodeBtn" class="btn btn-secondary" type="button">Copy code</button>
+          <button id="copyLinkBtn" class="btn btn-primary" type="button">Share invite link</button>
+        </div>
+        <div class="waiting-line"><span class="spinner"></span>Waiting for a challenger to join…</div>
+        <label id="bonusToggleWrap" class="toggle">
+          <input id="bonusToggle" type="checkbox" checked />
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          <span>Hits earn a bonus shot</span>
+        </label>
+        <p id="rulesText" class="muted small"></p>
+      </div>
+
+      <!-- Fleet placement -->
+      <div id="panelPlacement" class="panel glass panel-placement" hidden>
+        <div id="dock" class="dock"></div>
+        <div id="placementActions" class="row actions">
+          <button id="rotateBtn" class="btn btn-secondary" type="button">Rotate</button>
+          <button id="randomBtn" class="btn btn-secondary" type="button">Randomize</button>
+          <button id="clearBtn" class="btn btn-ghost" type="button">Clear</button>
+          <button id="readyBtn" class="btn btn-primary" type="button" disabled>Ready</button>
+        </div>
+        <div id="readyWait" class="ready-wait" hidden>
+          <span class="spinner"></span>
+          <span id="readyWaitText"></span>
+          <button id="editFleetBtn" class="btn btn-ghost" type="button">Reposition</button>
+        </div>
+        <p id="placementRules" class="muted small center"></p>
+      </div>
+
+      <!-- Battle -->
+      <div id="panelBattle" class="panel glass panel-battle" hidden>
+        <div class="stat"><span>Shots</span><b id="statShots">0</b></div>
+        <div class="stat"><span>Hits</span><b id="statHits">0</b></div>
+        <div class="stat"><span>Accuracy</span><b id="statAcc">—</b></div>
+        <button id="viewBtn" class="btn btn-secondary" type="button">View my fleet</button>
+        <button id="fireBtn" class="btn btn-fire" type="button" hidden>Fire</button>
+      </div>
+
+      <!-- Chat -->
+      <aside id="chat" class="chat glass" hidden>
+        <div class="chat-head">
+          <span>Comms</span>
+          <button id="chatClose" class="icon-btn small" type="button" aria-label="Close chat">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </button>
+        </div>
+        <div id="chatLog" class="chat-log" aria-live="polite"></div>
+        <form id="chatForm" class="chat-form" autocomplete="off">
+          <input id="chatInput" maxlength="200" placeholder="Message your opponent…" />
+          <button class="btn btn-primary" type="submit">Send</button>
+        </form>
+      </aside>
+
+      <div id="bigText" class="big-text" aria-live="assertive"></div>
+      <div id="toasts" class="toasts" aria-live="polite"></div>
+
+      <!-- Game over -->
+      <div id="gameOver" class="modal" hidden>
+        <div class="modal-card glass">
+          <p id="goKicker" class="kicker"></p>
+          <h2 id="goTitle"></h2>
+          <p id="goReason" class="muted"></p>
+          <div id="goStats" class="go-stats"></div>
+          <div class="row">
+            <button id="rematchBtn" class="btn btn-primary btn-lg" type="button">Rematch</button>
+          </div>
+          <p id="rematchNote" class="rematch-note"></p>
+          <div class="row">
+            <button id="goViewBtn" class="btn btn-ghost" type="button">Inspect boards</button>
+            <button id="goLeaveBtn" class="btn btn-ghost" type="button">Leave room</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div id="netStatus" class="net" hidden><span class="spinner"></span>Connection lost — reconnecting…</div>
+
+    <script type="module" src="js/main.js"></script>
   </body>
 </html>
