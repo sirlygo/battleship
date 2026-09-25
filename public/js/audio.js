@@ -2,7 +2,7 @@
 
 const MUTE_KEY = 'battleship:muted';
 const VOLUME_KEY = 'battleship:volumes';
-const DEFAULT_VOLUMES = { effects: 0.8, music: 0.35, ambience: 0.5 };
+const DEFAULT_VOLUMES = { effects: 0.8, music: 0.35, ambience: 0 };
 
 // A minor progression: Am – F – C – G (root, third, fifth in Hz).
 const CHORDS = [

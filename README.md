@@ -8,7 +8,7 @@ Real-time, two-player Battleship in the browser. It has a 3D ocean scene built w
 - **Classic rules.** Each player has a 10×10 grid and five ships (Carrier 5, Battleship 4, Cruiser 3, Submarine 3, Destroyer 2).
 - **Two game modes.** *Classic* is standard Battleship: one shot per turn. The host can optionally allow a bonus shot after a hit. In *Salvo*, you pick one target per surviving ship and fire them all at once, so losing ships costs you firepower.
 - **Spectators.** Anyone who joins a full room watches the match live. Spectators never receive ship positions, so they can't tip off a player.
-- **Settings.** Separate volume sliders for effects, music and ocean ambience (all generated in the browser); Low/Medium/High graphics quality for older phones; a 3D or top-down camera; and a toggle for whether the camera follows the action.
+- **Settings.** Separate volume sliders for effects, music and ocean ambience (all generated in the browser; ocean starts muted); Low/Medium/High graphics quality for older phones; a 3D or top-down camera; and a toggle for whether the camera follows the action.
 - **3D scene.** Animated ocean with sky and sun glare. Each ship type has its own model, and ships bob on the swell. Shells fly in an arc, then you get a splash, or an explosion with fire and smoke. Sunk ships go down charred. The camera follows the action.
 - **Fleet placement.** Hover to see a ghost of the ship, click to drop it, and press `R` or right-click to rotate. Click a placed ship to pick it back up, or hit Randomize. After you're ready, you can still reposition until the battle starts.
 - **Feedback.** HIT / MISS / SUNK callouts, synthesized sound effects (with a mute button), a fleet status bar for both sides, and accuracy stats.
@@ -47,6 +47,18 @@ When the server starts, it prints the address other devices can use, for example
 4. Copy the forwarded address (`https://…app.github.dev`) and open it on any phone or computer.
 
 The link only works while the codespace is running. Codespaces stop after about 30 minutes of inactivity; restart it from <https://github.com/codespaces>.
+
+### If the `app.github.dev` link shows "404"
+
+Codespaces sometimes fails to forward the port, especially when the codespace is open in desktop VS Code. A free Cloudflare tunnel works instead and needs no account. Leave `npm start` running, open a second terminal and run:
+
+```bash
+npx -y cloudflared tunnel --url http://localhost:3000
+```
+
+It prints a link like `https://some-random-words.trycloudflare.com`. Open it and host a room. Invite links automatically use that address. Keep both terminals running while you play, because each new tunnel gets a different link.
+
+The same command works on your own computer if you want friends outside your Wi-Fi to join a game running on your machine.
 
 ## Deploy online (free)
 
