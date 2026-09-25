@@ -48,6 +48,27 @@ const token = getToken();
 const scene = new BattleScene($('scene'));
 const isCoarse = window.matchMedia('(pointer: coarse)').matches;
 
+// Per-device preferences (audio volumes live in the sound module).
+const SETTINGS_KEY = 'battleship:settings';
+const settings = (() => {
+  const defaults = { quality: isCoarse ? 'medium' : 'high', autoFollow: true, topDown: false };
+  try {
+    return { ...defaults, ...JSON.parse(store('local', SETTINGS_KEY) || '{}') };
+  } catch {
+    return defaults;
+  }
+})();
+
+function saveSettings() {
+  store('local', SETTINGS_KEY, JSON.stringify(settings));
+}
+
+function applySettings() {
+  scene.setQuality(settings.quality);
+  scene.setTopDown(settings.topDown);
+  if (app.snap) renderAll();
+}
+
 const app = {
   code: null,
   snap: null,
@@ -65,6 +86,7 @@ const app = {
   gameOverShownRound: null,
   holdSunk: new Set(),
   dockPlaced: new Set(),
+  salvo: [],
   demo: null,
 };
 
@@ -132,10 +154,32 @@ const el = {
   goLeaveBtn: $('goLeaveBtn'),
   goViewBtn: $('goViewBtn'),
   net: $('netStatus'),
+  shareUrl: $('shareUrl'),
+  shareWarning: $('shareWarning'),
   flash: $('screenFlash'),
+  watchers: $('watchers'),
+  watchersCount: $('watchersCount'),
+  panelSpectate: $('panelSpectate'),
+  spectateText: $('spectateText'),
+  spectateViewBtn: $('spectateViewBtn'),
+  modeButtons: [...document.querySelectorAll('[data-mode]')],
+  settings: $('settings'),
+  settingsBtn: $('settingsBtn'),
+  lobbySettingsBtn: $('lobbySettingsBtn'),
+  settingsClose: $('settingsClose'),
+  volEffects: $('volEffects'),
+  volMusic: $('volMusic'),
+  volAmbience: $('volAmbience'),
+  qualityButtons: [...document.querySelectorAll('[data-quality]')],
+  cameraButtons: [...document.querySelectorAll('[data-camera]')],
+  autoFollowToggle: $('autoFollowToggle'),
 };
 
 const coord = (x, y) => `${ROWS[y]}${x + 1}`;
+const isSpectator = () => Boolean(app.snap?.spectator);
+const isSalvo = () => app.snap?.rules.mode === 'salvo';
+// Names for the side that fired / was fired at, from this viewer's perspective.
+const sideName = (side) => (side === 'you' ? app.snap?.me?.name : app.snap?.enemy?.name) || 'Enemy';
 const fleetSpec = () => app.snap?.fleet || DEFAULT_FLEET;
 
 // ---------------------------------------------------------------------------
@@ -266,8 +310,41 @@ async function copyText(text) {
   }
 }
 
+// Where other players should go. Filled in from the server, which knows its
+// public address (Codespaces, Render, PUBLIC_URL) and its local network address.
+const share = { publicUrl: null, lanUrl: null };
+fetch('/api/share')
+  .then((res) => res.json())
+  .then((info) => {
+    share.publicUrl = info.publicUrl || null;
+    share.lanUrl = info.lanUrls?.[0] || null;
+    if (app.snap) renderHud();
+  })
+  .catch(() => {});
+
+function shareTarget() {
+  const host = location.hostname;
+  const local = ['localhost', '127.0.0.1', '::1', '[::1]'].includes(host);
+  const privateNet = /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host) || host.endsWith('.local');
+  // An address that already works for the host from the internet is the best one to share.
+  if (!local && !privateNet) return { url: location.origin, scope: 'public' };
+  if (share.publicUrl) return { url: share.publicUrl, scope: 'public' };
+  if (local) return share.lanUrl ? { url: share.lanUrl, scope: 'lan' } : { url: location.origin, scope: 'local' };
+  return { url: location.origin, scope: 'lan' };
+}
+
 function inviteLink() {
-  return `${location.origin}${location.pathname}?room=${app.code}`;
+  return `${shareTarget().url}/?room=${app.code}`;
+}
+
+function renderShareInfo() {
+  const { url, scope } = shareTarget();
+  el.shareUrl.textContent = url.replace(/^https?:\/\//, '');
+  el.shareWarning.hidden = scope === 'public';
+  el.shareWarning.textContent =
+    scope === 'lan'
+      ? 'This address only works for devices on your Wi-Fi. For friends elsewhere, host online (e.g. GitHub Codespaces) — see the README.'
+      : 'This address only works on this computer. Host online (e.g. GitHub Codespaces) so friends can join.';
 }
 
 // ---------------------------------------------------------------------------
@@ -362,6 +439,7 @@ function exitRoom(message) {
   app.manualView = null;
   app.gameOverShownRound = null;
   app.lastTurn = null;
+  app.salvo = [];
   app.placement = { round: null, ships: new Map(), selected: null, dir: 'h', hover: null, preview: null };
   store('session', 'battleship:room', null);
   const url = new URL(location.href);
@@ -376,6 +454,9 @@ function exitRoom(message) {
   el.lobbyError.textContent = message || '';
   scene.setGhost(null);
   scene.setHover(null);
+  scene.setSalvoTargets('enemy', []);
+  scene.setBoardTitles({ self: 'YOUR FLEET', enemy: 'ENEMY WATERS' });
+  sound.setMood('calm');
   startDemo();
 }
 
@@ -408,6 +489,7 @@ function joinGame(rawCode) {
       return;
     }
     enterRoom(res.code);
+    if (res.spectator) toast("That room is full — you're watching as a spectator.");
   });
 }
 
@@ -438,21 +520,26 @@ function onState(snap) {
   if (!prev || prev.phase !== snap.phase) {
     app.manualView = null;
     app.aim = null;
-    if (snap.phase === 'placement') scene.scanBoard('self');
+    app.salvo = [];
+    sound.setMood(snap.phase === 'battle' ? 'battle' : 'calm');
+    if (snap.phase === 'placement' && !snap.spectator) scene.scanBoard('self');
     if (snap.phase === 'battle') {
       scene.scanBoard('enemy');
       setTimeout(() => scene.scanBoard('self'), 350);
     }
     if (snap.phase === 'placement' && prev && (prev.phase === 'lobby' || prev.phase === 'over')) {
       sound.joined();
-      bigText(snap.round > 1 ? `ROUND ${snap.round}` : 'DEPLOY YOUR FLEET', 'Position all five ships, then hit Ready', 'info');
+      if (snap.spectator) bigText(snap.round > 1 ? `ROUND ${snap.round}` : 'FLEETS DEPLOYING', 'The battle starts when both players are ready', 'info');
+      else bigText(snap.round > 1 ? `ROUND ${snap.round}` : 'DEPLOY YOUR FLEET', 'Position all five ships, then hit Ready', 'info');
     }
     if (snap.phase === 'battle') {
-      bigText('BATTLE STATIONS', snap.turn === 'you' ? 'You fire first' : `${snap.enemy?.name} fires first`, 'info');
+      const first = snap.spectator || snap.turn !== 'you' ? `${sideName(snap.turn)} fires first` : 'You fire first';
+      bigText('BATTLE STATIONS', snap.rules.mode === 'salvo' ? `${first} · Salvo mode` : first, 'info');
     }
   }
 
-  if (snap.phase === 'battle' && snap.turn !== app.lastTurn && snap.turn === 'you') {
+  if (snap.turn !== app.lastTurn) app.salvo = [];
+  if (!snap.spectator && snap.phase === 'battle' && snap.turn !== app.lastTurn && snap.turn === 'you') {
     app.turnCuePending = true;
   }
   app.lastTurn = snap.turn;
@@ -468,12 +555,13 @@ function nextUnplaced() {
 }
 
 function placementEditable() {
-  return app.snap?.phase === 'placement' && !app.snap.me.ready;
+  return app.snap?.phase === 'placement' && !app.snap.spectator && !app.snap.me.ready;
 }
 
 function myTurnReady() {
   return (
     app.snap?.phase === 'battle' &&
+    !app.snap.spectator &&
     app.snap.turn === 'you' &&
     !app.firing &&
     !app.playing &&
@@ -486,11 +574,12 @@ function autoView() {
   if (!s) return 'lobby';
   switch (s.phase) {
     case 'placement':
-      return 'self';
+      return s.spectator ? 'overview' : 'self';
     case 'battle':
+      if (!settings.autoFollow) return 'overview';
       return s.turn === 'you' ? 'enemy' : 'self';
     case 'over':
-      return 'finale';
+      return settings.topDown ? 'overview' : 'finale';
     default:
       return 'overview';
   }
@@ -506,7 +595,9 @@ function renderAll() {
   if (!app.playing && app.turnCuePending && myTurnReady()) {
     app.turnCuePending = false;
     sound.yourTurn();
-    if (app.snap.me.stats.shots > 0) bigText('YOUR TURN', 'Pick a target', 'turn');
+    if (app.snap.me.stats.shots > 0) {
+      bigText('YOUR TURN', isSalvo() ? `Pick ${app.snap.shotsPerTurn} targets` : 'Pick a target', 'turn');
+    }
   }
   maybeShowGameOver();
 }
@@ -538,8 +629,14 @@ function renderScene() {
   scene.setShots('self', s.phase === 'lobby' ? [] : s.me.shotsReceived);
   scene.setShots('enemy', s.phase === 'lobby' ? [] : s.enemy?.shotsReceived || []);
 
+  scene.setBoardTitles(
+    s.spectator
+      ? { self: (s.me?.name || '').toUpperCase(), enemy: (s.enemy?.name || 'Waiting…').toUpperCase() }
+      : { self: 'YOUR FLEET', enemy: 'ENEMY WATERS' }
+  );
+
   let active = null;
-  if (s.phase === 'placement') active = 'self';
+  if (s.phase === 'placement' && !s.spectator) active = 'self';
   if (s.phase === 'battle') active = s.turn === 'you' ? 'enemy' : 'self';
   scene.setActiveBoard(active);
 
@@ -571,8 +668,9 @@ function renderCursor() {
   }
 
   scene.setGhost(null);
-  if (s.phase === 'battle' && s.turn === 'you') {
-    const target = app.aim || app.hover;
+  scene.setSalvoTargets('enemy', myTurnReady() && isSalvo() ? app.salvo : []);
+  if (s.phase === 'battle' && s.turn === 'you' && !s.spectator) {
+    const target = isSalvo() ? app.hover : app.aim || app.hover;
     if (target && target.board === 'enemy') {
       const shot = (s.enemy?.shotsReceived || []).some((c) => c.x === target.x && c.y === target.y);
       scene.setHover(target, shot ? 'blocked' : 'aim');
@@ -621,6 +719,7 @@ function renderHud() {
 
   el.roomCodeLabel.textContent = s.code;
   el.waitingCode.textContent = s.code;
+  renderShareInfo();
   el.myName.textContent = s.me.name;
   el.enemyName.textContent = s.enemy ? s.enemy.name : 'Waiting…';
   el.enemyName.parentElement.classList.toggle('absent', !s.enemy);
@@ -632,28 +731,85 @@ function renderHud() {
 
   // Panels
   el.panelWaiting.hidden = s.phase !== 'lobby';
-  el.panelPlacement.hidden = s.phase !== 'placement';
-  el.panelBattle.hidden = s.phase !== 'battle';
+  el.panelPlacement.hidden = s.phase !== 'placement' || s.spectator;
+  el.panelBattle.hidden = s.phase !== 'battle' || s.spectator;
+  el.panelSpectate.hidden = !s.spectator || s.phase === 'lobby';
+
+  // Spectators
+  el.watchers.hidden = s.spectators.length === 0;
+  el.watchersCount.textContent = s.spectators.length;
+  el.watchers.title = `Watching: ${s.spectators.join(', ')}`;
 
   // Rules
+  const salvo = s.rules.mode === 'salvo';
+  el.modeButtons.forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.mode === s.rules.mode);
+    btn.disabled = !s.isHost;
+  });
+  el.bonusToggleWrap.hidden = salvo;
   el.bonusToggle.checked = s.rules.bonusShot;
   el.bonusToggle.disabled = !s.isHost;
   el.bonusToggleWrap.classList.toggle('locked', !s.isHost);
-  const rulesLabel = s.rules.bonusShot ? 'Hits earn a bonus shot' : 'Turns alternate every shot';
-  el.rulesText.textContent = s.isHost ? 'You are the host — set the rules.' : `Host rules: ${rulesLabel.toLowerCase()}.`;
-  el.placementRules.textContent = `Rule: ${rulesLabel}`;
+  const rulesLabel = salvo
+    ? 'Salvo: one shot per surviving ship'
+    : s.rules.bonusShot
+      ? 'Classic: hits earn a bonus shot'
+      : 'Classic: turns alternate every shot';
+  el.rulesText.textContent = s.isHost ? 'You are the host — set the rules.' : `Host rules: ${rulesLabel}.`;
+  el.placementRules.textContent = rulesLabel;
 
   // Opponent connection
-  if (s.enemy && !s.enemy.connected && s.phase !== 'over') {
+  const offline = [s.me, s.enemy].filter((side) => side && !side.connected);
+  if (offline.length && s.phase !== 'over') {
     el.alert.hidden = false;
-    el.alert.textContent = `${s.enemy.name} lost connection — holding their seat for a moment…`;
+    el.alert.textContent = `${offline[0].name} lost connection — holding their seat for a moment…`;
   } else {
     el.alert.hidden = true;
   }
 
   renderBanner();
-  if (s.phase === 'placement') renderPlacementPanel();
-  if (s.phase === 'battle') renderBattlePanel();
+  if (s.spectator) renderSpectatePanel();
+  else if (s.phase === 'placement') renderPlacementPanel();
+  else if (s.phase === 'battle') renderBattlePanel();
+}
+
+const VIEW_CYCLE = ['enemy', 'self', 'overview'];
+
+function viewLabel(view) {
+  const s = app.snap;
+  if (view === 'overview') return 'Both boards';
+  if (s?.spectator) return `${sideName(view === 'self' ? 'you' : 'enemy')}'s fleet`;
+  return view === 'enemy' ? 'Enemy waters' : 'My fleet';
+}
+
+function nextView() {
+  const current = app.manualView || autoView();
+  const index = VIEW_CYCLE.indexOf(current);
+  return VIEW_CYCLE[(index + 1) % VIEW_CYCLE.length];
+}
+
+function renderSpectatePanel() {
+  const s = app.snap;
+  const status = (side) => {
+    if (!side) return 'waiting';
+    if (s.phase === 'placement') return side.ready ? 'ready' : 'deploying';
+    return `${side.shipsRemaining} ships left`;
+  };
+  el.spectateText.textContent = `${s.me.name}: ${status(s.me)} · ${s.enemy?.name || '—'}: ${status(s.enemy)}`;
+  el.spectateViewBtn.textContent = `Show ${viewLabel(nextView()).toLowerCase()}`;
+}
+
+function spectatorBanner(s) {
+  if (s.phase === 'lobby') return ['Waiting for players', `Room ${s.code}`, 'neutral'];
+  if (s.phase === 'placement') return ['Fleets deploying', 'You are spectating', 'neutral'];
+  if (s.phase === 'battle') {
+    const shooter = sideName(s.turn);
+    const target = sideName(s.turn === 'you' ? 'enemy' : 'you');
+    const salvo = s.rules.mode === 'salvo' ? ` · salvo of ${s.shotsPerTurn}` : '';
+    return [`${shooter} is firing`, `Target: ${target}'s fleet${salvo}`, 'hostile'];
+  }
+  if (s.phase === 'over') return [`${sideName(s.winner)} wins!`, 'Tap here for the results', 'friendly'];
+  return ['', '', 'neutral'];
 }
 
 function renderBanner() {
@@ -661,7 +817,9 @@ function renderBanner() {
   let title = '';
   let sub = '';
   let kind = 'neutral';
-  if (s.phase === 'lobby') {
+  if (s.spectator) {
+    [title, sub, kind] = spectatorBanner(s);
+  } else if (s.phase === 'lobby') {
     title = 'Waiting for an opponent';
     sub = `Share room code ${s.code}`;
   } else if (s.phase === 'placement') {
@@ -676,7 +834,11 @@ function renderBanner() {
       sub = 'The battle begins once both fleets are deployed';
     }
   } else if (s.phase === 'battle') {
-    if (s.turn === 'you') {
+    if (s.turn === 'you' && isSalvo()) {
+      title = `Salvo — pick ${s.shotsPerTurn} targets`;
+      sub = `${app.salvo.length}/${s.shotsPerTurn} selected · ${isCoarse ? 'tap' : 'click'} squares to toggle, then fire`;
+      kind = 'hostile';
+    } else if (s.turn === 'you') {
       title = 'Your turn — fire!';
       sub = isCoarse ? 'Tap a square to aim, tap again to fire' : 'Pick a square in enemy waters';
       kind = 'hostile';
@@ -744,11 +906,18 @@ function renderBattlePanel() {
   setAnimated(el.statShots, shots);
   setAnimated(el.statHits, hits);
   setAnimated(el.statAcc, shots ? `${Math.round((hits / shots) * 100)}%` : '—');
-  const viewing = app.manualView || autoView();
-  el.viewBtn.textContent = viewing === 'enemy' ? 'View my fleet' : 'View enemy waters';
-  const showFire = isCoarse && s.turn === 'you' && Boolean(app.aim);
-  el.fireBtn.hidden = !showFire;
-  if (showFire) el.fireBtn.textContent = `Fire at ${coord(app.aim.x, app.aim.y)}`;
+  el.viewBtn.textContent = `Show ${viewLabel(nextView()).toLowerCase()}`;
+  if (isSalvo()) {
+    const need = s.shotsPerTurn;
+    el.fireBtn.hidden = s.turn !== 'you';
+    el.fireBtn.disabled = app.salvo.length !== need || !myTurnReady();
+    el.fireBtn.textContent = `Fire salvo ${app.salvo.length}/${need}`;
+  } else {
+    const showFire = isCoarse && s.turn === 'you' && Boolean(app.aim);
+    el.fireBtn.hidden = !showFire;
+    el.fireBtn.disabled = false;
+    if (showFire) el.fireBtn.textContent = `Fire at ${coord(app.aim.x, app.aim.y)}`;
+  }
 }
 
 function maybeShowGameOver() {
@@ -761,7 +930,10 @@ function maybeShowGameOver() {
     setTimeout(() => {
       if (app.snap?.phase !== 'over') return;
       el.gameOver.hidden = false;
-      if (won) {
+      if (s.spectator) {
+        sound.victory();
+        scene.celebrate(won ? 'enemy' : 'self');
+      } else if (won) {
         sound.victory();
         scene.celebrate('enemy');
       } else {
@@ -771,10 +943,14 @@ function maybeShowGameOver() {
   }
 
   const won = s.winner === 'you';
-  el.gameOver.dataset.result = won ? 'win' : 'loss';
+  el.gameOver.dataset.result = won || s.spectator ? 'win' : 'loss';
   el.goKicker.textContent = `Round ${s.round}`;
-  el.goTitle.textContent = won ? 'Victory!' : 'Defeat';
-  if (s.endReason === 'forfeit') {
+  el.goTitle.textContent = s.spectator ? `${sideName(s.winner)} wins!` : won ? 'Victory!' : 'Defeat';
+  if (s.spectator) {
+    const loser = sideName(s.winner === 'you' ? 'enemy' : 'you');
+    el.goReason.textContent =
+      s.endReason === 'forfeit' ? `${loser} left the battle.` : `${loser}'s fleet was sunk.`;
+  } else if (s.endReason === 'forfeit') {
     el.goReason.textContent = won ? 'Your opponent abandoned the battle.' : 'You left the battle.';
   } else {
     el.goReason.textContent = won
@@ -786,17 +962,24 @@ function maybeShowGameOver() {
   const acc = (st) => (st.shots ? `${Math.round((st.hits / st.shots) * 100)}%` : '—');
   const es = s.enemy?.stats || { shots: 0, hits: 0 };
   const table = document.createElement('table');
-  table.innerHTML = `<thead><tr><th></th><td>You</td><td></td></tr></thead><tbody>${[
+  table.innerHTML = `<thead><tr><th></th><td></td><td></td></tr></thead><tbody>${[
     row('Shots', s.me.stats.shots, es.shots),
     row('Hits', s.me.stats.hits, es.hits),
     row('Accuracy', acc(s.me.stats), acc(es)),
     row('Ships left', s.me.shipsRemaining, s.enemy ? s.enemy.shipsRemaining : '—'),
   ].join('')}</tbody>`;
+  table.querySelector('thead td:nth-of-type(1)').textContent = s.spectator ? s.me.name : 'You';
   table.querySelector('thead td:last-child').textContent = s.enemy?.name || 'Opponent';
   el.goStats.innerHTML = '';
   el.goStats.appendChild(table);
 
-  if (!s.enemy) {
+  el.rematchBtn.hidden = s.spectator;
+  if (s.spectator) {
+    const requested = [s.rematch.you && s.me.name, s.rematch.enemy && s.enemy?.name].filter(Boolean);
+    el.rematchNote.textContent = requested.length
+      ? `${requested.join(' and ')} want${requested.length === 1 ? 's' : ''} a rematch…`
+      : 'Stick around — the players may start a rematch.';
+  } else if (!s.enemy) {
     el.rematchBtn.textContent = 'Find a new opponent';
     el.rematchBtn.disabled = false;
     el.rematchNote.textContent = 'Reopen this room and share the code again.';
@@ -926,25 +1109,67 @@ function handlePlacementClick(cell, event) {
 // Battle actions
 // ---------------------------------------------------------------------------
 
-function fireAt(target) {
+function alreadyShot(target) {
+  return (app.snap?.enemy?.shotsReceived || []).some((c) => c.x === target.x && c.y === target.y);
+}
+
+function sendVolley(targets) {
   if (!myTurnReady()) return;
-  const shots = app.snap.enemy?.shotsReceived || [];
-  if (shots.some((c) => c.x === target.x && c.y === target.y)) {
-    toast(`Already fired at ${coord(target.x, target.y)}.`, 'error');
-    sound.error();
-    return;
-  }
   app.firing = true;
   app.aim = null;
   renderAll();
-  socket.emit('fire', { x: target.x, y: target.y }, (res) => {
+  socket.emit('fire', { targets: targets.map(({ x, y }) => ({ x, y })) }, (res) => {
     app.firing = false;
     if (!res?.ok) {
       toast(res?.error || 'Shot failed.', 'error');
       sound.error();
+    } else {
+      app.salvo = [];
     }
     renderAll();
   });
+}
+
+function fireAt(target) {
+  if (!myTurnReady()) return;
+  if (alreadyShot(target)) {
+    toast(`Already fired at ${coord(target.x, target.y)}.`, 'error');
+    sound.error();
+    return;
+  }
+  sendVolley([target]);
+}
+
+function fireSalvo() {
+  if (!myTurnReady() || !isSalvo()) return;
+  const need = app.snap.shotsPerTurn;
+  if (app.salvo.length !== need) {
+    toast(`Pick ${need - app.salvo.length} more target${need - app.salvo.length === 1 ? '' : 's'}.`, 'error');
+    sound.error();
+    return;
+  }
+  sendVolley(app.salvo);
+}
+
+function toggleSalvoTarget(cell) {
+  if (alreadyShot(cell)) {
+    toast(`Already fired at ${coord(cell.x, cell.y)}.`, 'error');
+    sound.error();
+    return;
+  }
+  const index = app.salvo.findIndex((c) => c.x === cell.x && c.y === cell.y);
+  if (index !== -1) {
+    app.salvo.splice(index, 1);
+    sound.rotate();
+  } else if (app.salvo.length >= app.snap.shotsPerTurn) {
+    toast('Salvo is full — fire, or tap a marked square to remove it.', 'error');
+    sound.error();
+    return;
+  } else {
+    app.salvo.push({ x: cell.x, y: cell.y });
+    sound.click();
+  }
+  renderAll();
 }
 
 function handleBattleClick(cell, event) {
@@ -958,6 +1183,11 @@ function handleBattleClick(cell, event) {
       app.manualView = 'enemy';
       renderAll();
     }
+    return;
+  }
+  if (!myTurnReady()) return;
+  if (isSalvo()) {
+    toggleSalvoTarget(cell);
     return;
   }
   if (event.pointerType !== 'mouse') {
@@ -974,8 +1204,7 @@ function handleBattleClick(cell, event) {
 function toggleView() {
   const s = app.snap;
   if (!s || s.phase === 'lobby') return;
-  const current = app.manualView || autoView();
-  app.manualView = current === 'enemy' ? 'self' : 'enemy';
+  app.manualView = nextView();
   if (app.manualView === autoView()) app.manualView = null;
   sound.click();
   renderAll();
@@ -985,8 +1214,9 @@ function toggleView() {
 // Shot animation queue
 // ---------------------------------------------------------------------------
 
-function describeShipAt(x, y) {
-  const ship = shipAt(app.snap?.me.ships || [], x, y);
+function describeShipAt(side, x, y) {
+  const ships = side === 'you' ? app.snap?.me?.ships : app.snap?.enemy?.ships;
+  const ship = shipAt(ships || [], x, y);
   return ship ? ship.name : 'ship';
 }
 
@@ -997,17 +1227,26 @@ async function processQueue() {
   while (app.queue.length) {
     while (app.queue.length) {
       const ev = app.queue.shift();
-      app.manualView = null;
-      if (scene.view !== ev.board) {
-        scene.setView(ev.board);
-        await wait(650);
+      if (settings.autoFollow) {
+        app.manualView = null;
+        if (scene.view !== ev.board) {
+          scene.setView(ev.board);
+          await wait(650);
+        }
       }
-      sound.fire();
-      await scene.playShot(ev);
-      scene.clearPending(ev.board, ev.x, ev.y);
-      if (ev.sunkShip) app.holdSunk.delete(`${ev.board}:${ev.sunkShip.name}`);
-      announceShot(ev);
-      renderScene();
+      const single = ev.shots.length === 1;
+      await Promise.all(
+        ev.shots.map(async (shot, i) => {
+          await wait(i * 170);
+          sound.fire();
+          await scene.playShot({ board: ev.board, ...shot });
+          scene.clearPending(ev.board, shot.x, shot.y);
+          if (shot.sunkShip) app.holdSunk.delete(`${ev.board}:${shot.sunkShip.name}`);
+          announceImpact(ev, shot, { summary: single });
+          renderScene();
+        })
+      );
+      if (!single) announceVolley(ev);
     }
     await wait(750);
   }
@@ -1015,28 +1254,62 @@ async function processQueue() {
   renderAll();
 }
 
-function announceShot(ev) {
+// Sound and flash for one impact; the big callout too when the volley is a single shot.
+function announceImpact(ev, shot, { summary }) {
   const s = app.snap;
-  const where = coord(ev.x, ev.y);
-  const enemyName = s?.enemy?.name || 'Enemy';
-  const bonus = s?.rules.bonusShot && !ev.gameOver;
-  if (ev.result === 'miss') {
+  const spectating = Boolean(s?.spectator);
+  const mine = ev.by === 'you' && !spectating;
+  const hitsMe = ev.by === 'enemy' && !spectating;
+  const shooter = sideName(ev.by);
+  const target = sideName(ev.by === 'you' ? 'enemy' : 'you');
+  const where = coord(shot.x, shot.y);
+
+  if (shot.result === 'miss') {
     sound.splash();
-    if (ev.by === 'you') bigText('MISS', where, 'miss');
-    else toast(`${enemyName} missed at ${where}.`);
+    if (!summary) return;
+    if (mine) bigText('MISS', where, 'miss');
+    else toast(`${shooter} missed at ${where}.`);
     return;
   }
-  if (ev.result === 'sunk') {
+  screenFlash(hitsMe ? 'damage' : 'strike');
+  if (shot.result === 'sunk') {
     sound.sunk();
-    screenFlash(ev.by === 'you' ? 'strike' : 'damage');
-    if (ev.by === 'you') bigText('SUNK!', `Enemy ${ev.sunkShip?.name || 'ship'} destroyed`, 'sunk');
-    else bigText(`${(ev.sunkShip?.name || 'SHIP').toUpperCase()} LOST`, `${enemyName} sank your ${ev.sunkShip?.name}`, 'lost');
+    if (!summary) return;
+    const name = shot.sunkShip?.name || 'ship';
+    if (mine) bigText('SUNK!', `Enemy ${name} destroyed`, 'sunk');
+    else if (hitsMe) bigText(`${name.toUpperCase()} LOST`, `${shooter} sank your ${name}`, 'lost');
+    else bigText('SUNK!', `${shooter} sank ${target}'s ${name}`, 'sunk');
     return;
   }
   sound.explosion();
-  screenFlash(ev.by === 'you' ? 'strike' : 'damage');
-  if (ev.by === 'you') bigText('HIT!', bonus ? `${where} — fire again!` : where, 'hit');
-  else bigText('YOU\'RE HIT', `${enemyName} struck your ${describeShipAt(ev.x, ev.y)} at ${where}`, 'lost');
+  if (!summary) return;
+  const bonus = s?.rules.mode !== 'salvo' && s?.rules.bonusShot && !ev.gameOver;
+  if (mine) bigText('HIT!', bonus ? `${where} — fire again!` : where, 'hit');
+  else if (hitsMe) bigText("YOU'RE HIT", `${shooter} struck your ${describeShipAt('you', shot.x, shot.y)} at ${where}`, 'lost');
+  else bigText('HIT!', `${shooter} hit ${target} at ${where}`, 'hit');
+}
+
+// One callout summarising a multi-shot salvo.
+function announceVolley(ev) {
+  const s = app.snap;
+  const spectating = Boolean(s?.spectator);
+  const hits = ev.shots.filter((x) => x.result !== 'miss').length;
+  const sunk = ev.shots.filter((x) => x.sunkShip).map((x) => x.sunkShip.name);
+  const shooter = sideName(ev.by);
+  const total = ev.shots.length;
+  let sub = `${hits} of ${total} shots hit`;
+  if (sunk.length) sub += ` · sunk: ${sunk.join(', ')}`;
+  if (ev.by === 'you' && !spectating) {
+    if (sunk.length) bigText('SUNK!', sub, 'sunk');
+    else if (hits) bigText(`${hits} HIT${hits === 1 ? '' : 'S'}!`, sub, 'hit');
+    else bigText('ALL MISSED', sub, 'miss');
+  } else if (!spectating) {
+    if (sunk.length) bigText('SHIP LOST', `${shooter}'s salvo: ${sub}`, 'lost');
+    else if (hits) bigText(`HIT ${hits}×`, `${shooter}'s salvo: ${sub}`, 'lost');
+    else toast(`${shooter}'s salvo missed completely.`);
+  } else {
+    bigText(`${hits}/${total} HITS`, `${shooter}'s salvo${sunk.length ? ` · sunk: ${sunk.join(', ')}` : ''}`, hits ? 'hit' : 'miss');
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1062,7 +1335,7 @@ function addChat(entry, { quiet = false } = {}) {
   if (entry.kind !== 'system') {
     const who = document.createElement('span');
     who.className = 'who';
-    who.textContent = entry.mine ? 'You' : entry.name;
+    who.textContent = `${entry.mine ? 'You' : entry.name}${entry.spectator ? ' · watching' : ''}`;
     row.appendChild(who);
   }
   const text = document.createElement('span');
@@ -1094,6 +1367,77 @@ function syncMuteButton() {
   el.muteBtn.title = sound.muted ? 'Sound off' : 'Sound on';
 }
 
+function setSettingsOpen(open) {
+  el.settings.hidden = !open;
+  if (open) syncSettingsUi();
+}
+
+function syncSettingsUi() {
+  el.volEffects.value = Math.round(sound.volumes.effects * 100);
+  el.volMusic.value = Math.round(sound.volumes.music * 100);
+  el.volAmbience.value = Math.round(sound.volumes.ambience * 100);
+  [el.volEffects, el.volMusic, el.volAmbience].forEach((input) => {
+    input.style.setProperty('--fill', `${input.value}%`);
+    input.nextElementSibling.textContent = `${input.value}%`;
+  });
+  el.qualityButtons.forEach((btn) => btn.classList.toggle('active', btn.dataset.quality === settings.quality));
+  el.cameraButtons.forEach((btn) =>
+    btn.classList.toggle('active', (btn.dataset.camera === 'top') === settings.topDown)
+  );
+  el.autoFollowToggle.checked = settings.autoFollow;
+}
+
+function bindSettings() {
+  el.settingsBtn.addEventListener('click', () => setSettingsOpen(el.settings.hidden));
+  el.lobbySettingsBtn.addEventListener('click', () => setSettingsOpen(true));
+  el.settingsClose.addEventListener('click', () => setSettingsOpen(false));
+  el.settings.addEventListener('click', (event) => {
+    if (event.target === el.settings) setSettingsOpen(false);
+  });
+
+  const volumes = [
+    [el.volEffects, 'effects'],
+    [el.volMusic, 'music'],
+    [el.volAmbience, 'ambience'],
+  ];
+  volumes.forEach(([input, bus]) => {
+    input.addEventListener('input', () => {
+      sound.setVolume(bus, Number(input.value) / 100);
+      if (sound.muted && Number(input.value) > 0) {
+        sound.setMuted(false);
+        syncMuteButton();
+      }
+      syncSettingsUi();
+    });
+  });
+  el.volEffects.addEventListener('change', () => sound.explosion());
+
+  el.qualityButtons.forEach((btn) =>
+    btn.addEventListener('click', () => {
+      settings.quality = btn.dataset.quality;
+      saveSettings();
+      applySettings();
+      syncSettingsUi();
+      sound.click();
+    })
+  );
+  el.cameraButtons.forEach((btn) =>
+    btn.addEventListener('click', () => {
+      settings.topDown = btn.dataset.camera === 'top';
+      saveSettings();
+      applySettings();
+      syncSettingsUi();
+      sound.click();
+    })
+  );
+  el.autoFollowToggle.addEventListener('change', () => {
+    settings.autoFollow = el.autoFollowToggle.checked;
+    app.manualView = null;
+    saveSettings();
+    applySettings();
+  });
+}
+
 function bindUi() {
   el.nameInput.value = store('local', 'battleship:name') || '';
   const params = new URLSearchParams(location.search);
@@ -1121,7 +1465,7 @@ function bindUi() {
   });
   el.copyCodeBtn.addEventListener('click', async () => {
     const ok = await copyText(app.code);
-    toast(ok ? 'Room code copied.' : `Room code: ${app.code}`);
+    toast(ok ? `Room code copied. Friends open ${shareTarget().url.replace(/^https?:\/\//, '')}` : `Room code: ${app.code}`);
   });
   el.copyLinkBtn.addEventListener('click', async () => {
     const link = inviteLink();
@@ -1149,7 +1493,7 @@ function bindUi() {
   el.chatBtn.addEventListener('click', () => setChatOpen(!app.chatOpen));
   el.chatClose.addEventListener('click', () => setChatOpen(false));
   el.leaveBtn.addEventListener('click', () => {
-    const inBattle = app.snap?.phase === 'battle';
+    const inBattle = app.snap?.phase === 'battle' && !isSpectator();
     if (!inBattle || window.confirm('Leave the battle? Your opponent will win by forfeit.')) leaveGame();
   });
 
@@ -1159,7 +1503,19 @@ function bindUi() {
   el.readyBtn.addEventListener('click', submitFleet);
   el.editFleetBtn.addEventListener('click', editFleet);
   el.viewBtn.addEventListener('click', toggleView);
-  el.fireBtn.addEventListener('click', () => app.aim && fireAt(app.aim));
+  el.fireBtn.addEventListener('click', () => {
+    if (isSalvo()) fireSalvo();
+    else if (app.aim) fireAt(app.aim);
+  });
+  el.spectateViewBtn.addEventListener('click', toggleView);
+  el.modeButtons.forEach((btn) =>
+    btn.addEventListener('click', () => {
+      socket.emit('room:rules', { mode: btn.dataset.mode }, (res) => {
+        if (!res?.ok) toast(res?.error || 'Could not change mode.', 'error');
+      });
+    })
+  );
+  bindSettings();
 
   el.rematchBtn.addEventListener('click', () => {
     sound.click();
@@ -1195,8 +1551,10 @@ function bindUi() {
     const key = event.key.toLowerCase();
     if (key === 'r') rotateShip();
     if (key === 'v') toggleView();
+    if (key === 'f' && isSalvo()) fireSalvo();
     if (key === 'escape') {
-      if (app.chatOpen) setChatOpen(false);
+      if (!el.settings.hidden) setSettingsOpen(false);
+      else if (app.chatOpen) setChatOpen(false);
       else if (placementEditable()) {
         app.placement.selected = null;
         renderAll();
@@ -1218,7 +1576,7 @@ function bindUi() {
   });
   scene.on('click', (cell, event) => {
     const s = app.snap;
-    if (!s) return;
+    if (!s || s.spectator) return;
     if (placementEditable()) handlePlacementClick(cell, event);
     else if (s.phase === 'battle') handleBattleClick(cell, event);
   });
@@ -1234,6 +1592,7 @@ function bindSocket() {
     if (!saved) return;
     socket.emit('room:resume', { code: saved, token }, (res) => {
       if (res?.ok) {
+        if (res.spectator && app.code !== res.code) toast("You're watching as a spectator.");
         if (app.code !== res.code) {
           el.chatLog.innerHTML = '';
           enterRoom(res.code);
@@ -1254,13 +1613,19 @@ function bindSocket() {
     onState(snap);
   });
 
-  socket.on('shot', (ev) => {
+  socket.on('volley', (ev) => {
     if (!app.code) return;
     const board = ev.by === 'you' ? 'enemy' : 'self';
-    scene.markPending(board, ev.x, ev.y);
-    if (ev.sunkShip) app.holdSunk.add(`${board}:${ev.sunkShip.name}`);
+    ev.shots.forEach((shot) => {
+      scene.markPending(board, shot.x, shot.y);
+      if (shot.sunkShip) app.holdSunk.add(`${board}:${shot.sunkShip.name}`);
+    });
     app.queue.push({ ...ev, board });
     processQueue();
+  });
+
+  socket.on('room:closed', () => {
+    if (app.code) exitRoom('The players left, so the room closed.');
   });
 
   socket.on('chatHistory', (entries) => {
@@ -1275,6 +1640,7 @@ function bindSocket() {
 
 bindUi();
 bindSocket();
+applySettings();
 startDemo();
 
 // Test hook: `?debug` exposes internals for automated browser tests.

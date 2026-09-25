@@ -6,7 +6,9 @@ Real-time, two-player Battleship in the browser. It has a 3D ocean scene built w
 
 - **Room codes and invite links.** Host a game and share a code like `K7QX2`, or share a link that fills the code in for your friend.
 - **Classic rules.** Each player has a 10×10 grid and five ships (Carrier 5, Battleship 4, Cruiser 3, Submarine 3, Destroyer 2).
-- **Bonus shot on hit.** On by default. The host can switch it off so turns strictly alternate.
+- **Two game modes.** *Classic* is standard Battleship: one shot per turn. The host can optionally allow a bonus shot after a hit. In *Salvo*, you pick one target per surviving ship and fire them all at once, so losing ships costs you firepower.
+- **Spectators.** Anyone who joins a full room watches the match live. Spectators never receive ship positions, so they can't tip off a player.
+- **Settings.** Separate volume sliders for effects, music and ocean ambience (all generated in the browser; ocean starts muted); Low/Medium/High graphics quality for older phones; a 3D or top-down camera; and a toggle for whether the camera follows the action.
 - **3D scene.** Animated ocean with sky and sun glare. Each ship type has its own model, and ships bob on the swell. Shells fly in an arc, then you get a splash, or an explosion with fire and smoke. Sunk ships go down charred. The camera follows the action.
 - **Fleet placement.** Hover to see a ghost of the ship, click to drop it, and press `R` or right-click to rotate. Click a placed ship to pick it back up, or hit Randomize. After you're ready, you can still reposition until the battle starts.
 - **Feedback.** HIT / MISS / SUNK callouts, synthesized sound effects (with a mute button), a fleet status bar for both sides, and accuracy stats.
@@ -37,6 +39,27 @@ When the server starts, it prints the address other devices can use, for example
 - **macOS:** allow incoming connections for `node` when asked, or under System Settings → Network → Firewall.
 - Make sure the phone is on the same network, not a guest network or mobile data. Some routers block devices from reaching each other ("AP/client isolation").
 
+## Play online with GitHub Codespaces (free, no card)
+
+1. Open <https://codespaces.new/sirlygo/battleship> and click **Create codespace**.
+2. Wait for setup. The game installs and starts on its own.
+3. Open the **Ports** tab, right-click port **3000**, and choose **Port Visibility → Public**.
+4. Copy the forwarded address (`https://…app.github.dev`) and open it on any phone or computer.
+
+The link only works while the codespace is running. Codespaces stop after about 30 minutes of inactivity; restart it from <https://github.com/codespaces>.
+
+### If the `app.github.dev` link shows "404"
+
+Codespaces sometimes fails to forward the port, especially when the codespace is open in desktop VS Code. A free Cloudflare tunnel works instead and needs no account. Leave `npm start` running, open a second terminal and run:
+
+```bash
+npx -y cloudflared tunnel --url http://localhost:3000
+```
+
+It prints a link like `https://some-random-words.trycloudflare.com`. Open it and host a room. Invite links automatically use that address. Keep both terminals running while you play, because each new tunnel gets a different link.
+
+The same command works on your own computer if you want friends outside your Wi-Fi to join a game running on your machine.
+
 ## Deploy online (free)
 
 The repo includes a `render.yaml`, so it can be hosted on [Render](https://render.com) and played from any phone or network:
@@ -52,7 +75,7 @@ On Render's free plan the server sleeps after 15 minutes without visitors. The f
 1. **Host** a game and share the room code or invite link.
 2. Your friend enters the code and presses **Join**.
 3. Both players deploy their fleets and press **Ready**.
-4. Take turns firing into enemy waters. Press `V` to switch between boards.
+4. Take turns firing into enemy waters. Press `V` to switch between boards. In Salvo mode, mark your targets and press **Fire salvo** (or `F`).
 5. Sink all five enemy ships to win, then hit **Rematch**.
 
 ## Project structure

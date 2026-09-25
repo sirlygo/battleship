@@ -22,6 +22,9 @@
     <!-- Title screen -->
     <section id="lobby" class="lobby">
       <div class="lobby-card glass">
+        <button id="lobbySettingsBtn" class="icon-btn small lobby-settings" type="button" aria-label="Settings" title="Settings">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></svg>
+        </button>
         <div class="brand">
           <span class="kicker">Naval Command</span>
           <h1>Battleship</h1>
@@ -61,8 +64,9 @@
             <li>One player hosts and shares the 5-letter room code (or the invite link).</li>
             <li>The other player enters the code to join.</li>
             <li>Both deploy five ships on a 10×10 grid. Click to drop, <kbd>R</kbd> or right-click to rotate, or hit Randomize.</li>
-            <li>Take turns firing into enemy waters. By default, a hit earns you another shot.</li>
+            <li>Take turns firing into enemy waters, one shot each. The host can allow a bonus shot after a hit, or pick Salvo mode: one shot per ship you have left.</li>
             <li>Sink all five enemy ships to win. Then run it back with a rematch.</li>
+            <li>Anyone who joins a full room watches as a spectator.</li>
           </ol>
         </details>
       </div>
@@ -71,11 +75,17 @@
     <!-- In-room HUD -->
     <section id="hud" class="hud" hidden>
       <header class="topbar">
+        <div class="topbar-left">
         <button id="roomChip" class="chip" type="button" title="Copy room code">
           <span class="chip-label">Room</span>
           <strong id="roomCodeLabel"></strong>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 9h10v10H9zM5 15V5h10" /></svg>
         </button>
+        <span id="watchers" class="watchers" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>
+          <span id="watchersCount">0</span>
+        </span>
+        </div>
 
         <div class="scoreboard">
           <div class="side side-you">
@@ -93,6 +103,9 @@
           <button id="muteBtn" class="icon-btn" type="button" aria-label="Toggle sound">
             <svg class="ico-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" /><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" /></svg>
             <svg class="ico-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" /><path d="M17 9l5 6M22 9l-5 6" /></svg>
+          </button>
+          <button id="settingsBtn" class="icon-btn" type="button" aria-label="Settings" title="Settings">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></svg>
           </button>
           <button id="chatBtn" class="icon-btn" type="button" aria-label="Chat">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" /></svg>
@@ -118,11 +131,17 @@
           <button id="copyCodeBtn" class="btn btn-secondary" type="button">Copy code</button>
           <button id="copyLinkBtn" class="btn btn-primary" type="button">Share invite link</button>
         </div>
+        <p class="share-info">Friends open <strong id="shareUrl"></strong> and enter the code</p>
+        <p id="shareWarning" class="share-warning" hidden></p>
         <div class="waiting-line"><span class="spinner"></span>Waiting for a challenger to join…</div>
+        <div class="segmented" role="group" aria-label="Game mode">
+          <button type="button" data-mode="classic">Classic<small>1 shot per turn</small></button>
+          <button type="button" data-mode="salvo">Salvo<small>1 shot per ship left</small></button>
+        </div>
         <label id="bonusToggleWrap" class="toggle">
           <input id="bonusToggle" type="checkbox" checked />
           <span class="toggle-track"><span class="toggle-thumb"></span></span>
-          <span>Hits earn a bonus shot</span>
+          <span>Bonus shot after a hit</span>
         </label>
         <p id="rulesText" class="muted small"></p>
       </div>
@@ -151,6 +170,16 @@
         <div class="stat"><span>Accuracy</span><b id="statAcc">—</b></div>
         <button id="viewBtn" class="btn btn-secondary" type="button">View my fleet</button>
         <button id="fireBtn" class="btn btn-fire" type="button" hidden>Fire</button>
+      </div>
+
+      <!-- Spectating -->
+      <div id="panelSpectate" class="panel glass panel-spectate" hidden>
+        <span class="spectate-badge">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>
+          Spectating
+        </span>
+        <span id="spectateText" class="spectate-text"></span>
+        <button id="spectateViewBtn" class="btn btn-secondary" type="button">Switch view</button>
       </div>
 
       <!-- Chat -->
@@ -189,6 +218,48 @@
         </div>
       </div>
     </section>
+
+    <!-- Settings -->
+    <div id="settings" class="modal settings-modal" hidden>
+      <div class="modal-card glass settings-card" role="dialog" aria-labelledby="settingsTitle">
+        <div class="settings-head">
+          <h2 id="settingsTitle">Settings</h2>
+          <button id="settingsClose" class="icon-btn small" type="button" aria-label="Close settings">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </button>
+        </div>
+
+        <section class="settings-section">
+          <h3>Audio</h3>
+          <label class="slider-row"><span>Effects</span><input id="volEffects" type="range" min="0" max="100" step="1" /><output></output></label>
+          <label class="slider-row"><span>Music</span><input id="volMusic" type="range" min="0" max="100" step="1" /><output></output></label>
+          <label class="slider-row"><span>Ocean</span><input id="volAmbience" type="range" min="0" max="100" step="1" /><output></output></label>
+        </section>
+
+        <section class="settings-section">
+          <h3>Graphics quality</h3>
+          <div class="segmented" role="group" aria-label="Graphics quality">
+            <button type="button" data-quality="low">Low<small>Best for older phones</small></button>
+            <button type="button" data-quality="medium">Medium<small>Balanced</small></button>
+            <button type="button" data-quality="high">High<small>All effects</small></button>
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <h3>Camera</h3>
+          <div class="segmented" role="group" aria-label="Camera view">
+            <button type="button" data-camera="3d">3D<small>Angled view</small></button>
+            <button type="button" data-camera="top">Top-down<small>Classic 2D look</small></button>
+          </div>
+          <label class="toggle">
+            <input id="autoFollowToggle" type="checkbox" />
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            <span>Auto-follow the action</span>
+          </label>
+          <p class="muted small">When off, the camera stays on both boards unless you switch views (<kbd>V</kbd>).</p>
+        </section>
+      </div>
+    </div>
 
     <div id="netStatus" class="net" hidden><span class="spinner"></span>Connection lost — reconnecting…</div>
 

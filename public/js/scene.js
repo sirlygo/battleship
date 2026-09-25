@@ -75,6 +75,7 @@ const oceanFragment = /* glsl */ `
   uniform vec3 uFog;
   uniform float uFogNear;
   uniform float uFogFar;
+  uniform float uDetail;
   varying vec3 vWorld;
   varying vec3 vNormal;
   varying float vHeight;
@@ -82,7 +83,7 @@ const oceanFragment = /* glsl */ `
   void main() {
     vec2 p = vWorld.xz;
     float dist = length(cameraPosition - vWorld);
-    float detailFade = 1.0 - smoothstep(20.0, 90.0, dist);
+    float detailFade = (1.0 - smoothstep(20.0, 90.0, dist)) * uDetail;
     vec3 detail = vec3(
       sin(p.x * 2.1 + uTime * 1.3) + sin(p.y * 1.7 - uTime * 1.1 + p.x * 0.6) + sin((p.x - p.y) * 3.9 + uTime * 2.3) * 0.5,
       0.0,
@@ -200,6 +201,15 @@ function makeTextTexture(text, { font = '600 72px "Chakra Petch", "Segoe UI", sa
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 4;
   return tex;
+}
+
+function makeTitleTexture(text) {
+  return makeTextTexture(text, {
+    width: 768,
+    height: 96,
+    font: '700 64px "Chakra Petch", "Segoe UI", sans-serif',
+    letterSpacing: 10,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -483,6 +493,7 @@ class Particles {
     this.scene = scene;
     this.texture = texture;
     this.max = max;
+    this.density = 1;
     this.pool = [];
     this.live = [];
   }
@@ -497,8 +508,10 @@ class Particles {
     gravity = 0,
     drag = 0,
     additive = false,
+    essential = false,
   }) {
     if (this.live.length >= this.max) return;
+    if (!essential && this.density < 1 && Math.random() > this.density) return;
     let p = this.pool.pop();
     if (!p) {
       const material = new THREE.SpriteMaterial({
@@ -560,6 +573,13 @@ class Particles {
 // ---------------------------------------------------------------------------
 
 const rand = (a, b) => a + Math.random() * (b - a);
+const UP_SKY = new THREE.Vector3(0, 1, 0);
+const UP_TOP_DOWN = new THREE.Vector3(0, 0, -1);
+const QUALITY = {
+  low: { pixelRatio: 1, ocean: 110, detail: 0, density: 0.35, maxParticles: 450, gulls: 0, debris: 0.4 },
+  medium: { pixelRatio: 1.5, ocean: 200, detail: 1, density: 0.65, maxParticles: 900, gulls: 3, debris: 0.7 },
+  high: { pixelRatio: 2, ocean: 300, detail: 1, density: 1, maxParticles: 1400, gulls: 6, debris: 1 },
+};
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export class BattleScene {
@@ -599,10 +619,15 @@ export class BattleScene {
     this.ghost = null;
     this.handlers = { hover: null, click: null, rotate: null };
     this.anims = [];
+    this.debrisScale = 1;
     this.debris = [];
     this.reticleLock = 1;
     this.hoverKey = null;
     this.reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    this.quality = 'high';
+    this.topDown = false;
+    this.camUp = new THREE.Vector3(0, 1, 0);
+    this.salvoMarks = [];
 
     this.buildEnvironment();
     this.buildBoards();
@@ -648,8 +673,32 @@ export class BattleScene {
     );
     this.scene.add(sky);
 
+    this.oceanUniforms = {
+      uTime: { value: 0 },
+      uDeep: { value: new THREE.Color(COLORS.deep) },
+      uShallow: { value: new THREE.Color(COLORS.shallow) },
+      uSky: { value: new THREE.Color(0x4d7598) },
+      uSunColor: { value: new THREE.Color(0xffd0a0) },
+      uSunDir: { value: SUN_DIR },
+      uFog: { value: new THREE.Color(COLORS.fog) },
+      uFogNear: { value: 60 },
+      uFogFar: { value: 220 },
+      uDetail: { value: 1 },
+    };
+    this.oceanMaterial = new THREE.ShaderMaterial({
+      vertexShader: oceanVertex,
+      fragmentShader: oceanFragment,
+      uniforms: this.oceanUniforms,
+    });
+    this.buildOcean(300);
+  }
+
+  buildOcean(segments) {
+    if (this.ocean) {
+      this.scene.remove(this.ocean);
+      this.ocean.geometry.dispose();
+    }
     // Ocean plane with vertices concentrated near the play area.
-    const segments = 300;
     const geo = new THREE.PlaneGeometry(2, 2, segments, segments);
     geo.rotateX(-Math.PI / 2);
     const pos = geo.attributes.position;
@@ -661,27 +710,10 @@ export class BattleScene {
       pos.setZ(i, Math.sign(v) * Math.pow(Math.abs(v), 1.8) * extent);
     }
     geo.computeBoundingSphere();
-    this.oceanUniforms = {
-      uTime: { value: 0 },
-      uDeep: { value: new THREE.Color(COLORS.deep) },
-      uShallow: { value: new THREE.Color(COLORS.shallow) },
-      uSky: { value: new THREE.Color(0x4d7598) },
-      uSunColor: { value: new THREE.Color(0xffd0a0) },
-      uSunDir: { value: SUN_DIR },
-      uFog: { value: new THREE.Color(COLORS.fog) },
-      uFogNear: { value: 60 },
-      uFogFar: { value: 220 },
-    };
-    const ocean = new THREE.Mesh(
-      geo,
-      new THREE.ShaderMaterial({
-        vertexShader: oceanVertex,
-        fragmentShader: oceanFragment,
-        uniforms: this.oceanUniforms,
-      })
-    );
+    const ocean = new THREE.Mesh(geo, this.oceanMaterial);
     ocean.frustumCulled = false;
     this.scene.add(ocean);
+    this.ocean = ocean;
   }
 
   buildBoards() {
@@ -761,17 +793,13 @@ export class BattleScene {
       const title = new THREE.Mesh(
         new THREE.PlaneGeometry(6, 0.75),
         new THREE.MeshBasicMaterial({
-          map: makeTextTexture(cfg.label, {
-            width: 768,
-            height: 96,
-            font: '700 64px "Chakra Petch", "Segoe UI", sans-serif',
-            letterSpacing: 10,
-          }),
+          map: makeTitleTexture(cfg.label),
           transparent: true,
           depthWrite: false,
           color: accent,
         })
       );
+      title.userData.text = cfg.label;
       title.rotation.x = -Math.PI / 2;
       title.position.set(0, BOARD_Y, HALF + 0.75);
       group.add(title);
@@ -796,7 +824,7 @@ export class BattleScene {
       group.add(radar);
 
       this.scene.add(group);
-      this.boardVisuals[key] = { group, lines, frameMat, glow, base, radar };
+      this.boardVisuals[key] = { group, lines, frameMat, glow, base, radar, title };
     });
   }
 
@@ -830,6 +858,7 @@ export class BattleScene {
     this.scene.add(reticle);
     this.reticle = reticle;
     this.reticleMat = reticleMat;
+    this.salvoMaterial = new THREE.MeshBasicMaterial({ color: 0xffc233, transparent: true, opacity: 0.95, depthWrite: false, side: THREE.DoubleSide });
 
     this.ghostMaterials = {
       valid: new THREE.MeshBasicMaterial({ color: 0x6dffc4, transparent: true, opacity: 0.55, depthWrite: false }),
@@ -977,6 +1006,57 @@ export class BattleScene {
     this.updateViewGoal(instant);
   }
 
+  setQuality(level) {
+    const q = QUALITY[level] || QUALITY.high;
+    if (this.quality === level && this.qualityApplied) return;
+    this.quality = level;
+    this.qualityApplied = true;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, q.pixelRatio));
+    this.resize();
+    this.buildOcean(q.ocean);
+    this.oceanUniforms.uDetail.value = q.detail;
+    this.particles.density = q.density;
+    this.particles.max = q.maxParticles;
+    this.debrisScale = q.debris;
+    this.gulls.forEach((gull, i) => {
+      gull.group.visible = i < q.gulls;
+    });
+  }
+
+  setTopDown(enabled) {
+    if (this.topDown === enabled) return;
+    this.topDown = enabled;
+    this.updateViewGoal();
+  }
+
+  setBoardTitles(titles) {
+    Object.entries(titles).forEach(([board, text]) => {
+      const title = this.boardVisuals[board]?.title;
+      if (!title || title.userData.text === text) return;
+      title.userData.text = text;
+      title.material.map.dispose();
+      title.material.map = makeTitleTexture(text);
+      title.material.needsUpdate = true;
+    });
+  }
+
+  // Extra reticles marking the squares picked for a salvo.
+  setSalvoTargets(board, cells = []) {
+    while (this.salvoMarks.length < cells.length) {
+      const mark = this.reticle.clone();
+      mark.children.forEach((c) => {
+        c.material = this.salvoMaterial;
+      });
+      this.scene.add(mark);
+      this.salvoMarks.push(mark);
+    }
+    this.salvoMarks.forEach((mark, i) => {
+      const cell = cells[i];
+      mark.visible = Boolean(cell);
+      if (cell) mark.position.copy(cellToWorld(board, cell.x, cell.y, BOARD_Y + 0.035));
+    });
+  }
+
   tween(duration, update, done) {
     this.anims.push({ t: 0, duration, update, done });
   }
@@ -984,16 +1064,18 @@ export class BattleScene {
   frameArea(cx, cz, halfW, halfD) {
     const aspect = this.camera.aspect;
     const tanHalf = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2));
-    const elevation = THREE.MathUtils.degToRad(aspect < 0.8 ? 62 : 56);
+    const elevation = this.topDown ? Math.PI / 2 : THREE.MathUtils.degToRad(aspect < 0.8 ? 62 : 56);
     // Leave room for HUD bars at the top and bottom of the screen.
     const distW = (halfW * 1.08) / (tanHalf * aspect);
-    const distD = (halfD * Math.sin(elevation) * 1.55) / tanHalf;
+    const distD = (halfD * Math.sin(elevation) * (this.topDown ? 1.7 : 1.55)) / tanHalf;
     const dist = Math.max(distW, distD);
-    this.goalLook.set(cx, 0, cz + 0.8);
+    // Nudge the board so it clears the top bar and banner.
+    const shift = this.topDown ? 0.3 : 0.8;
+    this.goalLook.set(cx, 0, cz + shift);
     this.goalPos.set(
       cx,
       dist * Math.sin(elevation),
-      cz + 0.8 + dist * Math.cos(elevation)
+      cz + shift + dist * Math.cos(elevation)
     );
   }
 
@@ -1176,6 +1258,7 @@ export class BattleScene {
       position: muzzle,
       life: 0.18,
       size: [0.9, 1.8],
+      essential: true,
       color: [0xfff4d0, 0xffa040],
       opacity: [1, 0],
       additive: true,
@@ -1529,6 +1612,7 @@ export class BattleScene {
       position: pos.clone().setY(pos.y + 0.3),
       life: 0.35,
       size: [1.2 * power, 3.4 * power],
+      essential: true,
       color: [0xfff1c4, 0xff7a2a],
       opacity: [1, 0],
       additive: true,
@@ -1571,7 +1655,7 @@ export class BattleScene {
       });
     }
     // Tumbling hull fragments
-    for (let i = 0; i < Math.round(7 * power); i += 1) {
+    for (let i = 0; i < Math.round(7 * power * this.debrisScale); i += 1) {
       const mesh = new THREE.Mesh(this.debrisGeo, this.debrisMat);
       mesh.position.copy(pos).setY(pos.y + 0.2);
       mesh.scale.setScalar(rand(0.6, 1.4));
@@ -1647,8 +1731,14 @@ export class BattleScene {
     this.camLook.lerp(this.goalLook, k);
     this.parallax.lerp(this.parallaxGoal, 1 - Math.exp(-dt * 2));
     this.camera.position.copy(this.camPos);
-    this.camera.position.x += this.parallax.x * 0.6 + Math.sin(t * 0.37) * 0.12;
-    this.camera.position.y += this.parallax.y * 0.4 + Math.sin(t * 0.5) * 0.15;
+    const flat = this.topDown && this.view !== 'lobby';
+    if (!flat) {
+      this.camera.position.x += this.parallax.x * 0.6 + Math.sin(t * 0.37) * 0.12;
+      this.camera.position.y += this.parallax.y * 0.4 + Math.sin(t * 0.5) * 0.15;
+    }
+    // Looking straight down needs "up" to point up the board instead of the sky.
+    this.camUp.lerp(flat ? UP_TOP_DOWN : UP_SKY, k).normalize();
+    this.camera.up.copy(this.camUp);
     if (this.shakeAmount > 0.001) {
       this.camera.position.x += rand(-1, 1) * this.shakeAmount;
       this.camera.position.y += rand(-1, 1) * this.shakeAmount * 0.6;
@@ -1759,6 +1849,13 @@ export class BattleScene {
       const s = (1 + (1 - lock) * 0.9) * (1 + Math.sin(t * 6) * 0.06);
       this.reticle.scale.set(s, s, s);
     }
+
+    this.salvoMarks.forEach((mark, i) => {
+      if (!mark.visible) return;
+      mark.rotation.y = -t * 1.2 + i;
+      const s = 0.85 + Math.sin(t * 5 + i) * 0.06;
+      mark.scale.set(s, s, s);
+    });
 
     // Debris
     for (let i = this.debris.length - 1; i >= 0; i -= 1) {
