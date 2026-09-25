@@ -6,7 +6,9 @@ Real-time, two-player Battleship in the browser. It has a 3D ocean scene built w
 
 - **Room codes and invite links.** Host a game and share a code like `K7QX2`, or share a link that fills the code in for your friend.
 - **Classic rules.** Each player has a 10×10 grid and five ships (Carrier 5, Battleship 4, Cruiser 3, Submarine 3, Destroyer 2).
-- **Bonus shot on hit.** On by default. The host can switch it off so turns strictly alternate.
+- **Two game modes.** In *Classic*, a hit earns a bonus shot by default; the host can switch that off so turns strictly alternate. In *Salvo*, you pick one target per surviving ship and fire them all at once, so losing ships costs you firepower.
+- **Spectators.** Anyone who joins a full room watches the match live. Spectators never receive ship positions, so they can't tip off a player.
+- **Settings.** Separate volume sliders for effects, music and ocean ambience (all generated in the browser); Low/Medium/High graphics quality for older phones; a 3D or top-down camera; and a toggle for whether the camera follows the action.
 - **3D scene.** Animated ocean with sky and sun glare. Each ship type has its own model, and ships bob on the swell. Shells fly in an arc, then you get a splash, or an explosion with fire and smoke. Sunk ships go down charred. The camera follows the action.
 - **Fleet placement.** Hover to see a ghost of the ship, click to drop it, and press `R` or right-click to rotate. Click a placed ship to pick it back up, or hit Randomize. After you're ready, you can still reposition until the battle starts.
 - **Feedback.** HIT / MISS / SUNK callouts, synthesized sound effects (with a mute button), a fleet status bar for both sides, and accuracy stats.
@@ -61,7 +63,7 @@ On Render's free plan the server sleeps after 15 minutes without visitors. The f
 1. **Host** a game and share the room code or invite link.
 2. Your friend enters the code and presses **Join**.
 3. Both players deploy their fleets and press **Ready**.
-4. Take turns firing into enemy waters. Press `V` to switch between boards.
+4. Take turns firing into enemy waters. Press `V` to switch between boards. In Salvo mode, mark your targets and press **Fire salvo** (or `F`).
 5. Sink all five enemy ships to win, then hit **Rematch**.
 
 ## Project structure

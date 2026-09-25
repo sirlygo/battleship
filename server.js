@@ -23,6 +23,7 @@ const SHIPS = [
   { name: 'Submarine', length: 3 },
   { name: 'Destroyer', length: 2 },
 ];
+const MODES = ['classic', 'salvo'];
 
 const ROOM_CODE_LENGTH = 5;
 const ROOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -31,6 +32,7 @@ const EMPTY_ROOM_TTL_MS = 10 * 60 * 1000;
 const MAX_CHAT_MESSAGES = 100;
 const MAX_CHAT_LENGTH = 200;
 const MAX_NAME_LENGTH = 16;
+const MAX_SPECTATORS = 20;
 
 const rooms = new Map();
 
@@ -97,10 +99,6 @@ function opponentIndex(index) {
   return index === 0 ? 1 : 0;
 }
 
-function seatOf(room, socketId) {
-  return room.players.findIndex((p) => p && p.socketId === socketId);
-}
-
 function shipIsSunk(ship) {
   return ship.hits.size >= ship.cells.length;
 }
@@ -113,40 +111,63 @@ function touch(room) {
   room.lastActivity = Date.now();
 }
 
+// How many shots the given seat must fire this turn.
+function shotsPerTurn(room, seat) {
+  if (room.rules.mode !== 'salvo') return 1;
+  const shooter = room.players[seat];
+  const target = room.players[opponentIndex(seat)];
+  if (!shooter || !target) return 1;
+  const openCells = BOARD_SIZE * BOARD_SIZE - target.shotsReceived.size;
+  return Math.max(1, Math.min(remainingShips(shooter), openCells));
+}
+
+// Calls fn(socketId, viewer) for every connected player and spectator.
+function forEachViewer(room, fn) {
+  room.players.forEach((player, seat) => {
+    if (player?.connected) fn(player.socketId, { seat, token: player.token });
+  });
+  room.spectators.forEach((spectator) => {
+    if (spectator.connected) fn(spectator.socketId, { seat: null, token: spectator.token });
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Chat
 // ---------------------------------------------------------------------------
 
-function pushChat(room, entry) {
-  const full = { ...entry, id: crypto.randomUUID(), timestamp: Date.now() };
-  room.chat.push(full);
-  if (room.chat.length > MAX_CHAT_MESSAGES) {
-    room.chat.splice(0, room.chat.length - MAX_CHAT_MESSAGES);
-  }
-  room.players.forEach((player, index) => {
-    if (player?.connected) {
-      io.to(player.socketId).emit('chat', serializeChatEntry(full, index));
-    }
-  });
-}
-
-function systemChat(room, message) {
-  pushChat(room, { kind: 'system', seat: null, name: 'System', message });
-}
-
-function serializeChatEntry(entry, viewerSeat) {
+function serializeChatEntry(entry, viewerToken) {
   return {
     id: entry.id,
     kind: entry.kind,
     name: entry.name,
     message: entry.message,
     timestamp: entry.timestamp,
-    mine: entry.seat !== null && entry.seat === viewerSeat,
+    spectator: Boolean(entry.spectator),
+    mine: entry.token !== null && entry.token === viewerToken,
   };
 }
 
+function pushChat(room, entry) {
+  const full = { token: null, ...entry, id: crypto.randomUUID(), timestamp: Date.now() };
+  room.chat.push(full);
+  if (room.chat.length > MAX_CHAT_MESSAGES) {
+    room.chat.splice(0, room.chat.length - MAX_CHAT_MESSAGES);
+  }
+  forEachViewer(room, (socketId, viewer) => {
+    io.to(socketId).emit('chat', serializeChatEntry(full, viewer.token));
+  });
+}
+
+function systemChat(room, message) {
+  pushChat(room, { kind: 'system', name: 'System', message });
+}
+
+function sendChatHistory(socket, room, token) {
+  socket.emit('chatHistory', room.chat.map((entry) => serializeChatEntry(entry, token)));
+}
+
 // ---------------------------------------------------------------------------
-// State snapshots (each player only ever sees what they are allowed to see)
+// State snapshots (each viewer only ever sees what they are allowed to see)
 // ---------------------------------------------------------------------------
 
 function serializeShots(player) {
@@ -168,10 +189,27 @@ function serializeShip(ship) {
   };
 }
 
+function serializeSide(player, { revealShips }) {
+  return {
+    name: player.name,
+    connected: player.connected,
+    ready: player.ready,
+    shotsReceived: serializeShots(player),
+    stats: player.stats,
+    shipsRemaining: player.ships.length ? remainingShips(player) : SHIPS.length,
+    ships: player.ships.filter((ship) => revealShips || shipIsSunk(ship)).map(serializeShip),
+  };
+}
+
+// `seat` is the viewer's seat, or null for a spectator (who sees seat 0 as
+// "me" and seat 1 as "enemy", but never unsunk ship positions of either).
 function snapshotFor(room, seat) {
-  const me = room.players[seat];
-  const enemy = room.players[opponentIndex(seat)];
-  const revealAll = room.phase === 'over';
+  const spectator = seat === null;
+  const perspective = spectator ? 0 : seat;
+  const me = room.players[perspective];
+  const enemy = room.players[opponentIndex(perspective)];
+  const over = room.phase === 'over';
+  const relative = (value) => (value === null ? null : value === perspective ? 'you' : 'enemy');
 
   return {
     code: room.code,
@@ -179,44 +217,31 @@ function snapshotFor(room, seat) {
     boardSize: BOARD_SIZE,
     fleet: SHIPS,
     rules: room.rules,
+    spectator,
     isHost: seat === 0,
-    turn: room.turn === null ? null : room.turn === seat ? 'you' : 'enemy',
-    winner: room.winner === null ? null : room.winner === seat ? 'you' : 'enemy',
+    turn: relative(room.turn),
+    shotsPerTurn: room.turn === null ? 1 : shotsPerTurn(room, room.turn),
+    winner: relative(room.winner),
     endReason: room.endReason,
     round: room.round,
+    spectators: [...room.spectators.values()].filter((s) => s.connected).map((s) => s.name),
     rematch: {
-      you: room.rematch.has(seat),
-      enemy: room.rematch.has(opponentIndex(seat)),
+      you: room.rematch.has(perspective),
+      enemy: room.rematch.has(opponentIndex(perspective)),
     },
-    me: {
-      name: me.name,
-      ready: me.ready,
-      ships: me.ships.map(serializeShip),
-      shotsReceived: serializeShots(me),
-      stats: me.stats,
-      shipsRemaining: remainingShips(me),
-    },
-    enemy: enemy
+    me: me
       ? {
-          name: enemy.name,
-          connected: enemy.connected,
-          ready: enemy.ready,
-          shotsReceived: serializeShots(enemy),
-          stats: enemy.stats,
-          shipsRemaining: enemy.ships.length ? remainingShips(enemy) : SHIPS.length,
-          ships: enemy.ships
-            .filter((ship) => revealAll || shipIsSunk(ship))
-            .map(serializeShip),
+          ...serializeSide(me, { revealShips: !spectator || over }),
+          shipsRemaining: remainingShips(me),
         }
       : null,
+    enemy: enemy ? serializeSide(enemy, { revealShips: over }) : null,
   };
 }
 
 function broadcastState(room) {
-  room.players.forEach((player, seat) => {
-    if (player?.connected) {
-      io.to(player.socketId).emit('state', snapshotFor(room, seat));
-    }
+  forEachViewer(room, (socketId, viewer) => {
+    io.to(socketId).emit('state', snapshotFor(room, viewer.seat));
   });
 }
 
@@ -230,18 +255,28 @@ function createRoom(hostPlayer) {
     code,
     phase: 'lobby',
     players: [hostPlayer],
+    spectators: new Map(),
     turn: null,
     winner: null,
     endReason: null,
     round: 1,
     lastLoser: null,
-    rules: { bonusShot: true },
+    rules: { mode: 'classic', bonusShot: true },
     rematch: new Set(),
     chat: [],
     lastActivity: Date.now(),
   };
   rooms.set(code, room);
   return room;
+}
+
+function closeRoom(room) {
+  room.players.forEach((p) => p?.disconnectTimer && clearTimeout(p.disconnectTimer));
+  room.spectators.forEach((s) => {
+    if (s.disconnectTimer) clearTimeout(s.disconnectTimer);
+    if (s.connected) io.to(s.socketId).emit('room:closed');
+  });
+  rooms.delete(room.code);
 }
 
 function startPlacement(room) {
@@ -277,11 +312,9 @@ function removeSeat(room, seat, { reason }) {
   if (!leaving) return;
   if (leaving.disconnectTimer) clearTimeout(leaving.disconnectTimer);
 
-  const remainingSeat = opponentIndex(seat);
-  const remaining = room.players[remainingSeat];
-
+  const remaining = room.players[opponentIndex(seat)];
   if (!remaining) {
-    rooms.delete(room.code);
+    closeRoom(room);
     return;
   }
 
@@ -314,6 +347,14 @@ function removeSeat(room, seat, { reason }) {
   broadcastState(room);
 }
 
+function removeSpectator(room, token) {
+  const spectator = room.spectators.get(token);
+  if (!spectator) return;
+  if (spectator.disconnectTimer) clearTimeout(spectator.disconnectTimer);
+  room.spectators.delete(token);
+  broadcastState(room);
+}
+
 function leaveCurrentRoom(socket) {
   const code = socket.data.roomCode;
   if (!code) return;
@@ -321,23 +362,47 @@ function leaveCurrentRoom(socket) {
   socket.leave(code);
   const room = rooms.get(code);
   if (!room) return;
-  const seat = seatOf(room, socket.id);
-  if (seat === -1) return;
-  removeSeat(room, seat, { reason: 'left' });
+  const seat = room.players.findIndex((p) => p && p.socketId === socket.id);
+  if (seat !== -1) {
+    removeSeat(room, seat, { reason: 'left' });
+    return;
+  }
+  const spectator = [...room.spectators.values()].find((s) => s.socketId === socket.id);
+  if (spectator) removeSpectator(room, spectator.token);
 }
 
-function attachSocket(socket, room, player) {
+function attachSocket(socket, room, member) {
   if (socket.data.roomCode && socket.data.roomCode !== room.code) {
     leaveCurrentRoom(socket);
   }
-  if (player.disconnectTimer) {
-    clearTimeout(player.disconnectTimer);
-    player.disconnectTimer = null;
+  if (member.disconnectTimer) {
+    clearTimeout(member.disconnectTimer);
+    member.disconnectTimer = null;
   }
-  player.socketId = socket.id;
-  player.connected = true;
+  member.socketId = socket.id;
+  member.connected = true;
   socket.data.roomCode = room.code;
   socket.join(room.code);
+}
+
+// Re-attaches a returning player or spectator by token. Returns the role or null.
+function resumeMember(socket, room, token) {
+  const seat = room.players.findIndex((p) => p && p.token === token);
+  if (seat !== -1) {
+    const player = room.players[seat];
+    const wasDisconnected = !player.connected;
+    attachSocket(socket, room, player);
+    sendChatHistory(socket, room, token);
+    if (wasDisconnected) systemChat(room, `${player.name} reconnected.`);
+    return 'player';
+  }
+  const spectator = room.spectators.get(token);
+  if (spectator) {
+    attachSocket(socket, room, spectator);
+    sendChatHistory(socket, room, token);
+    return 'spectator';
+  }
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -383,6 +448,28 @@ function buildFleet(rawShips) {
   });
 }
 
+// Validates a list of targets; returns normalized cells or throws.
+function parseTargets(raw, enemy, expected) {
+  if (!Array.isArray(raw) || raw.length !== expected) {
+    throw new Error(
+      expected === 1 ? 'Pick one target.' : `Pick exactly ${expected} targets for your salvo.`
+    );
+  }
+  const seen = new Set();
+  return raw.map((target) => {
+    const x = Number(target?.x);
+    const y = Number(target?.y);
+    if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= BOARD_SIZE || y >= BOARD_SIZE) {
+      throw new Error('Target is off the grid.');
+    }
+    const key = cellKey(x, y);
+    if (enemy.shotsReceived.has(key)) throw new Error('You already fired at that square.');
+    if (seen.has(key)) throw new Error('Each salvo target must be different.');
+    seen.add(key);
+    return { x, y, key };
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Socket handlers
 // ---------------------------------------------------------------------------
@@ -393,9 +480,11 @@ io.on('connection', (socket) => {
     if (!code) return {};
     const room = rooms.get(code);
     if (!room) return {};
-    const seat = seatOf(room, socket.id);
-    if (seat === -1) return {};
-    return { room, seat, player: room.players[seat] };
+    const seat = room.players.findIndex((p) => p && p.socketId === socket.id);
+    if (seat !== -1) return { room, seat, player: room.players[seat] };
+    const spectator = [...room.spectators.values()].find((s) => s.socketId === socket.id);
+    if (spectator) return { room, spectator };
+    return {};
   }
 
   socket.on('room:create', (payload = {}, callback) => {
@@ -430,41 +519,46 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // Reconnecting to an existing seat (e.g. after a refresh).
-    const existingSeat = room.players.findIndex((p) => p && p.token === token);
-    if (existingSeat !== -1) {
-      const player = room.players[existingSeat];
-      const wasDisconnected = !player.connected;
-      attachSocket(socket, room, player);
-      reply(callback, { ok: true, code, rejoined: true });
-      socket.emit(
-        'chatHistory',
-        room.chat.map((entry) => serializeChatEntry(entry, existingSeat))
-      );
-      if (wasDisconnected) systemChat(room, `${player.name} reconnected.`);
+    // Returning player or spectator (e.g. after a refresh).
+    const resumed = resumeMember(socket, room, token);
+    if (resumed) {
+      reply(callback, { ok: true, code, spectator: resumed === 'spectator' });
       touch(room);
       broadcastState(room);
       return;
     }
 
+    const name = sanitizeName(payload.name, 'Challenger');
+
     if (room.players.length >= 2) {
-      reply(callback, { error: 'That room is already full.' });
+      if (room.spectators.size >= MAX_SPECTATORS) {
+        reply(callback, { error: 'That room is full, including spectator seats.' });
+        return;
+      }
+      leaveCurrentRoom(socket);
+      const spectator = { token, socketId: socket.id, name, connected: true, disconnectTimer: null };
+      room.spectators.set(token, spectator);
+      attachSocket(socket, room, spectator);
+      reply(callback, { ok: true, code, spectator: true });
+      sendChatHistory(socket, room, token);
+      systemChat(room, `${name} is watching.`);
+      touch(room);
+      broadcastState(room);
       return;
     }
 
     leaveCurrentRoom(socket);
     const hostName = room.players[0]?.name;
-    let name = sanitizeName(payload.name, 'Challenger');
-    if (name === hostName) name = `${name} II`.slice(0, MAX_NAME_LENGTH + 3);
-    const player = createPlayer({ token, socketId: socket.id, name });
+    const player = createPlayer({
+      token,
+      socketId: socket.id,
+      name: name === hostName ? `${name} II`.slice(0, MAX_NAME_LENGTH + 3) : name,
+    });
     room.players.push(player);
     attachSocket(socket, room, player);
 
-    reply(callback, { ok: true, code });
-    socket.emit(
-      'chatHistory',
-      room.chat.map((entry) => serializeChatEntry(entry, 1))
-    );
+    reply(callback, { ok: true, code, spectator: false });
+    sendChatHistory(socket, room, token);
     startPlacement(room);
     systemChat(room, `${player.name} joined. Deploy your fleets!`);
     touch(room);
@@ -472,28 +566,16 @@ io.on('connection', (socket) => {
   });
 
   socket.on('room:resume', (payload = {}, callback) => {
-    // Silent reconnect attempt on page load; never creates a seat.
+    // Silent reconnect attempt on page load; never creates a new membership.
     const code = normalizeCode(payload.code);
     const token = sanitizeToken(payload.token);
     const room = rooms.get(code);
-    if (!room || !token) {
+    const resumed = room && token ? resumeMember(socket, room, token) : null;
+    if (!resumed) {
       reply(callback, { error: 'gone' });
       return;
     }
-    const seat = room.players.findIndex((p) => p && p.token === token);
-    if (seat === -1) {
-      reply(callback, { error: 'gone' });
-      return;
-    }
-    const player = room.players[seat];
-    const wasDisconnected = !player.connected;
-    attachSocket(socket, room, player);
-    reply(callback, { ok: true, code });
-    socket.emit(
-      'chatHistory',
-      room.chat.map((entry) => serializeChatEntry(entry, seat))
-    );
-    if (wasDisconnected) systemChat(room, `${player.name} reconnected.`);
+    reply(callback, { ok: true, code, spectator: resumed === 'spectator' });
     touch(room);
     broadcastState(room);
   });
@@ -510,14 +592,22 @@ io.on('connection', (socket) => {
     if (room.phase === 'battle') {
       return reply(callback, { error: 'Rules are locked once the battle begins.' });
     }
-    const bonusShot = Boolean(payload.bonusShot);
-    if (room.rules.bonusShot !== bonusShot) {
-      room.rules.bonusShot = bonusShot;
+    if (typeof payload.bonusShot === 'boolean' && room.rules.bonusShot !== payload.bonusShot) {
+      room.rules.bonusShot = payload.bonusShot;
       systemChat(
         room,
-        bonusShot
+        payload.bonusShot
           ? 'Rule change: a hit earns another shot.'
           : 'Rule change: turns alternate after every shot.'
+      );
+    }
+    if (MODES.includes(payload.mode) && room.rules.mode !== payload.mode) {
+      room.rules.mode = payload.mode;
+      systemChat(
+        room,
+        payload.mode === 'salvo'
+          ? 'Mode: Salvo — fire one shot per surviving ship each turn.'
+          : 'Mode: Classic — one shot per turn.'
       );
     }
     touch(room);
@@ -527,7 +617,7 @@ io.on('connection', (socket) => {
 
   socket.on('player:name', (payload = {}, callback) => {
     const { room, player } = currentRoom();
-    if (!room) return reply(callback, { error: 'Not in a room.' });
+    if (!player) return reply(callback, { error: 'Not in a room.' });
     const next = sanitizeName(payload.name, player.name);
     if (next !== player.name) {
       systemChat(room, `${player.name} is now known as ${next}.`);
@@ -539,7 +629,7 @@ io.on('connection', (socket) => {
 
   socket.on('fleet:submit', (payload = {}, callback) => {
     const { room, player, seat } = currentRoom();
-    if (!room) return reply(callback, { error: 'Not in a room.' });
+    if (!player) return reply(callback, { error: 'Only players can deploy a fleet.' });
     if (room.phase !== 'placement') {
       return reply(callback, { error: 'Fleets can only be deployed before the battle.' });
     }
@@ -561,7 +651,7 @@ io.on('connection', (socket) => {
 
   socket.on('fleet:unready', (_payload, callback) => {
     const { room, player } = currentRoom();
-    if (!room) return reply(callback, { error: 'Not in a room.' });
+    if (!player) return reply(callback, { error: 'Only players can reposition.' });
     if (room.phase !== 'placement') {
       return reply(callback, { error: 'Too late to reposition — the battle has begun.' });
     }
@@ -573,7 +663,7 @@ io.on('connection', (socket) => {
 
   socket.on('fire', (payload = {}, callback) => {
     const { room, player, seat } = currentRoom();
-    if (!room) return reply(callback, { error: 'Not in a room.' });
+    if (!player) return reply(callback, { error: 'Spectators cannot fire.' });
     if (room.phase !== 'battle') return reply(callback, { error: 'The battle is not active.' });
     if (room.turn !== seat) return reply(callback, { error: 'Hold fire — it is not your turn.' });
 
@@ -581,62 +671,59 @@ io.on('connection', (socket) => {
     const enemy = room.players[enemySeat];
     if (!enemy) return reply(callback, { error: 'No opponent to fire at.' });
 
-    const x = Number(payload.x);
-    const y = Number(payload.y);
-    if (
-      !Number.isInteger(x) ||
-      !Number.isInteger(y) ||
-      x < 0 ||
-      y < 0 ||
-      x >= BOARD_SIZE ||
-      y >= BOARD_SIZE
-    ) {
-      return reply(callback, { error: 'Target is off the grid.' });
+    const rawTargets = Array.isArray(payload.targets) ? payload.targets : [payload];
+    let targets;
+    try {
+      targets = parseTargets(rawTargets, enemy, shotsPerTurn(room, seat));
+    } catch (error) {
+      return reply(callback, { error: error.message });
     }
 
-    const key = cellKey(x, y);
-    if (enemy.shotsReceived.has(key)) {
-      return reply(callback, { error: 'You already fired at that square.' });
-    }
-
-    const ship = enemy.ships.find((s) => s.cells.includes(key));
-    let result = 'miss';
-    let sunkShip = null;
-    player.stats.shots += 1;
-
-    if (ship) {
-      ship.hits.add(key);
-      player.stats.hits += 1;
-      result = 'hit';
-      if (shipIsSunk(ship)) {
-        result = 'sunk';
-        sunkShip = serializeShip(ship);
+    const shots = [];
+    let fleetDestroyed = false;
+    for (const { x, y, key } of targets) {
+      const ship = enemy.ships.find((s) => s.cells.includes(key));
+      let result = 'miss';
+      let sunkShip = null;
+      player.stats.shots += 1;
+      if (ship) {
+        ship.hits.add(key);
+        player.stats.hits += 1;
+        result = 'hit';
+        if (shipIsSunk(ship)) {
+          result = 'sunk';
+          sunkShip = serializeShip(ship);
+        }
+      }
+      enemy.shotsReceived.set(key, result === 'miss' ? 'miss' : 'hit');
+      shots.push({ x, y, result, sunkShip });
+      if (remainingShips(enemy) === 0) {
+        fleetDestroyed = true;
+        break;
       }
     }
-    enemy.shotsReceived.set(key, result === 'miss' ? 'miss' : 'hit');
 
-    const fleetDestroyed = remainingShips(enemy) === 0;
+    const anyHit = shots.some((s) => s.result !== 'miss');
     if (fleetDestroyed) {
       endMatch(room, seat, 'fleet');
-    } else if (result === 'miss' || !room.rules.bonusShot) {
+    } else if (room.rules.mode === 'salvo' || !anyHit || !room.rules.bonusShot) {
       room.turn = enemySeat;
     }
 
-    reply(callback, { ok: true, result });
+    reply(callback, { ok: true, results: shots.map((s) => s.result) });
 
-    room.players.forEach((p, viewer) => {
-      if (!p?.connected) return;
-      io.to(p.socketId).emit('shot', {
-        by: viewer === seat ? 'you' : 'enemy',
-        x,
-        y,
-        result,
-        sunkShip,
+    forEachViewer(room, (socketId, viewer) => {
+      const perspective = viewer.seat === null ? 0 : viewer.seat;
+      io.to(socketId).emit('volley', {
+        by: perspective === seat ? 'you' : 'enemy',
+        shots,
         gameOver: fleetDestroyed,
       });
     });
 
-    if (sunkShip) systemChat(room, `${player.name} sank ${enemy.name}'s ${sunkShip.name}!`);
+    shots
+      .filter((s) => s.sunkShip)
+      .forEach((s) => systemChat(room, `${player.name} sank ${enemy.name}'s ${s.sunkShip.name}!`));
     if (fleetDestroyed) systemChat(room, `${player.name} wins the battle!`);
     touch(room);
     broadcastState(room);
@@ -644,7 +731,7 @@ io.on('connection', (socket) => {
 
   socket.on('rematch', (_payload, callback) => {
     const { room, seat, player } = currentRoom();
-    if (!room) return reply(callback, { error: 'Not in a room.' });
+    if (!player) return reply(callback, { error: 'Only players can start a rematch.' });
     if (room.phase !== 'over') return reply(callback, { error: 'The match is still running.' });
 
     const enemy = room.players[opponentIndex(seat)];
@@ -672,8 +759,9 @@ io.on('connection', (socket) => {
   });
 
   socket.on('chat', (payload = {}, callback) => {
-    const { room, player, seat } = currentRoom();
-    if (!room) return reply(callback, { error: 'Not in a room.' });
+    const { room, player, spectator } = currentRoom();
+    const member = player || spectator;
+    if (!member) return reply(callback, { error: 'Not in a room.' });
     const text = typeof payload.message === 'string'
       ? payload.message.replace(/\s+/g, ' ').trim()
       : '';
@@ -681,37 +769,45 @@ io.on('connection', (socket) => {
     if (text.length > MAX_CHAT_LENGTH) {
       return reply(callback, { error: `Messages are limited to ${MAX_CHAT_LENGTH} characters.` });
     }
-    pushChat(room, { kind: 'user', seat, name: player.name, message: text });
+    pushChat(room, {
+      kind: 'user',
+      token: member.token,
+      name: member.name,
+      spectator: Boolean(spectator),
+      message: text,
+    });
     touch(room);
     reply(callback, { ok: true });
   });
 
   socket.on('disconnect', () => {
-    const { room, player } = currentRoom();
-    if (!room) return;
-    player.connected = false;
+    const { room, player, spectator } = currentRoom();
+    const member = player || spectator;
+    if (!member) return;
+    member.connected = false;
     touch(room);
-    player.disconnectTimer = setTimeout(() => {
-      player.disconnectTimer = null;
+    member.disconnectTimer = setTimeout(() => {
+      member.disconnectTimer = null;
       const liveRoom = rooms.get(room.code);
+      if (!liveRoom || member.connected) return;
+      if (spectator) {
+        removeSpectator(liveRoom, member.token);
+        return;
+      }
       // Seats can shift (the remaining player becomes host), so look it up again.
-      const liveSeat = liveRoom ? liveRoom.players.indexOf(player) : -1;
-      if (liveSeat === -1 || player.connected) return;
-      removeSeat(liveRoom, liveSeat, { reason: 'timeout' });
+      const liveSeat = liveRoom.players.indexOf(member);
+      if (liveSeat !== -1) removeSeat(liveRoom, liveSeat, { reason: 'timeout' });
     }, RECONNECT_GRACE_MS);
     broadcastState(room);
   });
 });
 
-// Sweep rooms nobody is connected to anymore.
+// Sweep rooms no player is connected to anymore.
 setInterval(() => {
   const now = Date.now();
-  rooms.forEach((room, code) => {
+  rooms.forEach((room) => {
     const anyoneHere = room.players.some((p) => p?.connected);
-    if (!anyoneHere && now - room.lastActivity > EMPTY_ROOM_TTL_MS) {
-      room.players.forEach((p) => p?.disconnectTimer && clearTimeout(p.disconnectTimer));
-      rooms.delete(code);
-    }
+    if (!anyoneHere && now - room.lastActivity > EMPTY_ROOM_TTL_MS) closeRoom(room);
   });
 }, 60 * 1000).unref();
 
