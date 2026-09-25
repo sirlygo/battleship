@@ -2013,3 +2013,25 @@ input[type='range']:focus-visible {
     grid-template-columns: 56px 1fr 40px;
   }
 }
+
+.share-info {
+  color: var(--muted);
+  font-size: 14px;
+  word-break: break-all;
+}
+
+.share-info strong {
+  color: var(--text);
+  font-family: var(--display);
+  letter-spacing: 0.02em;
+}
+
+.share-warning {
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(60, 40, 0, 0.55);
+  border: 1px solid rgba(255, 209, 102, 0.4);
+  color: var(--gold);
+  font-size: 13px;
+  line-height: 1.4;
+}

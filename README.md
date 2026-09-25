@@ -6,7 +6,7 @@ Real-time, two-player Battleship in the browser. It has a 3D ocean scene built w
 
 - **Room codes and invite links.** Host a game and share a code like `K7QX2`, or share a link that fills the code in for your friend.
 - **Classic rules.** Each player has a 10×10 grid and five ships (Carrier 5, Battleship 4, Cruiser 3, Submarine 3, Destroyer 2).
-- **Two game modes.** In *Classic*, a hit earns a bonus shot by default; the host can switch that off so turns strictly alternate. In *Salvo*, you pick one target per surviving ship and fire them all at once, so losing ships costs you firepower.
+- **Two game modes.** *Classic* is standard Battleship: one shot per turn. The host can optionally allow a bonus shot after a hit. In *Salvo*, you pick one target per surviving ship and fire them all at once, so losing ships costs you firepower.
 - **Spectators.** Anyone who joins a full room watches the match live. Spectators never receive ship positions, so they can't tip off a player.
 - **Settings.** Separate volume sliders for effects, music and ocean ambience (all generated in the browser); Low/Medium/High graphics quality for older phones; a 3D or top-down camera; and a toggle for whether the camera follows the action.
 - **3D scene.** Animated ocean with sky and sun glare. Each ship type has its own model, and ships bob on the swell. Shells fly in an arc, then you get a splash, or an explosion with fire and smoke. Sunk ships go down charred. The camera follows the action.

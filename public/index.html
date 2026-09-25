@@ -64,7 +64,7 @@
             <li>One player hosts and shares the 5-letter room code (or the invite link).</li>
             <li>The other player enters the code to join.</li>
             <li>Both deploy five ships on a 10×10 grid. Click to drop, <kbd>R</kbd> or right-click to rotate, or hit Randomize.</li>
-            <li>Take turns firing into enemy waters. In Classic mode a hit earns another shot; in Salvo mode you fire one shot per ship you have left.</li>
+            <li>Take turns firing into enemy waters, one shot each. The host can allow a bonus shot after a hit, or pick Salvo mode: one shot per ship you have left.</li>
             <li>Sink all five enemy ships to win. Then run it back with a rematch.</li>
             <li>Anyone who joins a full room watches as a spectator.</li>
           </ol>
@@ -131,6 +131,8 @@
           <button id="copyCodeBtn" class="btn btn-secondary" type="button">Copy code</button>
           <button id="copyLinkBtn" class="btn btn-primary" type="button">Share invite link</button>
         </div>
+        <p class="share-info">Friends open <strong id="shareUrl"></strong> and enter the code</p>
+        <p id="shareWarning" class="share-warning" hidden></p>
         <div class="waiting-line"><span class="spinner"></span>Waiting for a challenger to join…</div>
         <div class="segmented" role="group" aria-label="Game mode">
           <button type="button" data-mode="classic">Classic<small>1 shot per turn</small></button>
@@ -139,7 +141,7 @@
         <label id="bonusToggleWrap" class="toggle">
           <input id="bonusToggle" type="checkbox" checked />
           <span class="toggle-track"><span class="toggle-thumb"></span></span>
-          <span>Hits earn a bonus shot</span>
+          <span>Bonus shot after a hit</span>
         </label>
         <p id="rulesText" class="muted small"></p>
       </div>

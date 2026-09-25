@@ -154,6 +154,8 @@ const el = {
   goLeaveBtn: $('goLeaveBtn'),
   goViewBtn: $('goViewBtn'),
   net: $('netStatus'),
+  shareUrl: $('shareUrl'),
+  shareWarning: $('shareWarning'),
   flash: $('screenFlash'),
   watchers: $('watchers'),
   watchersCount: $('watchersCount'),
@@ -308,8 +310,40 @@ async function copyText(text) {
   }
 }
 
+// Where other players should go. Filled in from the server, which knows its
+// public address (Codespaces, Render, PUBLIC_URL) and its local network address.
+const share = { publicUrl: null, lanUrl: null };
+fetch('/api/share')
+  .then((res) => res.json())
+  .then((info) => {
+    share.publicUrl = info.publicUrl || null;
+    share.lanUrl = info.lanUrls?.[0] || null;
+    if (app.snap) renderHud();
+  })
+  .catch(() => {});
+
+function shareTarget() {
+  if (share.publicUrl) return { url: share.publicUrl, scope: 'public' };
+  const host = location.hostname;
+  const local = ['localhost', '127.0.0.1', '::1', '[::1]'].includes(host);
+  const privateNet = /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host) || host.endsWith('.local');
+  if (local) return share.lanUrl ? { url: share.lanUrl, scope: 'lan' } : { url: location.origin, scope: 'local' };
+  if (privateNet) return { url: location.origin, scope: 'lan' };
+  return { url: location.origin, scope: 'public' };
+}
+
 function inviteLink() {
-  return `${location.origin}${location.pathname}?room=${app.code}`;
+  return `${shareTarget().url}/?room=${app.code}`;
+}
+
+function renderShareInfo() {
+  const { url, scope } = shareTarget();
+  el.shareUrl.textContent = url.replace(/^https?:\/\//, '');
+  el.shareWarning.hidden = scope === 'public';
+  el.shareWarning.textContent =
+    scope === 'lan'
+      ? 'This address only works for devices on your Wi-Fi. For friends elsewhere, host online (e.g. GitHub Codespaces) — see the README.'
+      : 'This address only works on this computer. Host online (e.g. GitHub Codespaces) so friends can join.';
 }
 
 // ---------------------------------------------------------------------------
@@ -684,6 +718,7 @@ function renderHud() {
 
   el.roomCodeLabel.textContent = s.code;
   el.waitingCode.textContent = s.code;
+  renderShareInfo();
   el.myName.textContent = s.me.name;
   el.enemyName.textContent = s.enemy ? s.enemy.name : 'Waiting…';
   el.enemyName.parentElement.classList.toggle('absent', !s.enemy);
@@ -1429,7 +1464,7 @@ function bindUi() {
   });
   el.copyCodeBtn.addEventListener('click', async () => {
     const ok = await copyText(app.code);
-    toast(ok ? 'Room code copied.' : `Room code: ${app.code}`);
+    toast(ok ? `Room code copied. Friends open ${shareTarget().url.replace(/^https?:\/\//, '')}` : `Room code: ${app.code}`);
   });
   el.copyLinkBtn.addEventListener('click', async () => {
     const link = inviteLink();

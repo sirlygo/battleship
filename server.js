@@ -12,6 +12,25 @@ const io = new Server(server);
 const PORT = process.env.PORT || 3000;
 
 app.get('/healthz', (_req, res) => res.send('ok'));
+
+// The address other players should open. Browsers only know the address the
+// host typed (often localhost), so the server works out a shareable one.
+function publicBaseUrl() {
+  if (process.env.PUBLIC_URL) return process.env.PUBLIC_URL.replace(/\/+$/, '');
+  if (process.env.RENDER_EXTERNAL_URL) return process.env.RENDER_EXTERNAL_URL.replace(/\/+$/, '');
+  const { CODESPACE_NAME, GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN } = process.env;
+  if (CODESPACE_NAME && GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN) {
+    return `https://${CODESPACE_NAME}-${PORT}.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}`;
+  }
+  return null;
+}
+
+app.get('/api/share', (_req, res) => {
+  res.json({
+    publicUrl: publicBaseUrl(),
+    lanUrls: lanAddresses().map((address) => `http://${address}:${PORT}`),
+  });
+});
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/vendor/three', express.static(path.join(__dirname, 'node_modules', 'three', 'build')));
 
@@ -261,7 +280,7 @@ function createRoom(hostPlayer) {
     endReason: null,
     round: 1,
     lastLoser: null,
-    rules: { mode: 'classic', bonusShot: true },
+    rules: { mode: 'classic', bonusShot: false },
     rematch: new Set(),
     chat: [],
     lastActivity: Date.now(),
@@ -820,6 +839,8 @@ function lanAddresses() {
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Battleship server running on http://localhost:${PORT}`);
+  const publicUrl = publicBaseUrl();
+  if (publicUrl) console.log(`Players anywhere can open: ${publicUrl}`);
   const addresses = lanAddresses();
   if (addresses.length) {
     console.log('Other devices on the same Wi-Fi can open:');
