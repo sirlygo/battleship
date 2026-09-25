@@ -37,6 +37,15 @@ When the server starts, it prints the address other devices can use, for example
 - **macOS:** allow incoming connections for `node` when asked, or under System Settings → Network → Firewall.
 - Make sure the phone is on the same network, not a guest network or mobile data. Some routers block devices from reaching each other ("AP/client isolation").
 
+## Play online with GitHub Codespaces (free, no card)
+
+1. Open <https://codespaces.new/sirlygo/battleship> and click **Create codespace**.
+2. Wait for setup. The game installs and starts on its own.
+3. Open the **Ports** tab, right-click port **3000**, and choose **Port Visibility → Public**.
+4. Copy the forwarded address (`https://…app.github.dev`) and open it on any phone or computer.
+
+The link only works while the codespace is running. Codespaces stop after about 30 minutes of inactivity; restart it from <https://github.com/codespaces>.
+
 ## Deploy online (free)
 
 The repo includes a `render.yaml`, so it can be hosted on [Render](https://render.com) and played from any phone or network:
