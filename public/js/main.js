@@ -323,13 +323,14 @@ fetch('/api/share')
   .catch(() => {});
 
 function shareTarget() {
-  if (share.publicUrl) return { url: share.publicUrl, scope: 'public' };
   const host = location.hostname;
   const local = ['localhost', '127.0.0.1', '::1', '[::1]'].includes(host);
   const privateNet = /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host) || host.endsWith('.local');
+  // An address that already works for the host from the internet is the best one to share.
+  if (!local && !privateNet) return { url: location.origin, scope: 'public' };
+  if (share.publicUrl) return { url: share.publicUrl, scope: 'public' };
   if (local) return share.lanUrl ? { url: share.lanUrl, scope: 'lan' } : { url: location.origin, scope: 'local' };
-  if (privateNet) return { url: location.origin, scope: 'lan' };
-  return { url: location.origin, scope: 'public' };
+  return { url: location.origin, scope: 'lan' };
 }
 
 function inviteLink() {
