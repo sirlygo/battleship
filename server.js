@@ -12,6 +12,7 @@ const games = {
   clue: require('./server/games/clue'),
   risk: require('./server/games/risk'),
   life: require('./server/games/life'),
+  four: require('./server/games/four'),
 };
 
 const app = express();
