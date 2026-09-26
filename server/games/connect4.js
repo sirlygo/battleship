@@ -1,4 +1,4 @@
-// Four in a Row on top of the shared rules in public/shared/four-rules.js.
+// Connect 4 on top of the shared rules in public/shared/four-rules.js.
 
 const crypto = require('crypto');
 const Rules = require('../../public/shared/four-rules.js');
@@ -76,8 +76,8 @@ function afterMove(ctx, seat) {
 }
 
 module.exports = {
-  id: 'four',
-  title: 'Four in a Row',
+  id: 'connect4',
+  title: 'Connect 4',
   minPlayers: 2,
   maxPlayers: 2,
 

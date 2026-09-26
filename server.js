@@ -12,10 +12,10 @@ const games = {
   clue: require('./server/games/clue'),
   risk: require('./server/games/risk'),
   life: require('./server/games/life'),
-  four: require('./server/games/four'),
-  clash: require('./server/games/clash'),
+  connect4: require('./server/games/connect4'),
+  uno: require('./server/games/uno'),
   ludo: require('./server/games/ludo'),
-  tycoon: require('./server/games/tycoon'),
+  monopoly: require('./server/games/monopoly'),
 };
 
 const app = express();

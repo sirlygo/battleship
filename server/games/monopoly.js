@@ -1,4 +1,4 @@
-// Tycoon: a property-trading board game for 2–6 players. Roll round the board,
+// Monopoly: a property-trading board game for 2–6 players. Roll round the board,
 // buy streets, build houses and hotels, trade with friends and bankrupt everyone.
 // Board data lives in public/shared/tycoon-board.js.
 
@@ -195,7 +195,7 @@ function finishWith(ctx, seat, reason) {
   room.meta.wins[name] = (room.meta.wins[name] || 0) + 1;
   room.state.phase = 'over';
   ctx.finish(seat, reason);
-  ctx.system(reason === 'rounds' ? `Time's up! ${name} is the richest tycoon.` : `${name} is the last tycoon standing!`);
+  ctx.system(reason === 'rounds' ? `Time's up! ${name} is the richest player.` : `${name} is the last player standing!`);
 }
 
 // ---------------------------------------------------------------------------
@@ -453,8 +453,8 @@ function rollAndMove(ctx, seat) {
 }
 
 module.exports = {
-  id: 'tycoon',
-  title: 'Tycoon',
+  id: 'monopoly',
+  title: 'Monopoly',
   minPlayers: 2,
   maxPlayers: 6,
   manualStart: true,
@@ -521,7 +521,7 @@ module.exports = {
       eventId: 0,
       log: [],
     };
-    ctx.system(`${names[first]} rolls first. Good luck, tycoons!`);
+    ctx.system(`${names[first]} rolls first. Good luck!`);
     return state;
   },
 

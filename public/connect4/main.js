@@ -379,7 +379,7 @@ function renderGameOver() {
   }
   if (view.overShownRound !== s.round && !view.animating) {
     view.overShownRound = s.round;
-    if (s.winner !== 'draw') bigText(s.winner === 'you' && !s.spectator ? 'FOUR IN A ROW!' : `${nameFor(s.winner === 'you' ? s.myColor : s.enemyColor).toUpperCase()} WINS`, '', s.winner === 'enemy' && !s.spectator ? 'hit' : 'info');
+    if (s.winner !== 'draw') bigText(s.winner === 'you' && !s.spectator ? 'CONNECT 4!' : `${nameFor(s.winner === 'you' ? s.myColor : s.enemyColor).toUpperCase()} WINS`, '', s.winner === 'enemy' && !s.spectator ? 'hit' : 'info');
     setTimeout(() => {
       if (view.snap?.phase !== 'over') return;
       el.gameOver.hidden = false;
@@ -522,8 +522,8 @@ function savePrefs() {
 }
 
 const table = setupTable({
-  game: 'four',
-  title: 'Four in a Row',
+  game: 'connect4',
+  title: 'Connect 4',
   onState,
   onExit() {
     view.snap = null;

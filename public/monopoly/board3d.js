@@ -1,4 +1,4 @@
-// 3D Tycoon board: the printed board on a wooden base, metal game tokens,
+// 3D Monopoly board: the printed board on a wooden base, metal game tokens,
 // little houses and hotels, owner markers, flying coins and a pair of dice.
 
 import * as THREE from 'three';

@@ -1,4 +1,4 @@
-// Card faces for Color Clash, drawn on canvas so the 3D table and the hand
+// Card faces for UNO, drawn on canvas so the 3D table and the hand
 // share exactly the same artwork.
 
 export const COLOR_HEX = { r: '#e8413c', y: '#f5b920', g: '#2fb35a', b: '#2f7fe0', w: '#1d1f2a' };
@@ -200,7 +200,7 @@ function drawBack(ctx) {
   ctx.textBaseline = 'middle';
   ctx.shadowColor = 'rgba(0,0,0,0.7)';
   ctx.shadowBlur = 8;
-  ctx.fillText('CLASH', 0, 4);
+  ctx.fillText('UNO', 0, 4);
   ctx.restore();
 }
 

@@ -1,4 +1,4 @@
-// 3D Four in a Row: a glossy blue rack on a wooden table, rendered with Three.js.
+// 3D Connect 4: a glossy blue rack on a wooden table, rendered with Three.js.
 // main.js keeps the game state; this class mirrors it and reports taps on columns.
 
 import * as THREE from 'three';

@@ -343,7 +343,7 @@ function renderStatus() {
   const turn = seatInfo(s.turn);
   el.status.style.setProperty('--pc', s.phase === 'playing' && turn ? turn.color : 'transparent');
   if (s.phase === 'lobby') {
-    title = 'Gathering tycoons';
+    title = 'Gathering players';
     sub = `${s.players.filter(Boolean).length} of ${s.maxPlayers} seats taken`;
   } else if (s.phase === 'over') {
     title = s.winnerSeat === mySeat() ? 'You win!' : `${nameOf(s.winnerSeat)} wins`;
@@ -495,7 +495,7 @@ function renderGameOver() {
   const w = s.winnerSeat;
   el.goKicker.textContent = `Round ${s.round}`;
   el.goTitle.textContent = w === mySeat() ? 'You win!' : `${nameOf(w)} wins!`;
-  el.goReason.textContent = s.endReason === 'rounds' ? 'Time is up — the richest tycoon takes it.' : 'Everyone else went bankrupt.';
+  el.goReason.textContent = s.endReason === 'rounds' ? 'Time is up — the richest player takes it.' : 'Everyone else went bankrupt.';
   el.goResults.innerHTML = '';
   [...s.seats]
     .sort((a, b) => b.worth - a.worth)
@@ -508,7 +508,7 @@ function renderGameOver() {
   renderRematch();
   if (view.overShownRound !== s.round && !view.animating) {
     view.overShownRound = s.round;
-    bigText(w === mySeat() ? 'YOU WIN!' : `${nameOf(w).toUpperCase()} WINS`, 'Tycoon of the town', w === mySeat() || s.spectator ? 'info' : 'hit');
+    bigText(w === mySeat() ? 'YOU WIN!' : `${nameOf(w).toUpperCase()} WINS`, 'Monopoly champion', w === mySeat() || s.spectator ? 'info' : 'hit');
     setTimeout(() => {
       if (view.snap?.phase !== 'over') return;
       el.gameOver.hidden = false;
@@ -826,8 +826,8 @@ async function rematch() {
 }
 
 const table = setupTable({
-  game: 'tycoon',
-  title: 'Tycoon',
+  game: 'monopoly',
+  title: 'Monopoly',
   onState,
   onExit() {
     view.snap = null;

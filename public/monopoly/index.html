@@ -3,32 +3,32 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#0b1530" />
-    <title>Four in a Row · Game Room</title>
+    <meta name="theme-color" content="#0f1420" />
+    <title>Monopoly · Game Room</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600&family=Fredoka:wght@600;700&display=swap"
     />
     <link rel="stylesheet" href="/shared/ui.css" />
     <link rel="stylesheet" href="/shared/board-game.css" />
-    <link rel="stylesheet" href="/four/four.css" />
+    <link rel="stylesheet" href="/monopoly/tycoon.css" />
     <script type="importmap">
       { "imports": { "three": "/vendor/three/three.module.min.js", "three/addons/": "/vendor/three-addons/" } }
     </script>
     <script src="/socket.io/socket.io.js"></script>
-    <script src="/shared/four-rules.js"></script>
+    <script src="/shared/tycoon-board.js"></script>
   </head>
-  <body class="four">
+  <body class="tycoon">
     <!-- Lobby -->
     <section id="lobby" class="lobby">
       <div class="lobby-card glass">
         <a class="all-games" href="/">← All games</a>
         <div class="brand">
           <span class="kicker">Game Room</span>
-          <h1>Four in a Row</h1>
-          <p>Drop your discs. Line up four. Block your friend.</p>
+          <h1>Monopoly</h1>
+          <p>Buy streets, build hotels, make deals — and bankrupt your friends.</p>
         </div>
         <label class="field">
           <span>Your name</span>
@@ -36,9 +36,9 @@
         </label>
         <button id="hostBtn" class="btn btn-primary btn-lg" type="button">
           Host a game
-          <small>Get a room code to share</small>
+          <small>2–6 players · share the room code</small>
         </button>
-        <div class="divider"><span>or join a friend</span></div>
+        <div class="divider"><span>or join friends</span></div>
         <form id="joinForm" class="join-row" autocomplete="off">
           <input id="codeInput" class="code-input" maxlength="5" placeholder="CODE" spellcheck="false"
             autocapitalize="characters" aria-label="Room code" />
@@ -48,11 +48,11 @@
         <details class="howto">
           <summary>How to play</summary>
           <ol>
-            <li>Take turns dropping a disc into a column. It falls to the lowest open space. Red goes first.</li>
-            <li>Get four of your discs in a row — across, up or diagonally — to win.</li>
-            <li><strong>Pop Out</strong> mode: instead of dropping, you may pop one of your own discs out of the bottom row.</li>
-            <li><strong>Five in a Row</strong> mode: a bigger 9×7 rack, and you need five.</li>
-            <li>Tap a column (or press 1–9). A full rack is a draw.</li>
+            <li>Roll two dice and move. Collect $200 every time you pass <strong>Start</strong>. Doubles roll again — three in a row sends you to Jail.</li>
+            <li>Land on an unowned street, station or utility to buy it. Land on someone else's and pay rent.</li>
+            <li>Own a whole colour set to double its rent, then build houses (up to four) and a hotel for huge rents.</li>
+            <li><strong>Lucky Break</strong> and <strong>Town Hall</strong> cards can help or hurt. Trade with other players to finish your sets.</li>
+            <li>Short on cash? Mortgage property or sell buildings. Run out completely and you're bankrupt. Last player standing wins.</li>
           </ol>
         </details>
       </div>
@@ -88,17 +88,19 @@
         </div>
       </header>
 
-      <main class="tb-layout">
-        <div class="tb-table">
-          <div id="topPlayer" class="tb-player"></div>
-          <div id="boardFrame" class="tb-frame fr-frame">
-            <canvas id="board3d" class="fr-3d" hidden></canvas>
-            <div id="board" class="fr-board"></div>
+      <main class="ty-layout">
+        <div class="ty-main">
+          <div id="playerStrip" class="ty-players"></div>
+          <div id="boardWrap" class="ty-board-wrap">
+            <canvas id="board3d" class="ty-3d" hidden></canvas>
+            <div id="board2d" class="ty-2d" hidden><canvas id="board2dCanvas"></canvas></div>
+            <div id="tip" class="ty-tip" hidden></div>
+            <div id="diceChip" class="ty-dice-chip" hidden></div>
+            <div id="potChip" class="ty-pot-chip" hidden></div>
           </div>
-          <div id="bottomPlayer" class="tb-player"></div>
         </div>
 
-        <aside class="tb-side glass">
+        <aside class="tb-side glass ty-side">
           <div id="status" class="tb-status">
             <div id="statusTitle" class="tb-status-title"></div>
             <div id="statusSub" class="tb-status-sub"></div>
@@ -113,36 +115,86 @@
               <button id="copyCodeBtn" class="btn btn-secondary" type="button">Copy code</button>
               <button id="copyLinkBtn" class="btn btn-primary" type="button">Share invite link</button>
             </div>
-            <div class="waiting-line"><span class="spinner"></span>Waiting for an opponent…</div>
+            <ul id="lobbyPlayers" class="ty-lobby-players"></ul>
+            <div id="tycoonRules" class="ty-rules">
+              <p class="ty-rule-label">Game length</p>
+              <div class="segmented" data-option="length">
+                <button type="button" data-value="classic">Classic<small>Last one standing</small></button>
+                <button type="button" data-value="short">Short<small>20 rounds, richest wins</small></button>
+              </div>
+              <p class="ty-rule-label">Starting cash</p>
+              <div class="segmented" data-option="cash">
+                <button type="button" data-value="1500">$1,500<small>Standard</small></button>
+                <button type="button" data-value="2500">$2,500<small>Rich start</small></button>
+              </div>
+              <p class="ty-rule-label">Rest Stop</p>
+              <div class="segmented" data-option="jackpot">
+                <button type="button" data-value="off">Just a rest<small>Official rules</small></button>
+                <button type="button" data-value="on">Jackpot<small>Taxes pile up there</small></button>
+              </div>
+            </div>
+            <button id="startBtn" class="btn btn-primary btn-lg" type="button">Start game</button>
+            <p id="startNote" class="muted small"></p>
           </div>
 
-          <div id="modeWrap" class="fr-mode-pick">
-            <span class="fr-label">Game mode</span>
-            <div class="segmented" role="group" aria-label="Game mode">
-              <button type="button" data-mode="classic">Classic<small>7×6 · four</small></button>
-              <button type="button" data-mode="popout">Pop Out<small>Pop your discs</small></button>
-              <button type="button" data-mode="five">Five<small>9×7 · five</small></button>
+          <div id="actionBox" class="ty-actions" hidden>
+            <div id="buyCard" class="ty-buy" hidden></div>
+            <div class="ty-action-row">
+              <button id="rollBtn" class="btn btn-primary btn-lg" type="button">🎲 Roll</button>
+              <button id="buyBtn" class="btn btn-primary" type="button" hidden>Buy</button>
+              <button id="passBtn" class="btn btn-secondary" type="button" hidden>Pass</button>
+              <button id="endBtn" class="btn btn-primary" type="button" hidden>End turn</button>
+              <button id="fineBtn" class="btn btn-secondary" type="button" hidden>Pay $50</button>
+              <button id="cardBtn" class="btn btn-secondary" type="button" hidden>Use jail card</button>
+            </div>
+            <div class="ty-action-row small">
+              <button id="tradeBtn" class="btn btn-ghost" type="button">🤝 Trade</button>
+              <button id="giveUpBtn" class="btn btn-ghost" type="button">Give up</button>
             </div>
           </div>
 
-          <div id="actionWrap" class="fr-action-pick" hidden>
-            <span class="fr-label">Your move</span>
-            <div class="segmented" role="group" aria-label="Move type">
-              <button type="button" data-action="drop" class="active">Drop<small>Add a disc on top</small></button>
-              <button type="button" data-action="pop">Pop<small>Remove your bottom disc</small></button>
-            </div>
+          <div id="offerBox" class="ty-offer" hidden></div>
+
+          <div id="myBox" class="ty-my" hidden>
+            <h3 class="ty-h">Your property <span id="myWorth" class="muted small"></span></h3>
+            <div id="myProps" class="ty-my-props"></div>
           </div>
 
-          <div id="gameActions" class="row tb-actions" hidden>
-            <button id="resignBtn" class="btn btn-ghost" type="button">Resign</button>
-          </div>
-
-          <div class="tb-moves">
-            <h3>Moves</h3>
-            <ol id="moveList" class="fr-move-list"></ol>
+          <div id="logBox" class="ty-log-box" hidden>
+            <h3 class="ty-h">Town news</h3>
+            <ol id="log" class="ty-log"></ol>
           </div>
         </aside>
       </main>
+
+      <!-- Card drawn -->
+      <div id="cardPop" class="ty-card-pop" hidden>
+        <div id="cardFace" class="ty-card-face"></div>
+      </div>
+
+      <!-- Trade -->
+      <div id="tradeModal" class="modal" hidden>
+        <div class="modal-card glass ty-trade-card">
+          <h2>Make a deal</h2>
+          <label class="field"><span>Trade with</span><select id="tradeWith"></select></label>
+          <div class="ty-trade-cols">
+            <div>
+              <h4>You give</h4>
+              <div id="tradeGive" class="ty-trade-list"></div>
+              <label class="field"><span>Cash</span><input id="tradeGiveCash" type="number" min="0" step="10" value="0" /></label>
+            </div>
+            <div>
+              <h4>You get</h4>
+              <div id="tradeGet" class="ty-trade-list"></div>
+              <label class="field"><span>Cash</span><input id="tradeGetCash" type="number" min="0" step="10" value="0" /></label>
+            </div>
+          </div>
+          <div class="row">
+            <button id="tradeSend" class="btn btn-primary" type="button">Send offer</button>
+            <button id="tradeCancel" class="btn btn-ghost" type="button">Cancel</button>
+          </div>
+        </div>
+      </div>
 
       <!-- Chat -->
       <aside id="chat" class="chat glass" hidden>
@@ -165,8 +217,9 @@
           <p id="goKicker" class="kicker"></p>
           <h2 id="goTitle"></h2>
           <p id="goReason" class="muted"></p>
+          <div id="goResults" class="ty-results"></div>
           <div class="row">
-            <button id="rematchBtn" class="btn btn-primary btn-lg" type="button">Rematch</button>
+            <button id="rematchBtn" class="btn btn-primary btn-lg" type="button">Play again</button>
           </div>
           <p id="rematchNote" class="rematch-note"></p>
           <div class="row">
@@ -194,13 +247,13 @@
         <section class="settings-section">
           <h3>Board</h3>
           <div class="segmented" role="group" aria-label="Board view">
-            <button type="button" data-view="3d">3D<small>Plastic rack</small></button>
+            <button type="button" data-view="3d">3D<small>Tokens and houses</small></button>
             <button type="button" data-view="2d">2D<small>Flat and fast</small></button>
           </div>
           <label class="toggle">
-            <input id="hintsToggle" type="checkbox" checked />
+            <input id="followToggle" type="checkbox" checked />
             <span class="toggle-track"><span class="toggle-thumb"></span></span>
-            <span>Warn me about threats</span>
+            <span>Camera follows the action</span>
           </label>
         </section>
       </div>
@@ -209,6 +262,6 @@
     <div id="bigText" class="big-text" aria-live="assertive"></div>
     <div id="netStatus" class="net" hidden><span class="spinner"></span>Connection lost — reconnecting…</div>
 
-    <script type="module" src="/four/main.js"></script>
+    <script type="module" src="/monopoly/main.js"></script>
   </body>
 </html>

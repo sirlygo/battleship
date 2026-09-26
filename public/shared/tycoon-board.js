@@ -1,4 +1,4 @@
-// Tycoon board, shared by the server and the browser: 40 spaces round a square,
+// Monopoly board, shared by the server and the browser: 40 spaces round a square,
 // starting at Start in the bottom-right corner and running clockwise.
 
 (function (root, factory) {

@@ -672,7 +672,7 @@ body.hub {
   }
 }
 
-/* Four in a Row */
+/* Connect 4 */
 .fr-drop {
   animation: frDrop 2.6s cubic-bezier(0.55, 0, 1, 0.45) infinite;
 }
@@ -695,7 +695,7 @@ body.hub {
   animation: gpPulse 1.2s ease-in-out infinite;
 }
 
-/* Color Clash */
+/* UNO */
 .cc-lift {
   animation: ccLift 2.4s ease-in-out infinite;
 }
@@ -741,7 +741,7 @@ body.hub {
   animation: twinkle 1.4s ease-in-out infinite;
 }
 
-/* Tycoon */
+/* Monopoly */
 .ty-pop {
   animation: tyPop 3s ease-in-out infinite;
 }

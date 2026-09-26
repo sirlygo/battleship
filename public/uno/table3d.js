@@ -1,4 +1,4 @@
-// 3D card table for Color Clash: felt, the draw deck and discard pile, a spinning
+// 3D card table for UNO: felt, the draw deck and discard pile, a spinning
 // direction ring and every opponent's fanned hand. Your own hand lives in the page.
 
 import * as THREE from 'three';

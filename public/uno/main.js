@@ -314,7 +314,7 @@ function renderGameOver() {
   renderRematch();
   if (view.overShownRound !== s.round && !view.animating) {
     view.overShownRound = s.round;
-    bigText(w === mySeat() ? 'YOU WIN!' : `${nameOf(w).toUpperCase()} WINS`, 'Last card played', w === mySeat() || s.spectator ? 'info' : 'hit');
+    bigText(w === mySeat() ? 'YOU WIN!' : `${nameOf(w).toUpperCase()} WINS`, 'Out of cards', w === mySeat() || s.spectator ? 'info' : 'hit');
     setTimeout(() => {
       if (view.snap?.phase !== 'over') return;
       el.gameOver.hidden = false;
@@ -415,7 +415,7 @@ async function playEvent(e) {
       await wait(700);
       break;
     case 'call':
-      bigText('LAST CARD!', nameOf(e.seat), 'info');
+      bigText('UNO!', nameOf(e.seat), 'info');
       sound.check();
       break;
     case 'caught':
@@ -573,8 +573,8 @@ async function rematch() {
 }
 
 const table = setupTable({
-  game: 'clash',
-  title: 'Color Clash',
+  game: 'uno',
+  title: 'UNO',
   onState,
   onExit() {
     view.snap = null;

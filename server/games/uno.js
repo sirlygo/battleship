@@ -1,6 +1,6 @@
-// Color Clash: a colour-matching card game for 2–8 players.
+// UNO: a colour-matching card game for 2–8 players.
 // Match the top card by colour or symbol, play action cards on your friends,
-// and be the first to empty your hand. Call "Last card!" when you're down to one.
+// and be the first to empty your hand. Call "UNO!" when you're down to one.
 
 const crypto = require('crypto');
 
@@ -255,8 +255,8 @@ function applyCard(ctx, seat, card, payload) {
 }
 
 module.exports = {
-  id: 'clash',
-  title: 'Color Clash',
+  id: 'uno',
+  title: 'UNO',
   minPlayers: 2,
   maxPlayers: 8,
   manualStart: true,
@@ -427,7 +427,7 @@ module.exports = {
       return { ok: true };
     },
 
-    // Say "Last card!" — before playing your second-to-last card, or right after.
+    // Say "UNO!" — before playing your second-to-last card, or right after.
     'clash:call'(ctx, seat) {
       const { room } = ctx;
       const state = room.state;
@@ -436,7 +436,7 @@ module.exports = {
       if (n > 2 || (n === 2 && state.turn !== seat)) return { error: 'You can call it when you are about to have one card left.' };
       state.called[seat] = true;
       if (state.catchable === seat) state.catchable = null;
-      log(state, 'calls “Last card!”', seat);
+      log(state, 'calls “UNO!”', seat);
       event(state, { type: 'call', seat });
       return { ok: true };
     },

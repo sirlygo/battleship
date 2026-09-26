@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#0f1420" />
-    <title>Tycoon · Game Room</title>
+    <meta name="theme-color" content="#120c26" />
+    <title>UNO · Game Room</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -13,22 +13,21 @@
     />
     <link rel="stylesheet" href="/shared/ui.css" />
     <link rel="stylesheet" href="/shared/board-game.css" />
-    <link rel="stylesheet" href="/tycoon/tycoon.css" />
+    <link rel="stylesheet" href="/uno/clash.css" />
     <script type="importmap">
       { "imports": { "three": "/vendor/three/three.module.min.js", "three/addons/": "/vendor/three-addons/" } }
     </script>
     <script src="/socket.io/socket.io.js"></script>
-    <script src="/shared/tycoon-board.js"></script>
   </head>
-  <body class="tycoon">
+  <body class="clash">
     <!-- Lobby -->
     <section id="lobby" class="lobby">
       <div class="lobby-card glass">
         <a class="all-games" href="/">← All games</a>
         <div class="brand">
           <span class="kicker">Game Room</span>
-          <h1>Tycoon</h1>
-          <p>Buy streets, build hotels, make deals — and bankrupt your friends.</p>
+          <h1>UNO</h1>
+          <p>Match colours, play action cards on your friends, and empty your hand first.</p>
         </div>
         <label class="field">
           <span>Your name</span>
@@ -36,7 +35,7 @@
         </label>
         <button id="hostBtn" class="btn btn-primary btn-lg" type="button">
           Host a game
-          <small>2–6 players · share the room code</small>
+          <small>2–8 players · share the room code</small>
         </button>
         <div class="divider"><span>or join friends</span></div>
         <form id="joinForm" class="join-row" autocomplete="off">
@@ -48,11 +47,11 @@
         <details class="howto">
           <summary>How to play</summary>
           <ol>
-            <li>Roll two dice and move. Collect $200 every time you pass <strong>Start</strong>. Doubles roll again — three in a row sends you to Jail.</li>
-            <li>Land on an unowned street, station or utility to buy it. Land on someone else's and pay rent.</li>
-            <li>Own a whole colour set to double its rent, then build houses (up to four) and a hotel for huge rents.</li>
-            <li><strong>Lucky Break</strong> and <strong>Town Hall</strong> cards can help or hurt. Trade with other players to finish your sets.</li>
-            <li>Short on cash? Mortgage property or sell buildings. Run out completely and you're bankrupt. Last tycoon standing wins.</li>
+            <li>Everyone gets 7 cards. On your turn, play a card that matches the top card's <strong>colour</strong> or <strong>number/symbol</strong>.</li>
+            <li>Can't play? Draw a card. If it fits you may play it straight away, or pass.</li>
+            <li><strong>Skip</strong> skips the next player, <strong>Reverse</strong> flips the direction, <strong>+2</strong> makes the next player draw two and miss a turn.</li>
+            <li><strong>Wild</strong> lets you pick the colour. <strong>Wild +4</strong> does too, and the next player draws four.</li>
+            <li>Down to your last card? Tap <strong>UNO!</strong> — if someone catches you first, you draw two.</li>
           </ol>
         </details>
       </div>
@@ -88,19 +87,30 @@
         </div>
       </header>
 
-      <main class="ty-layout">
-        <div class="ty-main">
-          <div id="playerStrip" class="ty-players"></div>
-          <div id="boardWrap" class="ty-board-wrap">
-            <canvas id="board3d" class="ty-3d" hidden></canvas>
-            <div id="board2d" class="ty-2d" hidden><canvas id="board2dCanvas"></canvas></div>
-            <div id="tip" class="ty-tip" hidden></div>
-            <div id="diceChip" class="ty-dice-chip" hidden></div>
-            <div id="potChip" class="ty-pot-chip" hidden></div>
+      <main class="cc-layout">
+        <div class="cc-main">
+          <div id="playerStrip" class="cc-players"></div>
+          <div id="tableWrap" class="cc-table-wrap">
+            <canvas id="table3d" class="cc-3d" hidden></canvas>
+            <div id="table2d" class="cc-2d" hidden>
+              <button id="deck2d" class="cc-card-img cc-deck2d" type="button" aria-label="Draw a card"></button>
+              <div id="pile2d" class="cc-card-img cc-pile2d"></div>
+              <div id="dir2d" class="cc-dir2d"></div>
+            </div>
+            <div id="colorChip" class="cc-color-chip" hidden></div>
+            <button id="catchBtn" class="btn cc-catch" type="button" hidden></button>
+          </div>
+          <div id="handBar" class="cc-hand-bar" hidden>
+            <div class="cc-hand-actions">
+              <button id="drawBtn" class="btn btn-secondary" type="button">Draw</button>
+              <button id="passBtn" class="btn btn-ghost" type="button" hidden>Keep &amp; pass</button>
+              <button id="callBtn" class="btn cc-call" type="button" hidden>UNO!</button>
+            </div>
+            <div id="hand" class="cc-hand"></div>
           </div>
         </div>
 
-        <aside class="tb-side glass ty-side">
+        <aside class="tb-side glass cc-side">
           <div id="status" class="tb-status">
             <div id="statusTitle" class="tb-status-title"></div>
             <div id="statusSub" class="tb-status-sub"></div>
@@ -115,84 +125,51 @@
               <button id="copyCodeBtn" class="btn btn-secondary" type="button">Copy code</button>
               <button id="copyLinkBtn" class="btn btn-primary" type="button">Share invite link</button>
             </div>
-            <ul id="lobbyPlayers" class="ty-lobby-players"></ul>
-            <div id="tycoonRules" class="ty-rules">
-              <p class="ty-rule-label">Game length</p>
-              <div class="segmented" data-option="length">
-                <button type="button" data-value="classic">Classic<small>Last one standing</small></button>
-                <button type="button" data-value="short">Short<small>20 rounds, richest wins</small></button>
+            <ul id="lobbyPlayers" class="cc-lobby-players"></ul>
+            <div id="clashRules" class="cc-rules">
+              <p class="cc-rule-label">Game mode</p>
+              <div class="segmented" data-option="mode">
+                <button type="button" data-value="classic">Classic<small>The usual rules</small></button>
+                <button type="button" data-value="stack">Stacking<small>Pile up +2s and +4s</small></button>
+                <button type="button" data-value="sevenzero">Seven-Zero<small>7 swaps, 0 rotates</small></button>
               </div>
-              <p class="ty-rule-label">Starting cash</p>
-              <div class="segmented" data-option="cash">
-                <button type="button" data-value="1500">$1,500<small>Standard</small></button>
-                <button type="button" data-value="2500">$2,500<small>Rich start</small></button>
-              </div>
-              <p class="ty-rule-label">Rest Stop</p>
-              <div class="segmented" data-option="jackpot">
-                <button type="button" data-value="off">Just a rest<small>Official rules</small></button>
-                <button type="button" data-value="on">Jackpot<small>Taxes pile up there</small></button>
+              <p class="cc-rule-label">When you can't play</p>
+              <div class="segmented" data-option="draw">
+                <button type="button" data-value="one">Draw one<small>Then play it or pass</small></button>
+                <button type="button" data-value="match">Draw till it fits<small>Keep drawing</small></button>
               </div>
             </div>
             <button id="startBtn" class="btn btn-primary btn-lg" type="button">Start game</button>
             <p id="startNote" class="muted small"></p>
           </div>
 
-          <div id="actionBox" class="ty-actions" hidden>
-            <div id="buyCard" class="ty-buy" hidden></div>
-            <div class="ty-action-row">
-              <button id="rollBtn" class="btn btn-primary btn-lg" type="button">🎲 Roll</button>
-              <button id="buyBtn" class="btn btn-primary" type="button" hidden>Buy</button>
-              <button id="passBtn" class="btn btn-secondary" type="button" hidden>Pass</button>
-              <button id="endBtn" class="btn btn-primary" type="button" hidden>End turn</button>
-              <button id="fineBtn" class="btn btn-secondary" type="button" hidden>Pay $50</button>
-              <button id="cardBtn" class="btn btn-secondary" type="button" hidden>Use jail card</button>
-            </div>
-            <div class="ty-action-row small">
-              <button id="tradeBtn" class="btn btn-ghost" type="button">🤝 Trade</button>
-              <button id="giveUpBtn" class="btn btn-ghost" type="button">Give up</button>
-            </div>
-          </div>
-
-          <div id="offerBox" class="ty-offer" hidden></div>
-
-          <div id="myBox" class="ty-my" hidden>
-            <h3 class="ty-h">Your property <span id="myWorth" class="muted small"></span></h3>
-            <div id="myProps" class="ty-my-props"></div>
-          </div>
-
-          <div id="logBox" class="ty-log-box" hidden>
-            <h3 class="ty-h">Town news</h3>
-            <ol id="log" class="ty-log"></ol>
+          <div id="logBox" class="cc-log-box" hidden>
+            <h3 class="cc-h">Table talk</h3>
+            <ol id="log" class="cc-log"></ol>
           </div>
         </aside>
       </main>
 
-      <!-- Card drawn -->
-      <div id="cardPop" class="ty-card-pop" hidden>
-        <div id="cardFace" class="ty-card-face"></div>
+      <!-- Wild colour picker -->
+      <div id="colorPicker" class="modal" hidden>
+        <div class="modal-card glass cc-picker">
+          <h2>Pick a colour</h2>
+          <div class="cc-colors">
+            <button type="button" data-color="r" class="cc-swatch r">Red</button>
+            <button type="button" data-color="y" class="cc-swatch y">Yellow</button>
+            <button type="button" data-color="g" class="cc-swatch g">Green</button>
+            <button type="button" data-color="b" class="cc-swatch b">Blue</button>
+          </div>
+          <button id="colorCancel" class="btn btn-ghost" type="button">Cancel</button>
+        </div>
       </div>
 
-      <!-- Trade -->
-      <div id="tradeModal" class="modal" hidden>
-        <div class="modal-card glass ty-trade-card">
-          <h2>Make a deal</h2>
-          <label class="field"><span>Trade with</span><select id="tradeWith"></select></label>
-          <div class="ty-trade-cols">
-            <div>
-              <h4>You give</h4>
-              <div id="tradeGive" class="ty-trade-list"></div>
-              <label class="field"><span>Cash</span><input id="tradeGiveCash" type="number" min="0" step="10" value="0" /></label>
-            </div>
-            <div>
-              <h4>You get</h4>
-              <div id="tradeGet" class="ty-trade-list"></div>
-              <label class="field"><span>Cash</span><input id="tradeGetCash" type="number" min="0" step="10" value="0" /></label>
-            </div>
-          </div>
-          <div class="row">
-            <button id="tradeSend" class="btn btn-primary" type="button">Send offer</button>
-            <button id="tradeCancel" class="btn btn-ghost" type="button">Cancel</button>
-          </div>
+      <!-- Seven: pick who to swap with -->
+      <div id="targetPicker" class="modal" hidden>
+        <div class="modal-card glass cc-picker">
+          <h2>Swap hands with…</h2>
+          <div id="targets" class="cc-targets"></div>
+          <button id="targetCancel" class="btn btn-ghost" type="button">Cancel</button>
         </div>
       </div>
 
@@ -217,13 +194,13 @@
           <p id="goKicker" class="kicker"></p>
           <h2 id="goTitle"></h2>
           <p id="goReason" class="muted"></p>
-          <div id="goResults" class="ty-results"></div>
+          <div id="goResults" class="cc-results"></div>
           <div class="row">
             <button id="rematchBtn" class="btn btn-primary btn-lg" type="button">Play again</button>
           </div>
           <p id="rematchNote" class="rematch-note"></p>
           <div class="row">
-            <button id="goViewBtn" class="btn btn-ghost" type="button">View board</button>
+            <button id="goViewBtn" class="btn btn-ghost" type="button">View table</button>
             <button id="goLeaveBtn" class="btn btn-ghost" type="button">Leave room</button>
           </div>
         </div>
@@ -247,13 +224,13 @@
         <section class="settings-section">
           <h3>Board</h3>
           <div class="segmented" role="group" aria-label="Board view">
-            <button type="button" data-view="3d">3D<small>Tokens and houses</small></button>
+            <button type="button" data-view="3d">3D<small>Card table</small></button>
             <button type="button" data-view="2d">2D<small>Flat and fast</small></button>
           </div>
           <label class="toggle">
-            <input id="followToggle" type="checkbox" checked />
+            <input id="sortToggle" type="checkbox" checked />
             <span class="toggle-track"><span class="toggle-thumb"></span></span>
-            <span>Camera follows the action</span>
+            <span>Sort my hand by colour</span>
           </label>
         </section>
       </div>
@@ -262,6 +239,6 @@
     <div id="bigText" class="big-text" aria-live="assertive"></div>
     <div id="netStatus" class="net" hidden><span class="spinner"></span>Connection lost — reconnecting…</div>
 
-    <script type="module" src="/tycoon/main.js"></script>
+    <script type="module" src="/uno/main.js"></script>
   </body>
 </html>

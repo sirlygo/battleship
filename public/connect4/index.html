@@ -3,31 +3,32 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#120c26" />
-    <title>Color Clash · Game Room</title>
+    <meta name="theme-color" content="#0b1530" />
+    <title>Connect 4 · Game Room</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600&family=Fredoka:wght@600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600&display=swap"
     />
     <link rel="stylesheet" href="/shared/ui.css" />
     <link rel="stylesheet" href="/shared/board-game.css" />
-    <link rel="stylesheet" href="/clash/clash.css" />
+    <link rel="stylesheet" href="/connect4/four.css" />
     <script type="importmap">
       { "imports": { "three": "/vendor/three/three.module.min.js", "three/addons/": "/vendor/three-addons/" } }
     </script>
     <script src="/socket.io/socket.io.js"></script>
+    <script src="/shared/four-rules.js"></script>
   </head>
-  <body class="clash">
+  <body class="four">
     <!-- Lobby -->
     <section id="lobby" class="lobby">
       <div class="lobby-card glass">
         <a class="all-games" href="/">← All games</a>
         <div class="brand">
           <span class="kicker">Game Room</span>
-          <h1>Color Clash</h1>
-          <p>Match colours, play action cards on your friends, and empty your hand first.</p>
+          <h1>Connect 4</h1>
+          <p>Drop your discs. Line up four. Block your friend.</p>
         </div>
         <label class="field">
           <span>Your name</span>
@@ -35,9 +36,9 @@
         </label>
         <button id="hostBtn" class="btn btn-primary btn-lg" type="button">
           Host a game
-          <small>2–8 players · share the room code</small>
+          <small>Get a room code to share</small>
         </button>
-        <div class="divider"><span>or join friends</span></div>
+        <div class="divider"><span>or join a friend</span></div>
         <form id="joinForm" class="join-row" autocomplete="off">
           <input id="codeInput" class="code-input" maxlength="5" placeholder="CODE" spellcheck="false"
             autocapitalize="characters" aria-label="Room code" />
@@ -47,11 +48,11 @@
         <details class="howto">
           <summary>How to play</summary>
           <ol>
-            <li>Everyone gets 7 cards. On your turn, play a card that matches the top card's <strong>colour</strong> or <strong>number/symbol</strong>.</li>
-            <li>Can't play? Draw a card. If it fits you may play it straight away, or pass.</li>
-            <li><strong>Skip</strong> skips the next player, <strong>Reverse</strong> flips the direction, <strong>+2</strong> makes the next player draw two and miss a turn.</li>
-            <li><strong>Wild</strong> lets you pick the colour. <strong>Wild +4</strong> does too, and the next player draws four.</li>
-            <li>Down to your last card? Tap <strong>Last card!</strong> — if someone catches you first, you draw two.</li>
+            <li>Take turns dropping a disc into a column. It falls to the lowest open space. Red goes first.</li>
+            <li>Get four of your discs in a row — across, up or diagonally — to win.</li>
+            <li><strong>Pop Out</strong> mode: instead of dropping, you may pop one of your own discs out of the bottom row.</li>
+            <li><strong>Five in a Row</strong> mode: a bigger 9×7 rack, and you need five.</li>
+            <li>Tap a column (or press 1–9). A full rack is a draw.</li>
           </ol>
         </details>
       </div>
@@ -87,30 +88,17 @@
         </div>
       </header>
 
-      <main class="cc-layout">
-        <div class="cc-main">
-          <div id="playerStrip" class="cc-players"></div>
-          <div id="tableWrap" class="cc-table-wrap">
-            <canvas id="table3d" class="cc-3d" hidden></canvas>
-            <div id="table2d" class="cc-2d" hidden>
-              <button id="deck2d" class="cc-card-img cc-deck2d" type="button" aria-label="Draw a card"></button>
-              <div id="pile2d" class="cc-card-img cc-pile2d"></div>
-              <div id="dir2d" class="cc-dir2d"></div>
-            </div>
-            <div id="colorChip" class="cc-color-chip" hidden></div>
-            <button id="catchBtn" class="btn cc-catch" type="button" hidden></button>
+      <main class="tb-layout">
+        <div class="tb-table">
+          <div id="topPlayer" class="tb-player"></div>
+          <div id="boardFrame" class="tb-frame fr-frame">
+            <canvas id="board3d" class="fr-3d" hidden></canvas>
+            <div id="board" class="fr-board"></div>
           </div>
-          <div id="handBar" class="cc-hand-bar" hidden>
-            <div class="cc-hand-actions">
-              <button id="drawBtn" class="btn btn-secondary" type="button">Draw</button>
-              <button id="passBtn" class="btn btn-ghost" type="button" hidden>Keep &amp; pass</button>
-              <button id="callBtn" class="btn cc-call" type="button" hidden>Last card!</button>
-            </div>
-            <div id="hand" class="cc-hand"></div>
-          </div>
+          <div id="bottomPlayer" class="tb-player"></div>
         </div>
 
-        <aside class="tb-side glass cc-side">
+        <aside class="tb-side glass">
           <div id="status" class="tb-status">
             <div id="statusTitle" class="tb-status-title"></div>
             <div id="statusSub" class="tb-status-sub"></div>
@@ -125,53 +113,36 @@
               <button id="copyCodeBtn" class="btn btn-secondary" type="button">Copy code</button>
               <button id="copyLinkBtn" class="btn btn-primary" type="button">Share invite link</button>
             </div>
-            <ul id="lobbyPlayers" class="cc-lobby-players"></ul>
-            <div id="clashRules" class="cc-rules">
-              <p class="cc-rule-label">Game mode</p>
-              <div class="segmented" data-option="mode">
-                <button type="button" data-value="classic">Classic<small>The usual rules</small></button>
-                <button type="button" data-value="stack">Stacking<small>Pile up +2s and +4s</small></button>
-                <button type="button" data-value="sevenzero">Seven-Zero<small>7 swaps, 0 rotates</small></button>
-              </div>
-              <p class="cc-rule-label">When you can't play</p>
-              <div class="segmented" data-option="draw">
-                <button type="button" data-value="one">Draw one<small>Then play it or pass</small></button>
-                <button type="button" data-value="match">Draw till it fits<small>Keep drawing</small></button>
-              </div>
-            </div>
-            <button id="startBtn" class="btn btn-primary btn-lg" type="button">Start game</button>
-            <p id="startNote" class="muted small"></p>
+            <div class="waiting-line"><span class="spinner"></span>Waiting for an opponent…</div>
           </div>
 
-          <div id="logBox" class="cc-log-box" hidden>
-            <h3 class="cc-h">Table talk</h3>
-            <ol id="log" class="cc-log"></ol>
+          <div id="modeWrap" class="fr-mode-pick">
+            <span class="fr-label">Game mode</span>
+            <div class="segmented" role="group" aria-label="Game mode">
+              <button type="button" data-mode="classic">Classic<small>7×6 · four</small></button>
+              <button type="button" data-mode="popout">Pop Out<small>Pop your discs</small></button>
+              <button type="button" data-mode="five">Five<small>9×7 · five</small></button>
+            </div>
+          </div>
+
+          <div id="actionWrap" class="fr-action-pick" hidden>
+            <span class="fr-label">Your move</span>
+            <div class="segmented" role="group" aria-label="Move type">
+              <button type="button" data-action="drop" class="active">Drop<small>Add a disc on top</small></button>
+              <button type="button" data-action="pop">Pop<small>Remove your bottom disc</small></button>
+            </div>
+          </div>
+
+          <div id="gameActions" class="row tb-actions" hidden>
+            <button id="resignBtn" class="btn btn-ghost" type="button">Resign</button>
+          </div>
+
+          <div class="tb-moves">
+            <h3>Moves</h3>
+            <ol id="moveList" class="fr-move-list"></ol>
           </div>
         </aside>
       </main>
-
-      <!-- Wild colour picker -->
-      <div id="colorPicker" class="modal" hidden>
-        <div class="modal-card glass cc-picker">
-          <h2>Pick a colour</h2>
-          <div class="cc-colors">
-            <button type="button" data-color="r" class="cc-swatch r">Red</button>
-            <button type="button" data-color="y" class="cc-swatch y">Yellow</button>
-            <button type="button" data-color="g" class="cc-swatch g">Green</button>
-            <button type="button" data-color="b" class="cc-swatch b">Blue</button>
-          </div>
-          <button id="colorCancel" class="btn btn-ghost" type="button">Cancel</button>
-        </div>
-      </div>
-
-      <!-- Seven: pick who to swap with -->
-      <div id="targetPicker" class="modal" hidden>
-        <div class="modal-card glass cc-picker">
-          <h2>Swap hands with…</h2>
-          <div id="targets" class="cc-targets"></div>
-          <button id="targetCancel" class="btn btn-ghost" type="button">Cancel</button>
-        </div>
-      </div>
 
       <!-- Chat -->
       <aside id="chat" class="chat glass" hidden>
@@ -194,13 +165,12 @@
           <p id="goKicker" class="kicker"></p>
           <h2 id="goTitle"></h2>
           <p id="goReason" class="muted"></p>
-          <div id="goResults" class="cc-results"></div>
           <div class="row">
-            <button id="rematchBtn" class="btn btn-primary btn-lg" type="button">Play again</button>
+            <button id="rematchBtn" class="btn btn-primary btn-lg" type="button">Rematch</button>
           </div>
           <p id="rematchNote" class="rematch-note"></p>
           <div class="row">
-            <button id="goViewBtn" class="btn btn-ghost" type="button">View table</button>
+            <button id="goViewBtn" class="btn btn-ghost" type="button">View board</button>
             <button id="goLeaveBtn" class="btn btn-ghost" type="button">Leave room</button>
           </div>
         </div>
@@ -224,13 +194,13 @@
         <section class="settings-section">
           <h3>Board</h3>
           <div class="segmented" role="group" aria-label="Board view">
-            <button type="button" data-view="3d">3D<small>Card table</small></button>
+            <button type="button" data-view="3d">3D<small>Plastic rack</small></button>
             <button type="button" data-view="2d">2D<small>Flat and fast</small></button>
           </div>
           <label class="toggle">
-            <input id="sortToggle" type="checkbox" checked />
+            <input id="hintsToggle" type="checkbox" checked />
             <span class="toggle-track"><span class="toggle-thumb"></span></span>
-            <span>Sort my hand by colour</span>
+            <span>Warn me about threats</span>
           </label>
         </section>
       </div>
@@ -239,6 +209,6 @@
     <div id="bigText" class="big-text" aria-live="assertive"></div>
     <div id="netStatus" class="net" hidden><span class="spinner"></span>Connection lost — reconnecting…</div>
 
-    <script type="module" src="/clash/main.js"></script>
+    <script type="module" src="/connect4/main.js"></script>
   </body>
 </html>

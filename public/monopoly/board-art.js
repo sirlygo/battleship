@@ -1,4 +1,4 @@
-// Tycoon board artwork, drawn on a canvas so the 3D board and the flat 2D view match.
+// Monopoly board artwork, drawn on a canvas so the 3D board and the flat 2D view match.
 // Board units: corners are 1.6 wide, other spaces 1 wide, so a side is 12.2 units.
 
 const B = window.TycoonBoard;
@@ -197,7 +197,7 @@ export function drawBoard(ctx, size) {
   ctx.font = `900 ${Math.round(u * 1.1)}px "Chakra Petch", "Arial Black", sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('TYCOON', 0, u * 0.06);
+  ctx.fillText('MONOPOLY', 0, u * 0.06);
   // Card piles.
   const pile = (x, y, label, color, icon) => {
     ctx.save();

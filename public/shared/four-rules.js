@@ -1,4 +1,4 @@
-// Four in a Row rules, shared by the server and the browser.
+// Connect 4 rules, shared by the server and the browser.
 //
 // The board is a string of COLS * ROWS characters, row by row from the top (row 0):
 //   '.' empty   'r' red disc   'y' yellow disc
