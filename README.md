@@ -8,7 +8,7 @@ Real-time board games to play with friends in the browser: no accounts, just sha
 | **Checkers**: forced captures, multi-jumps, kings, draw offers | 2 | Playable |
 | **Chess**: 3D or 2D board, full rules, drag-and-drop, optional clocks | 2 | Playable |
 | **Clue**: 3D or 2D mansion board, secret passages, private card showing, auto-filling notes | 2–6 | Playable |
-| **Risk**: world map, dice battles with blitz, cards, continent bonuses | 2–6 | Playable |
+| **Risk**: 3D or 2D world map, dice battles with blitz, cards, continent bonuses | 2–6 | Playable |
 | The Game of Life | 2–6 | Coming soon |
 
 ## Checkers
@@ -31,6 +31,7 @@ Real-time board games to play with friends in the browser: no accounts, just sha
 
 ## Risk
 
+- **3D board** (default): raised territories on a wooden tabletop ocean, with small armies of infantry, cavalry (5) and cannons (10) in each owner's colour, plus a count badge. Territories lift when selected, targets glow, an arc marks the attack, and conquered land flashes into its new colour. Scroll or pinch to zoom, drag to pan, and double-click to reset. Switch to the flat **2D** map in Settings.
 - The host picks the rules in the lobby: place starting armies yourself or automatically, rising (4, 6, 8, 10, 12, 15, +5) or fixed card values, and fortifying along any chain of your territories or only next door. Then they start the game with 2–6 players.
 - The 42 territories are dealt out. Everyone places their starting armies at the same time, then turns begin.
 - **Reinforce:** you get 1 army per 3 territories (at least 3), plus continent bonuses. Tap territories to stage armies (right-click or long-press takes one back), or use Auto-place, then confirm. Trade three cards (three of a kind, one of each, or any with a wild) for more; with 5 or more cards you must trade. A traded card showing a territory you hold adds 2 armies there.

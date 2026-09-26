@@ -1,5 +1,6 @@
 import { store } from '../shared/room-client.js';
 import { setupTable, bigText, toast, sound } from '../shared/table-ui.js';
+import { RiskBoard3D } from './board3d.js';
 
 const MAP = window.RiskMap;
 const T = MAP.territories;
@@ -12,6 +13,8 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const el = {
   map: $('map'),
+  canvas3d: $('board3d'),
+  viewButtons: [...document.querySelectorAll('[data-view]')],
   mapWrap: $('mapWrap'),
   playerStrip: $('playerStrip'),
   battle: $('battle'),
@@ -59,13 +62,15 @@ const el = {
 };
 
 const prefs = (() => {
-  const defaults = { names: true };
+  const defaults = { names: true, view: '3d' };
   try {
     return { ...defaults, ...JSON.parse(store('local', 'risk:prefs') || '{}') };
   } catch {
     return defaults;
   }
 })();
+
+let board3d = null;
 
 const view = {
   snap: null,
@@ -244,6 +249,7 @@ function renderMap() {
   const me = mySeat();
   const selectable = selectableSet();
   const targets = targetSet();
+  const list3d = [];
   T.forEach((t) => {
     const n = nodes[t.id];
     const owner = s.owner[t.id];
@@ -254,7 +260,8 @@ function renderMap() {
     n.path.classList.toggle('target', targets.has(t.id));
     n.path.classList.toggle('selected', view.selected === t.id);
     n.path.classList.toggle('targeted', view.target === t.id);
-    n.path.classList.toggle('dim', Boolean((view.selected || placing()) && selectable.size) && !selectable.has(t.id) && !targets.has(t.id) && view.selected !== t.id);
+    const dim = Boolean((view.selected || placing()) && selectable.size) && !selectable.has(t.id) && !targets.has(t.id) && view.selected !== t.id;
+    n.path.classList.toggle('dim', dim);
 
     const armies = (s.armies[t.id] ?? 0) + (view.staged[t.id] || 0);
     n.circle.style.fill = owner === undefined ? '#333' : shade(color, -0.25);
@@ -264,6 +271,19 @@ function renderMap() {
     const staged = view.staged[t.id] || 0;
     n.plus.style.display = staged ? '' : 'none';
     n.plusText.textContent = `+${staged}`;
+    list3d.push({
+      id: t.id,
+      color,
+      armies,
+      staged,
+      owned: owner !== undefined,
+      selected: view.selected === t.id,
+      target: targets.has(t.id),
+      targeted: view.target === t.id,
+      selectable: selectable.has(t.id),
+      dim,
+      hl: view.hlContinent === t.continent,
+    });
     // Pop the badge when armies change.
     const prevArmies = view.shownArmies[t.id];
     if (prevArmies !== undefined && prevArmies !== s.armies[t.id]) {
@@ -279,12 +299,14 @@ function renderMap() {
   });
   view.shownArmies = { ...s.armies };
   view.shownOwner = { ...s.owner };
+  board3d?.update(list3d);
   renderArrow();
 }
 
 function renderArrow() {
   const fx = document.getElementById('fxUnder');
   fx.innerHTML = '';
+  board3d?.setArrow(view.selected && view.target ? view.selected : null, view.target, view.snap?.turnPhase === 'fortify');
   if (!view.selected || !view.target) return;
   const A = BY_ID[view.selected].label;
   const B = BY_ID[view.target].label;
@@ -672,6 +694,8 @@ function renderContinents() {
 }
 
 function highlightContinent(id, on) {
+  view.hlContinent = on ? id : null;
+  if (board3d) renderMap();
   CONT[id].territories.forEach((t) => nodes[t].path.classList.toggle('continent-hl', on));
 }
 
@@ -789,6 +813,7 @@ function floatText(tid, text, cls) {
   const g = svg('text', { x, y: y - 14, class: `rk-float ${cls}` }, document.getElementById('fx'));
   g.textContent = text;
   setTimeout(() => g.remove(), 1300);
+  board3d?.floatText(tid, text);
 }
 
 function dieFace(value, cls) {
@@ -833,6 +858,7 @@ async function playBattle(b) {
   if (b.attackerLost) floatText(b.from, `−${b.attackerLost}`, 'loss');
   if (b.defenderLost) floatText(b.to, `−${b.defenderLost}`, 'loss');
   nodes[b.to].path.classList.add('hit');
+  board3d?.hit(b.to);
   setTimeout(() => nodes[b.to].path.classList.remove('hit'), 500);
   el.battleSub.textContent =
     b.totalRounds > 1
@@ -1061,6 +1087,69 @@ client.socket.on('risk:battle', (battle) => {
 
 buildMap();
 
+// ---- 3D board (default) or flat 2D map, chosen in Settings ----------------
+
+function make3d() {
+  if (board3d) return board3d;
+  try {
+    const coarse = window.matchMedia('(pointer: coarse)').matches;
+    const forced = new URLSearchParams(location.search).get('quality');
+    const quality = ['low', 'medium', 'high'].includes(forced) ? forced : coarse ? 'medium' : 'high';
+    board3d = new RiskBoard3D(el.canvas3d, { quality });
+    board3d.setShowNames(prefs.names);
+    board3d.onPick = (tid, remove) => {
+      if (tid) onTerritoryClick(tid, remove);
+      else if (view.selected) {
+        view.selected = null;
+        view.target = null;
+        renderAll();
+      }
+    };
+    board3d.onHover = (tid, x, y) => showTip(tid, x, y);
+  } catch (error) {
+    console.warn('3D board unavailable, using 2D', error);
+    board3d = null;
+  }
+  return board3d;
+}
+
+function useView(mode) {
+  const three = mode === '3d' && make3d();
+  el.map.toggleAttribute('hidden', Boolean(three));
+  board3d?.show(Boolean(three));
+  el.mapWrap.classList.toggle('mode-3d', Boolean(three));
+  $('zoomHint').hidden = !three;
+  if (three) setTimeout(() => ($('zoomHint').hidden = true), 6000);
+  el.viewButtons.forEach((b) => b.classList.toggle('active', b.dataset.view === (three ? '3d' : '2d')));
+  if (view.snap) renderAll();
+  return Boolean(three);
+}
+
+function showTip(tid, clientX, clientY) {
+  if (!tid || !view.snap) {
+    el.hoverTip.hidden = true;
+    return;
+  }
+  const t = BY_ID[tid];
+  const s = view.snap;
+  const owner = s.owner[t.id];
+  el.hoverTip.hidden = false;
+  el.hoverTip.innerHTML = `<b>${t.name}</b><span>${CONT[t.continent].name}</span>${owner !== undefined ? `<span style="color:${colorOf(owner)}">${nameOf(owner)} · ${s.armies[t.id]} armies</span>` : ''}`;
+  const rect = el.mapWrap.getBoundingClientRect();
+  el.hoverTip.style.left = `${clientX - rect.left + el.mapWrap.scrollLeft + 14}px`;
+  el.hoverTip.style.top = `${clientY - rect.top + el.mapWrap.scrollTop + 14}px`;
+}
+
+el.viewButtons.forEach((btn) =>
+  btn.addEventListener('click', () => {
+    prefs.view = btn.dataset.view;
+    store('local', 'risk:prefs', JSON.stringify(prefs));
+    const ok = useView(prefs.view);
+    if (prefs.view === '3d' && !ok) toast('3D is not supported on this device.', 'error');
+  })
+);
+useView(prefs.view);
+
 // Map input: click to select/place, right-click or long-press to remove a staged army.
 let pressTimer = null;
 let longPressed = false;
@@ -1160,6 +1249,7 @@ el.namesToggle.addEventListener('change', () => {
   prefs.names = el.namesToggle.checked;
   store('local', 'risk:prefs', JSON.stringify(prefs));
   el.map.classList.toggle('hide-names', !prefs.names);
+  board3d?.setShowNames(prefs.names);
 });
 window.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape' || table.handleEscape()) return;
@@ -1171,4 +1261,4 @@ window.addEventListener('keydown', (event) => {
 client.autoStart();
 
 // Test hook: `?debug` exposes internals for automated browser tests.
-if (new URLSearchParams(location.search).has('debug')) window.riskPage = { view, client, MAP };
+if (new URLSearchParams(location.search).has('debug')) window.riskPage = { view, client, MAP, get board3d() { return board3d; } };
