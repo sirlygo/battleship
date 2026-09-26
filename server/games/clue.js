@@ -210,14 +210,24 @@ module.exports = {
   manualStart: true,
 
   defaultOptions() {
-    return {};
+    return { autoNotes: true };
   },
 
-  canChangeOptions() {
-    return false;
+  canChangeOptions(ctx) {
+    return ctx.room.status !== 'active';
   },
 
-  applyOptions() {},
+  applyOptions(ctx, payload) {
+    const { options } = ctx.room;
+    if (typeof payload.autoNotes === 'boolean' && payload.autoNotes !== options.autoNotes) {
+      options.autoNotes = payload.autoNotes;
+      ctx.system(
+        payload.autoNotes
+          ? 'Setting: detective notes fill in automatically.'
+          : 'Setting: detective notes are manual — mark your own cards.'
+      );
+    }
+  },
 
   start(ctx) {
     const { room } = ctx;

@@ -48,7 +48,7 @@
             <li>One suspect, one weapon and one room are hidden in the case file. The other cards are dealt out.</li>
             <li>On your turn, roll and move. Tap a glowing square or room. Rooms in the corners have secret passages.</li>
             <li>In a room, suggest a suspect and weapon. Going around the table, the first player holding one of those cards shows it to you in secret.</li>
-            <li>Your notes fill in automatically. When you're sure, make an accusation. A wrong accusation knocks you out, but you still show cards.</li>
+            <li>Your notes can fill in automatically (the host can turn this off). When you're sure, make an accusation. A wrong accusation knocks you out, but you still show cards.</li>
           </ol>
         </details>
       </div>
@@ -113,6 +113,11 @@
               <button id="copyLinkBtn" class="btn btn-primary" type="button">Share invite link</button>
             </div>
             <ul id="lobbyPlayers" class="cl-lobby-players"></ul>
+            <label id="autoNotesWrap" class="toggle cl-toggle">
+              <input id="autoNotesToggle" type="checkbox" checked />
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span>Auto-fill detective notes<small id="autoNotesHint">Your cards and cards shown to you are crossed off for you.</small></span>
+            </label>
             <button id="startBtn" class="btn btn-primary btn-lg" type="button">Start game</button>
             <p id="startNote" class="muted small"></p>
           </div>
@@ -212,7 +217,7 @@
       <div class="modal-card glass cl-reveal-card">
         <p id="revealKicker" class="kicker"></p>
         <div id="revealCard" class="cl-reveal-slot"></div>
-        <p class="muted small">It's been ticked off in your notes.</p>
+        <p id="revealNote" class="muted small">It's been ticked off in your notes.</p>
         <button id="revealOk" class="btn btn-primary" type="button">Got it</button>
       </div>
     </div>

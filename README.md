@@ -25,7 +25,7 @@ Real-time board games to play with friends in the browser: no accounts, just sha
 - The host starts the game once 2–6 players have joined. Everyone gets a suspect (Miss Scarlet goes first), and the remaining cards are dealt after one suspect, weapon and room go into the case file.
 - On your turn, roll and move. Glowing squares and rooms show where you can go, and the corner rooms have secret passages. Other pawns block hallway squares.
 - In a room you can make a suggestion. The suspect and weapon move into that room, and the first player to your left holding one of those cards must show you one in secret. If they only hold one match it's shown automatically.
-- Your detective notes cross off your own cards, cards shown to you, and cards of players who left. Tap any line to mark it ✕, ? or ✓ yourself. The case log records every suggestion and who passed.
+- Your detective notes cross off your own cards, cards shown to you, and cards of players who left. The host can turn this auto-fill off in the lobby for classic, fully manual notes. Tap any line to mark it ✕, ? or ✓ yourself. The case log records every suggestion and who passed.
 - Accuse at any time on your turn. Right and you win; wrong and you're out, but you still show cards. The server holds the hidden cards and sends each player only what they're allowed to see.
 
 ## Chess

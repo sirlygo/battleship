@@ -975,3 +975,17 @@ button.cl-card:disabled {
   background: linear-gradient(180deg, #e0404f 0%, #9a1824 100%);
   border-color: transparent;
 }
+
+.cl-toggle {
+  width: 100%;
+  text-align: left;
+  margin-top: 4px;
+}
+
+.cl-toggle small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}

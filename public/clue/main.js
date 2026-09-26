@@ -20,6 +20,10 @@ const el = {
   lobbyPlayers: $('lobbyPlayers'),
   startBtn: $('startBtn'),
   startNote: $('startNote'),
+  autoNotesWrap: $('autoNotesWrap'),
+  autoNotesToggle: $('autoNotesToggle'),
+  autoNotesHint: $('autoNotesHint'),
+  revealNote: $('revealNote'),
   turnBox: $('turnBox'),
   dice: $('dice'),
   rollBtn: $('rollBtn'),
@@ -403,6 +407,13 @@ function renderLobby() {
     }
     el.lobbyPlayers.appendChild(li);
   });
+  const auto = autoNotesOn();
+  el.autoNotesToggle.checked = auto;
+  el.autoNotesToggle.disabled = !s.isHost;
+  el.autoNotesWrap.classList.toggle('locked', !s.isHost);
+  el.autoNotesHint.textContent = auto
+    ? 'Your cards and cards shown to you are crossed off for you.'
+    : 'Classic style: everyone marks their own notes.';
   const count = s.players.filter(Boolean).length;
   el.startBtn.hidden = !s.isHost;
   el.startBtn.disabled = count < s.minPlayers;
@@ -555,10 +566,14 @@ function saveNotes(notes) {
   store('local', notesKey(), JSON.stringify(notes));
 }
 
+const autoNotesOn = () => view.snap?.options?.autoNotes !== false;
+
 // Cards you have proof of: your hand, cards shown to you, and hands of players who left.
+// Empty when the host turned auto-fill off.
 function autoNotes() {
   const s = view.snap;
   const auto = new Map();
+  if (!autoNotesOn()) return auto;
   (s.myHand || []).forEach((c) => auto.set(c, 'your card'));
   (s.shownToMe || []).forEach(({ card, by }) => auto.set(card, `shown by ${seatInfo(by)?.name || '?'}`));
   Object.entries(s.revealed || {}).forEach(([seat, cards]) =>
@@ -738,6 +753,9 @@ function onShown(payload) {
   if (payload.card && payload.by !== undefined) {
     el.revealKicker.textContent = `${seatInfo(payload.by)?.name || 'Someone'} shows you…`;
     el.revealCard.replaceChildren(cardEl(payload.card, { big: true }));
+    el.revealNote.textContent = autoNotesOn()
+      ? "It's been ticked off in your notes."
+      : 'Remember to mark it in your notes.';
     el.reveal.hidden = false;
     sound.message();
   } else if (payload.card && payload.to !== undefined) {
@@ -1084,6 +1102,13 @@ el.startBtn.addEventListener('click', async () => {
   sound.click();
   const res = await client.send('room:start');
   if (res.error) toast(res.error, 'error');
+});
+el.autoNotesToggle.addEventListener('change', async () => {
+  const res = await client.send('room:options', { autoNotes: el.autoNotesToggle.checked });
+  if (res.error) {
+    toast(res.error, 'error');
+    renderLobby();
+  }
 });
 el.rollBtn.addEventListener('click', act('clue:roll'));
 el.passageBtn.addEventListener('click', act('clue:passage'));
