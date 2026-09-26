@@ -9,7 +9,7 @@ Real-time board games to play with friends in the browser: no accounts, just sha
 | **Chess**: 3D or 2D board, full rules, drag-and-drop, optional clocks | 2 | Playable |
 | **Clue**: 3D or 2D mansion board, secret passages, private card showing, auto-filling notes | 2–6 | Playable |
 | **Risk**: 3D or 2D world map, dice battles with blitz, cards, continent bonuses | 2–6 | Playable |
-| The Game of Life | 2–6 | Coming soon |
+| **The Game of Life**: 3D or 2D board, spinner, careers, houses, LIFE tiles | 2–6 | Playable |
 
 ## Checkers
 
@@ -28,6 +28,16 @@ Real-time board games to play with friends in the browser: no accounts, just sha
 - In a room you can make a suggestion. The suspect and weapon move into that room, and the first player to your left holding one of those cards must show you one in secret. If they only hold one match it's shown automatically.
 - Your detective notes cross off your own cards, cards shown to you, and cards of players who left. The host can turn this auto-fill off in the lobby for classic, fully manual notes. Tap any line to mark it ✕, ? or ✓ yourself. The case log records every suggestion and who passed.
 - Accuse at any time on your turn. Right and you win; wrong and you're out, but you still show cards. The server holds the hidden cards and sends each player only what they're allowed to see.
+
+## The Game of Life
+
+- The host starts the game with 2–6 players. Everyone starts with $10K.
+- **3D board** (default): a winding road over green hills, with trees and landmarks (a university, chapel, house, night school and retirement villa). Each player drives a car carrying peg people: a spouse and kids join as your family grows. Scroll or pinch to zoom, drag to look around, and tap or hover over a space to read it. The camera follows the moving car (you can turn this off). Switch to the flat **2D** board in Settings.
+- Spin the wheel (1–10) and drive. At the first fork, choose **college** ($100K in loans, but any career) or **start a career** right away. Later forks offer the family or adventure path, night school, and the risky or safe road.
+- **Payday** pays your salary whenever you pass or land on it. Red **STOP** spaces end your move: graduation, starting a career, marriage (everyone gives a gift), buying a house, night school and retirement.
+- **LIFE** tiles hide cash values revealed at the end. Babies and twins add passengers and LIFE tiles. On a lawsuit space you pick someone to sue for $100K.
+- If you run out of cash the bank lends $50K at a time. Repay $60K each whenever you like, or it comes out at the end.
+- At retirement the first three to arrive get $100K, $50K and $20K. Houses are sold (spin: even for the high price, odd for the low price), loans are repaid, and LIFE tiles and children ($50K each) are counted. The richest retiree wins.
 
 ## Risk
 
