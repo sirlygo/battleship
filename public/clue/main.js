@@ -1,5 +1,6 @@
 import { store } from '../shared/room-client.js';
 import { setupTable, bigText, toast, sound } from '../shared/table-ui.js';
+import { ClueBoard3D } from './board3d.js';
 
 const Board = window.ClueBoard;
 const { SIZE, SUSPECTS, WEAPONS, ROOMS, CENTER } = Board;
@@ -8,6 +9,9 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const el = {
   board: $('board'),
+  frame: $('boardFrame'),
+  canvas3d: $('board3d'),
+  viewButtons: [...document.querySelectorAll('[data-view]')],
   cells: $('cells'),
   roomsLayer: $('roomsLayer'),
   targets: $('targets'),
@@ -269,9 +273,10 @@ function roomSlot(roomId, index, count) {
 // Rendering
 // ---------------------------------------------------------------------------
 
-function renderTokens() {
+function renderTokens(mode = 'glide') {
   const s = view.snap;
   if (!s) return;
+  const list3d = [];
   const byRoom = {};
   SUSPECTS.forEach((sp) => {
     const t = s.tokens[sp.id];
@@ -288,7 +293,19 @@ function renderTokens() {
     placeCell(node, pos[0], pos[1]);
     node.classList.toggle('mine', sp.id === s.myChar);
     node.classList.toggle('active', sp.id === turnChar && !view.animating);
+    list3d.push({ id: sp.id, x: pos[0], y: pos[1], mine: sp.id === s.myChar, active: sp.id === turnChar && !view.animating });
   });
+  if (board3d) {
+    board3d.setTokens(list3d, view.instant || !board3d.visible ? 'instant' : mode);
+    view.instant = false;
+  }
+}
+
+// Weapons stand in a row across the middle of their room.
+function weaponSlot(roomId, index, count) {
+  const [x, y, w, h] = Board.room(roomId).rect;
+  const spacing = Math.min(1.5, (w - 0.6) / count);
+  return [x + (w - spacing * count) / 2 + (spacing - 1) / 2 + index * spacing, y + h / 2 - 0.55];
 }
 
 function renderWeapons() {
@@ -305,10 +322,20 @@ function renderWeapons() {
     if (view.weaponRooms[w.id] && view.weaponRooms[w.id] !== where) icon.classList.add('arrive');
     rooms.get(where)?.appendChild(icon);
   });
+  if (board3d) {
+    const byRoom = {};
+    WEAPONS.forEach((w) => s.weapons?.[w.id] && (byRoom[s.weapons[w.id]] ||= []).push(w.id));
+    const positions = {};
+    Object.entries(byRoom).forEach(([roomId, ids]) =>
+      ids.forEach((id, i) => (positions[id] = weaponSlot(roomId, i, ids.length)))
+    );
+    board3d.setWeapons(positions, { instant: !board3d.visible });
+  }
   view.weaponRooms = { ...(s.weapons || {}) };
 }
 
 function renderTrail() {
+  board3d?.setTrail(view.trail);
   el.cells.querySelectorAll('.trail').forEach((c) => c.classList.remove('trail'));
   view.trail.forEach(([x, y]) => el.cells.querySelector(`[data-k="${x},${y}"]`)?.classList.add('trail'));
 }
@@ -328,6 +355,7 @@ function reachableNow() {
 function renderTargets() {
   el.targets.innerHTML = '';
   const options = reachableNow();
+  board3d?.setTargets(options);
   if (!options) return;
   options.rooms.forEach((_path, roomId) => {
     const btn = document.createElement('button');
@@ -923,6 +951,7 @@ async function rematch() {
 async function animateMove(move) {
   view.animating = true;
   el.targets.innerHTML = '';
+  board3d?.setTargets(null);
   const node = view.tokenEls.get(move.suspect);
   if (move.path && move.path.length) {
     node.classList.remove('jump');
@@ -931,7 +960,7 @@ async function animateMove(move) {
     renderTrail();
     for (const [x, y] of move.path) {
       view.override.set(move.suspect, [x, y]);
-      renderTokens();
+      renderTokens('hop');
       node.classList.remove('hop');
       void node.offsetWidth;
       node.classList.add('hop');
@@ -940,7 +969,7 @@ async function animateMove(move) {
     }
     view.override.delete(move.suspect);
     node.classList.add('jump');
-    renderTokens();
+    renderTokens(move.to ? 'jump' : 'hop');
     await wait(move.to ? 400 : 60);
     node.classList.remove('jump');
     setTimeout(() => {
@@ -951,7 +980,7 @@ async function animateMove(move) {
     }, 1400);
   } else {
     node.classList.add('jump');
-    renderTokens();
+    renderTokens('jump');
     if (move.summoned) bigText(cardName(move.suspect).toUpperCase(), `is summoned to the ${cardName(move.to)}`, 'info');
     else if (move.passage) bigText('SECRET PASSAGE', `to the ${cardName(move.to)}`, 'info');
     await wait(650);
@@ -1035,6 +1064,7 @@ function onState(snap, prev) {
   if (!prev || prev.round !== snap.round) {
     view.shownMove = snap.lastMove?.id ?? null;
     view.override.clear();
+    view.instant = true;
     view.weaponRooms = { ...(snap.weapons || {}) };
     view.trail = [];
     renderTrail();
@@ -1054,6 +1084,57 @@ function onState(snap, prev) {
   }
   renderAll();
 }
+
+// ---------------------------------------------------------------------------
+// Board view: 3D (default) or flat 2D, chosen in Settings
+// ---------------------------------------------------------------------------
+
+const prefs = (() => {
+  const defaults = { view: '3d' };
+  try {
+    return { ...defaults, ...JSON.parse(store('local', 'clue:prefs') || '{}') };
+  } catch {
+    return defaults;
+  }
+})();
+
+let board3d = null;
+
+function make3d() {
+  if (board3d) return board3d;
+  try {
+    const coarse = window.matchMedia('(pointer: coarse)').matches;
+    const forced = new URLSearchParams(location.search).get('quality');
+    const quality = ['low', 'medium', 'high'].includes(forced) ? forced : coarse ? 'medium' : 'high';
+    board3d = new ClueBoard3D(el.canvas3d, { quality });
+    board3d.onPick = (target) => move(target);
+  } catch (error) {
+    console.warn('3D board unavailable, using 2D', error);
+    board3d = null;
+  }
+  return board3d;
+}
+
+function useView(mode) {
+  const three = mode === '3d' && make3d();
+  el.board.hidden = Boolean(three);
+  board3d?.show(Boolean(three));
+  el.frame.classList.toggle('mode-3d', Boolean(three));
+  view.instant = true;
+  if (view.snap) renderAll();
+  else board3d?.setTokens(SUSPECTS.map((sp) => ({ id: sp.id, x: sp.start[0], y: sp.start[1], mine: false, active: false })), 'instant');
+  el.viewButtons.forEach((btn) => btn.classList.toggle('active', btn.dataset.view === (three ? '3d' : '2d')));
+  return Boolean(three);
+}
+
+el.viewButtons.forEach((btn) =>
+  btn.addEventListener('click', () => {
+    prefs.view = btn.dataset.view;
+    store('local', 'clue:prefs', JSON.stringify(prefs));
+    const ok = useView(prefs.view);
+    if (prefs.view === '3d' && !ok) toast('3D is not supported on this device.', 'error');
+  })
+);
 
 // ---------------------------------------------------------------------------
 // Wiring
@@ -1140,7 +1221,8 @@ window.addEventListener('keydown', (event) => {
 });
 
 buildBoard();
+useView(prefs.view);
 client.autoStart();
 
 // Test hook: `?debug` exposes internals for automated browser tests.
-if (new URLSearchParams(location.search).has('debug')) window.cluePage = { view, client, Board };
+if (new URLSearchParams(location.search).has('debug')) window.cluePage = { view, client, Board, get board3d() { return board3d; } };

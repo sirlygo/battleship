@@ -142,11 +142,23 @@ export class RoomClient {
     history.replaceState(null, '', url);
     refreshShareInfo();
     this.handlers.onEnter?.(code, spectator);
+    // A state update can arrive in the same packet batch as the join reply,
+    // before we knew the code; replay it now.
+    const early = this.earlySnap;
+    this.earlySnap = null;
+    if (early && early.code === code) this.applyState(early);
+  }
+
+  applyState(snap) {
+    const prev = this.snap;
+    this.snap = snap;
+    this.handlers.onState?.(snap, prev);
   }
 
   exit(message = '') {
     this.code = null;
     this.snap = null;
+    this.earlySnap = null;
     store('session', this.savedRoomKey, null);
     const url = new URL(location.href);
     url.searchParams.delete('room');
@@ -215,10 +227,12 @@ export class RoomClient {
     });
     socket.on('disconnect', () => this.handlers.onConnection?.(false));
     socket.on('state', (snap) => {
-      if (!this.code) return;
-      const prev = this.snap;
-      this.snap = snap;
-      this.handlers.onState?.(snap, prev);
+      if (!this.code) {
+        this.earlySnap = snap;
+        return;
+      }
+      if (snap.code !== this.code) return;
+      this.applyState(snap);
     });
     socket.on('chatHistory', (entries) => this.handlers.onChatHistory?.(entries));
     socket.on('chat', (entry) => {

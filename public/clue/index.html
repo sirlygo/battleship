@@ -14,6 +14,9 @@
     <link rel="stylesheet" href="/shared/ui.css" />
     <link rel="stylesheet" href="/shared/board-game.css" />
     <link rel="stylesheet" href="/clue/clue.css" />
+    <script type="importmap">
+      { "imports": { "three": "/vendor/three/three.module.min.js", "three/addons/": "/vendor/three-addons/" } }
+    </script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="/shared/clue-board.js"></script>
   </head>
@@ -87,7 +90,8 @@
       <main class="tb-layout cl-layout">
         <div class="cl-table">
           <div id="seatStrip" class="cl-seats"></div>
-          <div class="cl-frame">
+          <div id="boardFrame" class="cl-frame">
+            <canvas id="board3d" class="cl-3d" hidden></canvas>
             <div id="board" class="cl-board">
               <div id="cells" class="cl-cells"></div>
               <div id="roomsLayer" class="cl-rooms"></div>
@@ -235,6 +239,13 @@
           <h3>Audio</h3>
           <label class="slider-row"><span>Effects</span><input id="volEffects" type="range" min="0" max="100" step="1" /><output></output></label>
           <label class="slider-row"><span>Music</span><input id="volMusic" type="range" min="0" max="100" step="1" /><output></output></label>
+        </section>
+        <section class="settings-section">
+          <h3>Board</h3>
+          <div class="segmented" role="group" aria-label="Board view">
+            <button type="button" data-view="3d">3D<small>Mansion models</small></button>
+            <button type="button" data-view="2d">2D<small>Flat and fast</small></button>
+          </div>
         </section>
       </div>
     </div>

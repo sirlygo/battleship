@@ -989,3 +989,33 @@ button.cl-card:disabled {
   font-size: 12px;
   font-weight: 400;
 }
+
+/* ------------------------------------------------------------------ 3D board */
+
+.cl-frame.mode-3d {
+  padding: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.cl-board[hidden] {
+  display: none;
+}
+
+.cl-3d {
+  display: block;
+  width: calc(var(--board) + 24px);
+  height: calc(var(--board) + 24px);
+  touch-action: manipulation;
+}
+
+.cl-3d[hidden] {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .cl-3d {
+    width: calc(var(--board) + 16px);
+    height: calc(var(--board) + 16px);
+  }
+}
