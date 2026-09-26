@@ -237,93 +237,120 @@
           <div class="game-art" aria-hidden="true">
             <svg viewBox="0 0 320 180" preserveAspectRatio="xMidYMid slice">
               <defs>
-                <radialGradient id="cmBg" cx="50%" cy="10%" r="95%"><stop offset="0" stop-color="#2c2a4a" /><stop offset="0.55" stop-color="#11101f" /><stop offset="1" stop-color="#05050b" /></radialGradient>
-                <linearGradient id="cmLight" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c9b48c" /><stop offset="1" stop-color="#f1e2c0" /></linearGradient>
-                <linearGradient id="cmDark" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3e2616" /><stop offset="1" stop-color="#6e4526" /></linearGradient>
-                <linearGradient id="cmEdge" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a2a14" /><stop offset="1" stop-color="#1a0c05" /></linearGradient>
-                <linearGradient id="cmIvory" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fffaf0" /><stop offset="0.55" stop-color="#eadfc6" /><stop offset="1" stop-color="#a8987a" /></linearGradient>
-                <linearGradient id="cmEbony" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5a5670" /><stop offset="0.4" stop-color="#1d1b28" /><stop offset="1" stop-color="#07060c" /></linearGradient>
-                <radialGradient id="cmGlint"><stop offset="0" stop-color="rgba(255,255,255,0.95)" /><stop offset="1" stop-color="rgba(255,255,255,0)" /></radialGradient>
-                <radialGradient id="cmFade" cx="50%" cy="60%" r="70%"><stop offset="0.55" stop-color="rgba(5,5,11,0)" /><stop offset="1" stop-color="rgba(5,5,11,0.9)" /></radialGradient>
-                <linearGradient id="cmBeam" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(255,236,190,0.32)" /><stop offset="1" stop-color="rgba(255,236,190,0)" /></linearGradient>
-                <filter id="cmBlur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2" /></filter>
+                <radialGradient id="gpTable" cx="50%" cy="30%" r="85%"><stop offset="0" stop-color="#4a2e1c" /><stop offset="0.6" stop-color="#24140b" /><stop offset="1" stop-color="#0c0604" /></radialGradient>
+                <linearGradient id="gpFrame" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a1f0e" /><stop offset="1" stop-color="#6a3a1a" /></linearGradient>
+                <linearGradient id="gpLight" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#cdb68c" /><stop offset="1" stop-color="#f3e4c2" /></linearGradient>
+                <linearGradient id="gpDark" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a2c18" /><stop offset="1" stop-color="#7a4c28" /></linearGradient>
+                <linearGradient id="gpIvory" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fffaf0" /><stop offset="0.55" stop-color="#eadfc6" /><stop offset="1" stop-color="#a8987a" /></linearGradient>
+                <linearGradient id="gpEbony" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6a6680" /><stop offset="0.4" stop-color="#23212e" /><stop offset="1" stop-color="#08070d" /></linearGradient>
+                <radialGradient id="gpLamp" cx="50%" cy="35%" r="60%"><stop offset="0" stop-color="rgba(255,226,170,0.22)" /><stop offset="1" stop-color="rgba(255,226,170,0)" /></radialGradient>
+                <radialGradient id="gpVignette" cx="50%" cy="50%" r="75%"><stop offset="0.6" stop-color="rgba(0,0,0,0)" /><stop offset="1" stop-color="rgba(0,0,0,0.75)" /></radialGradient>
+                <filter id="gpBlur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.6" /></filter>
               </defs>
-              <rect width="320" height="180" fill="url(#cmBg)" />
-              <g class="cm-stars" fill="#fff"><circle cx="30" cy="20" r="0.8" /><circle cx="70" cy="44" r="0.6" /><circle cx="250" cy="18" r="0.9" /><circle cx="290" cy="50" r="0.7" /><circle cx="200" cy="34" r="0.6" /></g>
-              <polygon points="-90.0,177.0 410.0,177.0 410.0,187.0 -90.0,187.0" fill="url(#cmEdge)"/>
-<polygon points="69.1,97.5 91.8,97.5 97.5,93.7 76.7,93.7" fill="url(#cmDark)"/>
-<polygon points="91.8,97.5 114.5,97.5 118.3,93.7 97.5,93.7" fill="url(#cmLight)"/>
-<polygon points="114.5,97.5 137.3,97.5 139.2,93.7 118.3,93.7" fill="url(#cmDark)"/>
-<polygon points="137.3,97.5 160.0,97.5 160.0,93.7 139.2,93.7" fill="url(#cmLight)"/>
-<polygon points="160.0,97.5 182.7,97.5 180.8,93.7 160.0,93.7" fill="url(#cmDark)"/>
-<polygon points="182.7,97.5 205.5,97.5 201.7,93.7 180.8,93.7" fill="url(#cmLight)"/>
-<polygon points="205.5,97.5 228.2,97.5 222.5,93.7 201.7,93.7" fill="url(#cmDark)"/>
-<polygon points="228.2,97.5 250.9,97.5 243.3,93.7 222.5,93.7" fill="url(#cmLight)"/>
-<polygon points="60.0,102.0 85.0,102.0 91.8,97.5 69.1,97.5" fill="url(#cmLight)"/>
-<polygon points="85.0,102.0 110.0,102.0 114.5,97.5 91.8,97.5" fill="url(#cmDark)"/>
-<polygon points="110.0,102.0 135.0,102.0 137.3,97.5 114.5,97.5" fill="url(#cmLight)"/>
-<polygon points="135.0,102.0 160.0,102.0 160.0,97.5 137.3,97.5" fill="url(#cmDark)"/>
-<polygon points="160.0,102.0 185.0,102.0 182.7,97.5 160.0,97.5" fill="url(#cmLight)"/>
-<polygon points="185.0,102.0 210.0,102.0 205.5,97.5 182.7,97.5" fill="url(#cmDark)"/>
-<polygon points="210.0,102.0 235.0,102.0 228.2,97.5 205.5,97.5" fill="url(#cmLight)"/>
-<polygon points="235.0,102.0 260.0,102.0 250.9,97.5 228.2,97.5" fill="url(#cmDark)"/>
-<polygon points="48.9,107.6 76.7,107.6 85.0,102.0 60.0,102.0" fill="url(#cmDark)"/>
-<polygon points="76.7,107.6 104.4,107.6 110.0,102.0 85.0,102.0" fill="url(#cmLight)"/>
-<polygon points="104.4,107.6 132.2,107.6 135.0,102.0 110.0,102.0" fill="url(#cmDark)"/>
-<polygon points="132.2,107.6 160.0,107.6 160.0,102.0 135.0,102.0" fill="url(#cmLight)"/>
-<polygon points="160.0,107.6 187.8,107.6 185.0,102.0 160.0,102.0" fill="url(#cmDark)"/>
-<polygon points="187.8,107.6 215.6,107.6 210.0,102.0 185.0,102.0" fill="url(#cmLight)"/>
-<polygon points="215.6,107.6 243.3,107.6 235.0,102.0 210.0,102.0" fill="url(#cmDark)"/>
-<polygon points="243.3,107.6 271.1,107.6 260.0,102.0 235.0,102.0" fill="url(#cmLight)"/>
-<polygon points="35.0,114.5 66.2,114.5 76.7,107.6 48.9,107.6" fill="url(#cmLight)"/>
-<polygon points="66.2,114.5 97.5,114.5 104.4,107.6 76.7,107.6" fill="url(#cmDark)"/>
-<polygon points="97.5,114.5 128.8,114.5 132.2,107.6 104.4,107.6" fill="url(#cmLight)"/>
-<polygon points="128.8,114.5 160.0,114.5 160.0,107.6 132.2,107.6" fill="url(#cmDark)"/>
-<polygon points="160.0,114.5 191.2,114.5 187.8,107.6 160.0,107.6" fill="url(#cmLight)"/>
-<polygon points="191.2,114.5 222.5,114.5 215.6,107.6 187.8,107.6" fill="url(#cmDark)"/>
-<polygon points="222.5,114.5 253.8,114.5 243.3,107.6 215.6,107.6" fill="url(#cmLight)"/>
-<polygon points="253.8,114.5 285.0,114.5 271.1,107.6 243.3,107.6" fill="url(#cmDark)"/>
-<polygon points="17.1,123.4 52.9,123.4 66.2,114.5 35.0,114.5" fill="url(#cmDark)"/>
-<polygon points="52.9,123.4 88.6,123.4 97.5,114.5 66.2,114.5" fill="url(#cmLight)"/>
-<polygon points="88.6,123.4 124.3,123.4 128.8,114.5 97.5,114.5" fill="url(#cmDark)"/>
-<polygon points="124.3,123.4 160.0,123.4 160.0,114.5 128.8,114.5" fill="url(#cmLight)"/>
-<polygon points="160.0,123.4 195.7,123.4 191.2,114.5 160.0,114.5" fill="url(#cmDark)"/>
-<polygon points="195.7,123.4 231.4,123.4 222.5,114.5 191.2,114.5" fill="url(#cmLight)"/>
-<polygon points="231.4,123.4 267.1,123.4 253.8,114.5 222.5,114.5" fill="url(#cmDark)"/>
-<polygon points="267.1,123.4 302.9,123.4 285.0,114.5 253.8,114.5" fill="url(#cmLight)"/>
-<polygon points="-6.7,135.3 35.0,135.3 52.9,123.4 17.1,123.4" fill="url(#cmLight)"/>
-<polygon points="35.0,135.3 76.7,135.3 88.6,123.4 52.9,123.4" fill="url(#cmDark)"/>
-<polygon points="76.7,135.3 118.3,135.3 124.3,123.4 88.6,123.4" fill="url(#cmLight)"/>
-<polygon points="118.3,135.3 160.0,135.3 160.0,123.4 124.3,123.4" fill="url(#cmDark)"/>
-<polygon points="160.0,135.3 201.7,135.3 195.7,123.4 160.0,123.4" fill="url(#cmLight)"/>
-<polygon points="201.7,135.3 243.3,135.3 231.4,123.4 195.7,123.4" fill="url(#cmDark)"/>
-<polygon points="243.3,135.3 285.0,135.3 267.1,123.4 231.4,123.4" fill="url(#cmLight)"/>
-<polygon points="285.0,135.3 326.7,135.3 302.9,123.4 267.1,123.4" fill="url(#cmDark)"/>
-<polygon points="-40.0,152.0 10.0,152.0 35.0,135.3 -6.7,135.3" fill="url(#cmDark)"/>
-<polygon points="10.0,152.0 60.0,152.0 76.7,135.3 35.0,135.3" fill="url(#cmLight)"/>
-<polygon points="60.0,152.0 110.0,152.0 118.3,135.3 76.7,135.3" fill="url(#cmDark)"/>
-<polygon points="110.0,152.0 160.0,152.0 160.0,135.3 118.3,135.3" fill="url(#cmLight)"/>
-<polygon points="160.0,152.0 210.0,152.0 201.7,135.3 160.0,135.3" fill="url(#cmDark)"/>
-<polygon points="210.0,152.0 260.0,152.0 243.3,135.3 201.7,135.3" fill="url(#cmLight)"/>
-<polygon points="260.0,152.0 310.0,152.0 285.0,135.3 243.3,135.3" fill="url(#cmDark)"/>
-<polygon points="310.0,152.0 360.0,152.0 326.7,135.3 285.0,135.3" fill="url(#cmLight)"/>
-<polygon points="-90.0,177.0 -27.5,177.0 10.0,152.0 -40.0,152.0" fill="url(#cmLight)"/>
-<polygon points="-27.5,177.0 35.0,177.0 60.0,152.0 10.0,152.0" fill="url(#cmDark)"/>
-<polygon points="35.0,177.0 97.5,177.0 110.0,152.0 60.0,152.0" fill="url(#cmLight)"/>
-<polygon points="97.5,177.0 160.0,177.0 160.0,152.0 110.0,152.0" fill="url(#cmDark)"/>
-<polygon points="160.0,177.0 222.5,177.0 210.0,152.0 160.0,152.0" fill="url(#cmLight)"/>
-<polygon points="222.5,177.0 285.0,177.0 260.0,152.0 210.0,152.0" fill="url(#cmDark)"/>
-<polygon points="285.0,177.0 347.5,177.0 310.0,152.0 260.0,152.0" fill="url(#cmLight)"/>
-<polygon points="347.5,177.0 410.0,177.0 360.0,152.0 310.0,152.0" fill="url(#cmDark)"/>
-              <path class="cm-beam" d="M118 -10 L178 -10 L250 190 L50 190 Z" fill="url(#cmBeam)" />
-              <ellipse cx="86.2" cy="100.6" rx="13.8" ry="3.1" fill="rgba(0,0,0,0.55)" filter="url(#cmBlur)"/><g transform="translate(76.7 99.6) scale(0.238)"><g fill="url(#cmEbony)" stroke="#000" stroke-width="1.5"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-24 -28 C-18 -52 -12 -72 -10 -86 H10 C12 -72 18 -52 24 -28Z"/><ellipse cx="0" cy="-88" rx="19" ry="5.5"/><circle cx="0" cy="-111" r="23"/></g></g>
-<ellipse cx="229.0" cy="100.6" rx="13.8" ry="3.1" fill="rgba(0,0,0,0.55)" filter="url(#cmBlur)"/><g transform="translate(219.5 99.6) scale(0.238)"><g fill="url(#cmIvory)" stroke="#7a6a4a" stroke-width="1.5"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-30 -30 C-26 -60 -24 -110 -24 -140 H24 C24 -110 26 -60 30 -30Z"/><path d="M-33 -138 H33 V-176 H20 V-162 H8 V-176 H-8 V-162 H-20 V-176 H-33 Z"/></g></g>
-<ellipse cx="157.4" cy="105.6" rx="15.3" ry="3.4" fill="rgba(0,0,0,0.55)" filter="url(#cmBlur)"/><g transform="translate(146.8 104.6) scale(0.263)"><g fill="url(#cmIvory)" stroke="#7a6a4a" stroke-width="1.5"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-30 -30 C-24 -70 -16 -120 -14 -160 H14 C16 -120 24 -70 30 -30 Z"/><ellipse cx="0" cy="-162" rx="25" ry="7"/><path d="M-14 -168 C-20 -190 -34 -205 -37 -219 L-26 -207 L-18 -223 L-9 -209 L0 -229 L9 -209 L18 -223 L26 -207 L37 -219 C34 -205 20 -190 14 -168 Z"/><circle cx="-37" cy="-222" r="5.5"/><circle cx="-18" cy="-226" r="5.5"/><circle cx="0" cy="-233" r="5.5"/><circle cx="18" cy="-226" r="5.5"/><circle cx="37" cy="-222" r="5.5"/><circle cx="0" cy="-245" r="9"/></g><g class="cm-sparkle"><circle cx="0" cy="-245" r="16" fill="url(#cmGlint)"/></g></g>
-<ellipse cx="274.7" cy="111.8" rx="17.1" ry="3.8" fill="rgba(0,0,0,0.55)" filter="url(#cmBlur)"/><g transform="translate(262.9 110.8) scale(0.294)"><g fill="url(#cmEbony)" stroke="#000" stroke-width="1.5"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-24 -28 C-18 -52 -12 -72 -10 -86 H10 C12 -72 18 -52 24 -28Z"/><ellipse cx="0" cy="-88" rx="19" ry="5.5"/><circle cx="0" cy="-111" r="23"/></g></g>
-<ellipse cx="215.9" cy="111.8" rx="17.1" ry="3.8" fill="rgba(0,0,0,0.55)" filter="url(#cmBlur)"/><g transform="translate(204.1 110.8) scale(0.294)"><g fill="url(#cmIvory)" stroke="#7a6a4a" stroke-width="1.5"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-24 -28 C-18 -52 -12 -72 -10 -86 H10 C12 -72 18 -52 24 -28Z"/><ellipse cx="0" cy="-88" rx="19" ry="5.5"/><circle cx="0" cy="-111" r="23"/></g></g>
-<ellipse cx="79.2" cy="129.9" rx="22.3" ry="5.0" fill="rgba(0,0,0,0.55)" filter="url(#cmBlur)"/><g transform="translate(63.8 128.9) scale(0.385)"><g fill="url(#cmIvory)" stroke="#7a6a4a" stroke-width="1.5"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-34 -30 C-36 -60 -22 -84 -8 -100 C-20 -100 -34 -96 -44 -90 C-56 -84 -64 -96 -57 -109 C-48 -127 -30 -146 -13 -162 L-19 -186 L-3 -173 C7 -183 19 -187 31 -181 C53 -169 61 -131 57 -97 C55 -70 47 -48 41 -30 Z"/></g><circle cx="-9" cy="-150" r="4.5" fill="#2a2016"/><circle cx="-50" cy="-101" r="2.6" fill="#6a5a44"/><path d="M-6 -176 C14 -170 30 -150 36 -120 M2 -168 C22 -156 34 -132 38 -104" fill="none" stroke="#b8a888" stroke-width="3" stroke-linecap="round"/></g>
-<ellipse cx="194.5" cy="140.2" rx="60.3" ry="6.9" fill="rgba(0,0,0,0.6)" filter="url(#cmBlur)"/><g transform="translate(147.1 138.2) scale(0.431) translate(0 -34) rotate(78)"><g fill="url(#cmEbony)" stroke="#000" stroke-width="1.5"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-30 -30 C-24 -80 -16 -130 -14 -165 H14 C16 -130 24 -80 30 -30 Z"/><ellipse cx="0" cy="-167" rx="27" ry="7"/><path d="M-21 -172 C-32 -196 -24 -215 0 -219 C24 -215 32 -196 21 -172 Z"/><rect x="-5" y="-252" width="10" height="36" rx="2"/><rect x="-15" y="-241" width="30" height="9" rx="2"/></g></g>
-              <rect width="320" height="180" fill="url(#cmFade)" />
+              <rect width="320" height="180" fill="url(#gpTable)" />
+              <polygon points="7.1,187.2 312.9,187.2 312.9,196.2 7.1,196.2" fill="#1c0d05"/>
+<polygon points="7.1,187.2 312.9,187.2 226.0,38.7 94.0,38.7" fill="url(#gpFrame)"/>
+<polygon points="94.6,50.2 111.0,50.2 114.2,42.0 98.9,42.0" fill="url(#gpLight)"/>
+<polygon points="111.0,50.2 127.3,50.2 129.5,42.0 114.2,42.0" fill="url(#gpDark)"/>
+<polygon points="127.3,50.2 143.7,50.2 144.7,42.0 129.5,42.0" fill="url(#gpLight)"/>
+<polygon points="143.7,50.2 160.0,50.2 160.0,42.0 144.7,42.0" fill="url(#gpDark)"/>
+<polygon points="160.0,50.2 176.3,50.2 175.3,42.0 160.0,42.0" fill="url(#gpLight)"/>
+<polygon points="176.3,50.2 192.7,50.2 190.5,42.0 175.3,42.0" fill="url(#gpDark)"/>
+<polygon points="192.7,50.2 209.0,50.2 205.8,42.0 190.5,42.0" fill="url(#gpLight)"/>
+<polygon points="209.0,50.2 225.4,50.2 221.1,42.0 205.8,42.0" fill="url(#gpDark)"/>
+<polygon points="89.7,59.6 107.3,59.6 111.0,50.2 94.6,50.2" fill="url(#gpDark)"/>
+<polygon points="107.3,59.6 124.8,59.6 127.3,50.2 111.0,50.2" fill="url(#gpLight)"/>
+<polygon points="124.8,59.6 142.4,59.6 143.7,50.2 127.3,50.2" fill="url(#gpDark)"/>
+<polygon points="142.4,59.6 160.0,59.6 160.0,50.2 143.7,50.2" fill="url(#gpLight)"/>
+<polygon points="160.0,59.6 177.6,59.6 176.3,50.2 160.0,50.2" fill="url(#gpDark)"/>
+<polygon points="177.6,59.6 195.2,59.6 192.7,50.2 176.3,50.2" fill="url(#gpLight)"/>
+<polygon points="195.2,59.6 212.7,59.6 209.0,50.2 192.7,50.2" fill="url(#gpDark)"/>
+<polygon points="212.7,59.6 230.3,59.6 225.4,50.2 209.0,50.2" fill="url(#gpLight)"/>
+<polygon points="83.9,70.5 103.0,70.5 107.3,59.6 89.7,59.6" fill="url(#gpLight)"/>
+<polygon points="103.0,70.5 122.0,70.5 124.8,59.6 107.3,59.6" fill="url(#gpDark)"/>
+<polygon points="122.0,70.5 141.0,70.5 142.4,59.6 124.8,59.6" fill="url(#gpLight)"/>
+<polygon points="141.0,70.5 160.0,70.5 160.0,59.6 142.4,59.6" fill="url(#gpDark)"/>
+<polygon points="160.0,70.5 179.0,70.5 177.6,59.6 160.0,59.6" fill="url(#gpLight)"/>
+<polygon points="179.0,70.5 198.0,70.5 195.2,59.6 177.6,59.6" fill="url(#gpDark)"/>
+<polygon points="198.0,70.5 217.0,70.5 212.7,59.6 195.2,59.6" fill="url(#gpLight)"/>
+<polygon points="217.0,70.5 236.1,70.5 230.3,59.6 212.7,59.6" fill="url(#gpDark)"/>
+<polygon points="77.1,83.4 97.9,83.4 103.0,70.5 83.9,70.5" fill="url(#gpDark)"/>
+<polygon points="97.9,83.4 118.6,83.4 122.0,70.5 103.0,70.5" fill="url(#gpLight)"/>
+<polygon points="118.6,83.4 139.3,83.4 141.0,70.5 122.0,70.5" fill="url(#gpDark)"/>
+<polygon points="139.3,83.4 160.0,83.4 160.0,70.5 141.0,70.5" fill="url(#gpLight)"/>
+<polygon points="160.0,83.4 180.7,83.4 179.0,70.5 160.0,70.5" fill="url(#gpDark)"/>
+<polygon points="180.7,83.4 201.4,83.4 198.0,70.5 179.0,70.5" fill="url(#gpLight)"/>
+<polygon points="201.4,83.4 222.1,83.4 217.0,70.5 198.0,70.5" fill="url(#gpDark)"/>
+<polygon points="201.4,83.4 222.1,83.4 217.0,70.5 198.0,70.5" fill="rgba(255,214,70,0.42)"/>
+<polygon points="222.1,83.4 242.9,83.4 236.1,70.5 217.0,70.5" fill="url(#gpLight)"/>
+<polygon points="69.0,98.9 91.8,98.9 97.9,83.4 77.1,83.4" fill="url(#gpLight)"/>
+<polygon points="91.8,98.9 114.5,98.9 118.6,83.4 97.9,83.4" fill="url(#gpDark)"/>
+<polygon points="114.5,98.9 137.3,98.9 139.3,83.4 118.6,83.4" fill="url(#gpLight)"/>
+<polygon points="137.3,98.9 160.0,98.9 160.0,83.4 139.3,83.4" fill="url(#gpDark)"/>
+<polygon points="160.0,98.9 182.7,98.9 180.7,83.4 160.0,83.4" fill="url(#gpLight)"/>
+<polygon points="160.0,98.9 182.7,98.9 180.7,83.4 160.0,83.4" fill="rgba(255,214,70,0.42)"/>
+<polygon points="182.7,98.9 205.5,98.9 201.4,83.4 180.7,83.4" fill="url(#gpDark)"/>
+<polygon points="205.5,98.9 228.2,98.9 222.1,83.4 201.4,83.4" fill="url(#gpLight)"/>
+<polygon points="228.2,98.9 251.0,98.9 242.9,83.4 222.1,83.4" fill="url(#gpDark)"/>
+<polygon points="59.1,117.7 84.3,117.7 91.8,98.9 69.0,98.9" fill="url(#gpDark)"/>
+<polygon points="84.3,117.7 109.6,117.7 114.5,98.9 91.8,98.9" fill="url(#gpLight)"/>
+<polygon points="109.6,117.7 134.8,117.7 137.3,98.9 114.5,98.9" fill="url(#gpDark)"/>
+<polygon points="134.8,117.7 160.0,117.7 160.0,98.9 137.3,98.9" fill="url(#gpLight)"/>
+<polygon points="160.0,117.7 185.2,117.7 182.7,98.9 160.0,98.9" fill="url(#gpDark)"/>
+<polygon points="185.2,117.7 210.4,117.7 205.5,98.9 182.7,98.9" fill="url(#gpLight)"/>
+<polygon points="210.4,117.7 235.7,117.7 228.2,98.9 205.5,98.9" fill="url(#gpDark)"/>
+<polygon points="235.7,117.7 260.9,117.7 251.0,98.9 228.2,98.9" fill="url(#gpLight)"/>
+<polygon points="46.8,141.0 75.1,141.0 84.3,117.7 59.1,117.7" fill="url(#gpLight)"/>
+<polygon points="75.1,141.0 103.4,141.0 109.6,117.7 84.3,117.7" fill="url(#gpDark)"/>
+<polygon points="103.4,141.0 131.7,141.0 134.8,117.7 109.6,117.7" fill="url(#gpLight)"/>
+<polygon points="131.7,141.0 160.0,141.0 160.0,117.7 134.8,117.7" fill="url(#gpDark)"/>
+<polygon points="160.0,141.0 188.3,141.0 185.2,117.7 160.0,117.7" fill="url(#gpLight)"/>
+<polygon points="188.3,141.0 216.6,141.0 210.4,117.7 185.2,117.7" fill="url(#gpDark)"/>
+<polygon points="216.6,141.0 244.9,141.0 235.7,117.7 210.4,117.7" fill="url(#gpLight)"/>
+<polygon points="244.9,141.0 273.2,141.0 260.9,117.7 235.7,117.7" fill="url(#gpDark)"/>
+<polygon points="31.1,170.9 63.3,170.9 75.1,141.0 46.8,141.0" fill="url(#gpDark)"/>
+<polygon points="63.3,170.9 95.6,170.9 103.4,141.0 75.1,141.0" fill="url(#gpLight)"/>
+<polygon points="95.6,170.9 127.8,170.9 131.7,141.0 103.4,141.0" fill="url(#gpDark)"/>
+<polygon points="127.8,170.9 160.0,170.9 160.0,141.0 131.7,141.0" fill="url(#gpLight)"/>
+<polygon points="160.0,170.9 192.2,170.9 188.3,141.0 160.0,141.0" fill="url(#gpDark)"/>
+<polygon points="192.2,170.9 224.4,170.9 216.6,141.0 188.3,141.0" fill="url(#gpLight)"/>
+<polygon points="224.4,170.9 256.7,170.9 244.9,141.0 216.6,141.0" fill="url(#gpDark)"/>
+<polygon points="256.7,170.9 288.9,170.9 273.2,141.0 244.9,141.0" fill="url(#gpLight)"/>
+              <ellipse cx="207.0" cy="46.9" rx="5.2" ry="1.2" fill="rgba(0,0,0,0.5)" filter="url(#gpBlur)"/><g class="" transform="translate(199.5 45.9) scale(0.095)"><g fill="url(#gpEbony)" stroke="#9a94c0" stroke-width="2"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-30 -30 C-24 -80 -16 -130 -14 -165 H14 C16 -130 24 -80 30 -30 Z"/><ellipse cx="0" cy="-167" rx="27" ry="7"/><path d="M-21 -172 C-32 -196 -24 -215 0 -219 C24 -215 32 -196 21 -172 Z"/><rect x="-5" y="-252" width="10" height="36" rx="2"/><rect x="-15" y="-241" width="30" height="9" rx="2"/></g></g>
+<ellipse cx="112.3" cy="46.9" rx="5.2" ry="1.2" fill="rgba(0,0,0,0.5)" filter="url(#gpBlur)"/><g class="" transform="translate(104.8 45.9) scale(0.095)"><g fill="url(#gpEbony)" stroke="#9a94c0" stroke-width="2"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-30 -30 C-26 -60 -24 -110 -24 -140 H24 C24 -110 26 -60 30 -30Z"/><path d="M-33 -138 H33 V-176 H20 V-162 H8 V-176 H-8 V-162 H-20 V-176 H-33 Z"/></g></g>
+<ellipse cx="191.2" cy="46.9" rx="5.2" ry="1.2" fill="rgba(0,0,0,0.5)" filter="url(#gpBlur)"/><g class="" transform="translate(183.7 45.9) scale(0.095)"><g fill="url(#gpEbony)" stroke="#9a94c0" stroke-width="2"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-30 -30 C-26 -60 -24 -110 -24 -140 H24 C24 -110 26 -60 30 -30Z"/><path d="M-33 -138 H33 V-176 H20 V-162 H8 V-176 H-8 V-162 H-20 V-176 H-33 Z"/></g></g>
+<ellipse class="gp-dot" cx="185.4" cy="54.7" rx="1.6" ry="0.6" fill="rgba(80,230,150,0.75)"/>
+<ellipse cx="159.7" cy="55.7" rx="5.6" ry="1.3" fill="rgba(0,0,0,0.5)" filter="url(#gpBlur)"/><g class="" transform="translate(151.5 54.7) scale(0.102)"><g fill="url(#gpEbony)" stroke="#9a94c0" stroke-width="2"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-30 -30 C-24 -70 -16 -120 -14 -160 H14 C16 -120 24 -70 30 -30 Z"/><ellipse cx="0" cy="-162" rx="25" ry="7"/><path d="M-14 -168 C-20 -190 -34 -205 -37 -219 L-26 -207 L-18 -223 L-9 -209 L0 -229 L9 -209 L18 -223 L26 -207 L37 -219 C34 -205 20 -190 14 -168 Z"/><circle cx="-37" cy="-222" r="5.5"/><circle cx="-18" cy="-226" r="5.5"/><circle cx="0" cy="-233" r="5.5"/><circle cx="18" cy="-226" r="5.5"/><circle cx="37" cy="-222" r="5.5"/><circle cx="0" cy="-245" r="9"/></g></g>
+<ellipse cx="108.9" cy="55.7" rx="5.6" ry="1.3" fill="rgba(0,0,0,0.5)" filter="url(#gpBlur)"/><g class="" transform="translate(100.7 54.7) scale(0.102)"><g fill="url(#gpEbony)" stroke="#9a94c0" stroke-width="2"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-24 -28 C-18 -52 -12 -72 -10 -86 H10 C12 -72 18 -52 24 -28Z"/><ellipse cx="0" cy="-88" rx="19" ry="5.5"/><circle cx="0" cy="-111" r="23"/></g></g>
+<ellipse cx="142.7" cy="55.7" rx="5.6" ry="1.3" fill="rgba(0,0,0,0.5)" filter="url(#gpBlur)"/><g class="" transform="translate(134.6 54.7) scale(0.102)"><g fill="url(#gpEbony)" stroke="#9a94c0" stroke-width="2"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-24 -28 C-18 -52 -12 -72 -10 -86 H10 C12 -72 18 -52 24 -28Z"/><ellipse cx="0" cy="-88" rx="19" ry="5.5"/><circle cx="0" cy="-111" r="23"/></g></g>
+<ellipse cx="193.5" cy="55.7" rx="5.6" ry="1.3" fill="rgba(0,0,0,0.5)" filter="url(#gpBlur)"/><g class="" transform="translate(185.4 54.7) scale(0.102)"><g fill="url(#gpEbony)" stroke="#9a94c0" stroke-width="2"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-24 -28 C-18 -52 -12 -72 -10 -86 H10 C12 -72 18 -52 24 -28Z"/><ellipse cx="0" cy="-88" rx="19" ry="5.5"/><circle cx="0" cy="-111" r="23"/></g></g>
+<ellipse cx="210.5" cy="55.7" rx="5.6" ry="1.3" fill="rgba(0,0,0,0.5)" filter="url(#gpBlur)"/><g class="" transform="translate(202.3 54.7) scale(0.102)"><g fill="url(#gpEbony)" stroke="#9a94c0" stroke-width="2"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-24 -28 C-18 -52 -12 -72 -10 -86 H10 C12 -72 18 -52 24 -28Z"/><ellipse cx="0" cy="-88" rx="19" ry="5.5"/><circle cx="0" cy="-111" r="23"/></g></g>
+<ellipse class="gp-dot" cx="150.9" cy="64.8" rx="1.8" ry="0.7" fill="rgba(80,230,150,0.75)"/>
+<ellipse cx="177.9" cy="65.8" rx="6.0" ry="1.4" fill="rgba(0,0,0,0.5)" filter="url(#gpBlur)"/><g class="" transform="translate(169.1 64.8) scale(0.110)"><g fill="url(#gpEbony)" stroke="#9a94c0" stroke-width="2"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-26 -30 C-20 -70 -14 -110 -12 -140 H12 C14 -110 20 -70 26 -30Z"/><ellipse cx="0" cy="-142" rx="22" ry="6"/><path d="M0 -206 C-22 -190 -26 -166 -16 -148 H16 C26 -166 22 -190 0 -206 Z"/><circle cx="0" cy="-212" r="7"/></g><path d="M-6 -188 L8 -172" stroke="#3a3650" stroke-width="4" stroke-linecap="round"/></g>
+<ellipse cx="141.4" cy="65.8" rx="6.0" ry="1.4" fill="rgba(0,0,0,0.5)" filter="url(#gpBlur)"/><g class="" transform="translate(132.6 64.8) scale(0.110)"><g fill="url(#gpEbony)" stroke="#9a94c0" stroke-width="2"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-34 -30 C-36 -60 -22 -84 -8 -100 C-20 -100 -34 -96 -44 -90 C-56 -84 -64 -96 -57 -109 C-48 -127 -30 -146 -13 -162 L-19 -186 L-3 -173 C7 -183 19 -187 31 -181 C53 -169 61 -131 57 -97 C55 -70 47 -48 41 -30 Z"/></g><circle cx="-9" cy="-150" r="4.5" fill="#c9b8ff"/><path d="M-6 -176 C14 -170 30 -150 36 -120" fill="none" stroke="#3a3650" stroke-width="3" stroke-linecap="round"/></g>
+<ellipse cx="196.2" cy="65.8" rx="6.0" ry="1.4" fill="rgba(0,0,0,0.5)" filter="url(#gpBlur)"/><g class="" transform="translate(187.4 64.8) scale(0.110)"><g fill="url(#gpEbony)" stroke="#9a94c0" stroke-width="2"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-34 -30 C-36 -60 -22 -84 -8 -100 C-20 -100 -34 -96 -44 -90 C-56 -84 -64 -96 -57 -109 C-48 -127 -30 -146 -13 -162 L-19 -186 L-3 -173 C7 -183 19 -187 31 -181 C53 -169 61 -131 57 -97 C55 -70 47 -48 41 -30 Z"/></g><circle cx="-9" cy="-150" r="4.5" fill="#c9b8ff"/><path d="M-6 -176 C14 -170 30 -150 36 -120" fill="none" stroke="#3a3650" stroke-width="3" stroke-linecap="round"/></g>
+<ellipse cx="123.1" cy="65.8" rx="6.0" ry="1.4" fill="rgba(0,0,0,0.5)" filter="url(#gpBlur)"/><g class="" transform="translate(114.3 64.8) scale(0.110)"><g fill="url(#gpEbony)" stroke="#9a94c0" stroke-width="2"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-24 -28 C-18 -52 -12 -72 -10 -86 H10 C12 -72 18 -52 24 -28Z"/><ellipse cx="0" cy="-88" rx="19" ry="5.5"/><circle cx="0" cy="-111" r="23"/></g></g>
+<ellipse cx="159.6" cy="65.8" rx="6.0" ry="1.4" fill="rgba(0,0,0,0.5)" filter="url(#gpBlur)"/><g class="" transform="translate(150.9 64.8) scale(0.110)"><g fill="url(#gpEbony)" stroke="#9a94c0" stroke-width="2"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-24 -28 C-18 -52 -12 -72 -10 -86 H10 C12 -72 18 -52 24 -28Z"/><ellipse cx="0" cy="-88" rx="19" ry="5.5"/><circle cx="0" cy="-111" r="23"/></g></g>
+<ellipse cx="232.7" cy="65.8" rx="6.0" ry="1.4" fill="rgba(0,0,0,0.5)" filter="url(#gpBlur)"/><g class="" transform="translate(223.9 64.8) scale(0.110)"><g fill="url(#gpEbony)" stroke="#9a94c0" stroke-width="2"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-24 -28 C-18 -52 -12 -72 -10 -86 H10 C12 -72 18 -52 24 -28Z"/><ellipse cx="0" cy="-88" rx="19" ry="5.5"/><circle cx="0" cy="-111" r="23"/></g></g>
+<ellipse class="gp-dot" cx="110.4" cy="76.7" rx="1.9" ry="0.7" fill="rgba(80,230,150,0.75)"/>
+<ellipse cx="219.1" cy="77.7" rx="6.5" ry="1.5" fill="rgba(0,0,0,0.5)" filter="url(#gpBlur)"/><g class="" transform="translate(209.6 76.7) scale(0.119)"><g fill="url(#gpIvory)" stroke="#7a6a4a" stroke-width="2"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-26 -30 C-20 -70 -14 -110 -12 -140 H12 C14 -110 20 -70 26 -30Z"/><ellipse cx="0" cy="-142" rx="22" ry="6"/><path d="M0 -206 C-22 -190 -26 -166 -16 -148 H16 C26 -166 22 -190 0 -206 Z"/><circle cx="0" cy="-212" r="7"/></g><path d="M-6 -188 L8 -172" stroke="#8a7a5a" stroke-width="4" stroke-linecap="round"/></g>
+<ellipse cx="179.4" cy="77.7" rx="6.5" ry="1.5" fill="rgba(0,0,0,0.5)" filter="url(#gpBlur)"/><g class="" transform="translate(169.9 76.7) scale(0.119)"><g fill="url(#gpEbony)" stroke="#9a94c0" stroke-width="2"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-24 -28 C-18 -52 -12 -72 -10 -86 H10 C12 -72 18 -52 24 -28Z"/><ellipse cx="0" cy="-88" rx="19" ry="5.5"/><circle cx="0" cy="-111" r="23"/></g></g>
+<ellipse cx="137.9" cy="91.8" rx="7.2" ry="1.7" fill="rgba(0,0,0,0.5)" filter="url(#gpBlur)"/><ellipse class="gp-ring" cx="127.5" cy="90.8" rx="7.5" ry="2.1" fill="none" stroke="#6dffc4" stroke-width="2"/><g class="gp-lift" transform="translate(127.5 87.4) scale(0.130)"><g fill="url(#gpIvory)" stroke="#7a6a4a" stroke-width="2"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-26 -30 C-20 -70 -14 -110 -12 -140 H12 C14 -110 20 -70 26 -30Z"/><ellipse cx="0" cy="-142" rx="22" ry="6"/><path d="M0 -206 C-22 -190 -26 -166 -16 -148 H16 C26 -166 22 -190 0 -206 Z"/><circle cx="0" cy="-212" r="7"/></g><path d="M-6 -188 L8 -172" stroke="#8a7a5a" stroke-width="4" stroke-linecap="round"/></g>
+<ellipse cx="181.2" cy="91.8" rx="7.2" ry="1.7" fill="rgba(0,0,0,0.5)" filter="url(#gpBlur)"/><g class="" transform="translate(170.8 90.8) scale(0.130)"><g fill="url(#gpIvory)" stroke="#7a6a4a" stroke-width="2"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-34 -30 C-36 -60 -22 -84 -8 -100 C-20 -100 -34 -96 -44 -90 C-56 -84 -64 -96 -57 -109 C-48 -127 -30 -146 -13 -162 L-19 -186 L-3 -173 C7 -183 19 -187 31 -181 C53 -169 61 -131 57 -97 C55 -70 47 -48 41 -30 Z"/></g><circle cx="-9" cy="-150" r="4.5" fill="#2a2016"/><path d="M-6 -176 C14 -170 30 -150 36 -120" fill="none" stroke="#9a8a6a" stroke-width="3" stroke-linecap="round"/></g>
+<ellipse cx="135.6" cy="108.8" rx="7.9" ry="1.9" fill="rgba(0,0,0,0.5)" filter="url(#gpBlur)"/><g class="" transform="translate(124.1 107.8) scale(0.144)"><g fill="url(#gpIvory)" stroke="#7a6a4a" stroke-width="2"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-34 -30 C-36 -60 -22 -84 -8 -100 C-20 -100 -34 -96 -44 -90 C-56 -84 -64 -96 -57 -109 C-48 -127 -30 -146 -13 -162 L-19 -186 L-3 -173 C7 -183 19 -187 31 -181 C53 -169 61 -131 57 -97 C55 -70 47 -48 41 -30 Z"/></g><circle cx="-9" cy="-150" r="4.5" fill="#2a2016"/><path d="M-6 -176 C14 -170 30 -150 36 -120" fill="none" stroke="#9a8a6a" stroke-width="3" stroke-linecap="round"/></g>
+<ellipse cx="159.5" cy="108.8" rx="7.9" ry="1.9" fill="rgba(0,0,0,0.5)" filter="url(#gpBlur)"/><g class="" transform="translate(148.0 107.8) scale(0.144)"><g fill="url(#gpIvory)" stroke="#7a6a4a" stroke-width="2"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-24 -28 C-18 -52 -12 -72 -10 -86 H10 C12 -72 18 -52 24 -28Z"/><ellipse cx="0" cy="-88" rx="19" ry="5.5"/><circle cx="0" cy="-111" r="23"/></g></g>
+<ellipse cx="255.2" cy="108.8" rx="7.9" ry="1.9" fill="rgba(0,0,0,0.5)" filter="url(#gpBlur)"/><g class="" transform="translate(243.7 107.8) scale(0.144)"><g fill="url(#gpIvory)" stroke="#7a6a4a" stroke-width="2"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-24 -28 C-18 -52 -12 -72 -10 -86 H10 C12 -72 18 -52 24 -28Z"/><ellipse cx="0" cy="-88" rx="19" ry="5.5"/><circle cx="0" cy="-111" r="23"/></g></g>
+<ellipse cx="186.1" cy="129.7" rx="8.8" ry="2.1" fill="rgba(0,0,0,0.5)" filter="url(#gpBlur)"/><g class="" transform="translate(173.3 128.7) scale(0.160)"><g fill="url(#gpIvory)" stroke="#7a6a4a" stroke-width="2"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-30 -30 C-24 -70 -16 -120 -14 -160 H14 C16 -120 24 -70 30 -30 Z"/><ellipse cx="0" cy="-162" rx="25" ry="7"/><path d="M-14 -168 C-20 -190 -34 -205 -37 -219 L-26 -207 L-18 -223 L-9 -209 L0 -229 L9 -209 L18 -223 L26 -207 L37 -219 C34 -205 20 -190 14 -168 Z"/><circle cx="-37" cy="-222" r="5.5"/><circle cx="-18" cy="-226" r="5.5"/><circle cx="0" cy="-233" r="5.5"/><circle cx="18" cy="-226" r="5.5"/><circle cx="37" cy="-222" r="5.5"/><circle cx="0" cy="-245" r="9"/></g></g>
+<ellipse cx="79.5" cy="129.7" rx="8.8" ry="2.1" fill="rgba(0,0,0,0.5)" filter="url(#gpBlur)"/><g class="" transform="translate(66.7 128.7) scale(0.160)"><g fill="url(#gpIvory)" stroke="#7a6a4a" stroke-width="2"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-24 -28 C-18 -52 -12 -72 -10 -86 H10 C12 -72 18 -52 24 -28Z"/><ellipse cx="0" cy="-88" rx="19" ry="5.5"/><circle cx="0" cy="-111" r="23"/></g></g>
+<ellipse cx="106.1" cy="129.7" rx="8.8" ry="2.1" fill="rgba(0,0,0,0.5)" filter="url(#gpBlur)"/><g class="" transform="translate(93.3 128.7) scale(0.160)"><g fill="url(#gpIvory)" stroke="#7a6a4a" stroke-width="2"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-24 -28 C-18 -52 -12 -72 -10 -86 H10 C12 -72 18 -52 24 -28Z"/><ellipse cx="0" cy="-88" rx="19" ry="5.5"/><circle cx="0" cy="-111" r="23"/></g></g>
+<ellipse cx="132.8" cy="129.7" rx="8.8" ry="2.1" fill="rgba(0,0,0,0.5)" filter="url(#gpBlur)"/><g class="" transform="translate(120.0 128.7) scale(0.160)"><g fill="url(#gpIvory)" stroke="#7a6a4a" stroke-width="2"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-24 -28 C-18 -52 -12 -72 -10 -86 H10 C12 -72 18 -52 24 -28Z"/><ellipse cx="0" cy="-88" rx="19" ry="5.5"/><circle cx="0" cy="-111" r="23"/></g></g>
+<ellipse cx="212.8" cy="129.7" rx="8.8" ry="2.1" fill="rgba(0,0,0,0.5)" filter="url(#gpBlur)"/><g class="" transform="translate(200.0 128.7) scale(0.160)"><g fill="url(#gpIvory)" stroke="#7a6a4a" stroke-width="2"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-24 -28 C-18 -52 -12 -72 -10 -86 H10 C12 -72 18 -52 24 -28Z"/><ellipse cx="0" cy="-88" rx="19" ry="5.5"/><circle cx="0" cy="-111" r="23"/></g></g>
+<ellipse cx="239.5" cy="129.7" rx="8.8" ry="2.1" fill="rgba(0,0,0,0.5)" filter="url(#gpBlur)"/><g class="" transform="translate(226.7 128.7) scale(0.160)"><g fill="url(#gpIvory)" stroke="#7a6a4a" stroke-width="2"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-24 -28 C-18 -52 -12 -72 -10 -86 H10 C12 -72 18 -52 24 -28Z"/><ellipse cx="0" cy="-88" rx="19" ry="5.5"/><circle cx="0" cy="-111" r="23"/></g></g>
+<ellipse cx="249.8" cy="156.0" rx="9.9" ry="2.4" fill="rgba(0,0,0,0.5)" filter="url(#gpBlur)"/><g class="" transform="translate(235.3 155.0) scale(0.181)"><g fill="url(#gpIvory)" stroke="#7a6a4a" stroke-width="2"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-30 -30 C-24 -80 -16 -130 -14 -165 H14 C16 -130 24 -80 30 -30 Z"/><ellipse cx="0" cy="-167" rx="27" ry="7"/><path d="M-21 -172 C-32 -196 -24 -215 0 -219 C24 -215 32 -196 21 -172 Z"/><rect x="-5" y="-252" width="10" height="36" rx="2"/><rect x="-15" y="-241" width="30" height="9" rx="2"/></g></g>
+<ellipse cx="69.0" cy="156.0" rx="9.9" ry="2.4" fill="rgba(0,0,0,0.5)" filter="url(#gpBlur)"/><g class="" transform="translate(54.5 155.0) scale(0.181)"><g fill="url(#gpIvory)" stroke="#7a6a4a" stroke-width="2"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-30 -30 C-26 -60 -24 -110 -24 -140 H24 C24 -110 26 -60 30 -30Z"/><path d="M-33 -138 H33 V-176 H20 V-162 H8 V-176 H-8 V-162 H-20 V-176 H-33 Z"/></g></g>
+<ellipse cx="219.7" cy="156.0" rx="9.9" ry="2.4" fill="rgba(0,0,0,0.5)" filter="url(#gpBlur)"/><g class="" transform="translate(205.2 155.0) scale(0.181)"><g fill="url(#gpIvory)" stroke="#7a6a4a" stroke-width="2"><path d="M-48 0 C-48 -14 -40 -20 -30 -22 H30 C40 -20 48 -14 48 0 Z"/><rect x="-38" y="-32" width="76" height="12" rx="6"/><path d="M-30 -30 C-26 -60 -24 -110 -24 -140 H24 C24 -110 26 -60 30 -30Z"/><path d="M-33 -138 H33 V-176 H20 V-162 H8 V-176 H-8 V-162 H-20 V-176 H-33 Z"/></g></g>
+              <rect class="gp-lamp" width="320" height="180" fill="url(#gpLamp)" />
+              <rect width="320" height="180" fill="url(#gpVignette)" />
             </svg>
           </div>
           <div class="game-body">

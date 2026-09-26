@@ -526,29 +526,30 @@ body.hub {
 }
 
 /* Chess */
-.cm-beam {
-  transform-origin: 148px 0;
-  animation: beam 7s ease-in-out infinite;
+.gp-lift {
+  animation: gpLift 2.2s ease-in-out infinite;
 }
-@keyframes beam {
+@keyframes gpLift {
   50% {
-    transform: rotate(3deg);
-    opacity: 0.75;
+    translate: 0 -2px;
   }
 }
-.cm-sparkle {
-  animation: sparkle 2.4s ease-in-out infinite;
+.gp-ring,
+.gp-dot {
+  animation: gpPulse 1.4s ease-in-out infinite;
 }
-@keyframes sparkle {
+@keyframes gpPulse {
   50% {
-    opacity: 0.3;
+    opacity: 0.35;
   }
 }
-.cm-stars circle {
-  animation: twinkle 3.5s ease-in-out infinite;
+.gp-lamp {
+  animation: gpLamp 5s ease-in-out infinite;
 }
-.cm-stars circle:nth-child(2n) {
-  animation-delay: -1.7s;
+@keyframes gpLamp {
+  50% {
+    opacity: 0.6;
+  }
 }
 
 /* Clue */
