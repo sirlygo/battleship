@@ -10,6 +10,39 @@ Real-time board games to play with friends in the browser: no accounts, just sha
 | **Clue**: 3D or 2D mansion board, secret passages, private card showing, auto-filling notes | 2–6 | Playable |
 | **Risk**: 3D or 2D world map, dice battles with blitz, cards, continent bonuses | 2–6 | Playable |
 | **The Game of Life**: 3D board, Life Points (wealth, knowledge, happiness), decision cards, pets | 2–6 | Playable |
+| **Connect 4**: 3D rack, Classic, Pop Out and Five in a Row modes | 2 | Playable |
+| **UNO**: 3D card table, colour-matching card game with Stacking and Seven-Zero modes | 2–8 | Playable |
+| **Ludo**: 3D board and dice, bump rivals home, quick and cutthroat options | 2–4 | Playable |
+| **Monopoly**: 3D property-trading board game with houses, hotels, trades and cards | 2–6 | Playable |
+
+## Connect 4
+
+- **3D rack** (default): a glossy blue rack on a wooden table. Discs drop with a bounce, a ghost disc shows where yours will go, and winning lines glow. At the start of a rematch the slider opens and every disc falls out. Switch to the flat **2D** rack in Settings.
+- **Modes** (host picks in the lobby): *Classic* (7×6, four in a row); *Pop Out* (instead of dropping, you may pop one of your own discs out of the bottom row; if a pop makes lines for both players, the popper wins); *Five in a Row* (a bigger 9×7 rack, and you need five).
+- Tap a column or press 1–9. Optional hints mark columns where you can win (green) or must block (red). A full rack is a draw, and a running score is kept across rematches. Colours swap every round.
+
+## UNO
+
+- A colour-matching card game for 2–8 players. Everyone gets 7 cards; match the top card by colour or number/symbol. **Skip**, **Reverse**, **+2**, **Wild** and **Wild +4** cards shake things up. The first to empty their hand wins.
+- **3D card table** (default): cards fly from each player's fanned hand to the pile, a ring round the middle spins in the direction of play and glows in the current colour. Your own hand sits under the table; playable cards lift and glow. Switch to a flat **2D** table in Settings.
+- Down to your last card? Tap **UNO!** before (or right after) you play your second-to-last card. Until the next player moves, anyone can tap **Catch!** and you draw two.
+- **Modes** (host picks): *Classic*; *Stacking* (answer a +2 with a +2, or a +4 with a +4, and pass the growing pile on); *Seven-Zero* (a 7 swaps hands with a player you choose, a 0 passes every hand along). **When you can't play**: draw one card, or keep drawing until one fits.
+- The server deals and shuffles and only ever sends you your own cards. If someone leaves, their cards go back into the deck.
+
+## Ludo
+
+- 2–4 players race four tokens (or two in a quick game) from their yard, round the board and up their coloured lane to the centre. Roll a 6 to bring a token out; landing on a rival bumps them back to their yard, except on start squares and ★ stars.
+- Rolling a 6, bumping someone or getting a token home earns another roll. Three 6s in a row ends your turn. You need the exact roll to get home. If only one move makes sense, it happens automatically.
+- **3D board** (default): glossy pawns hop square by square, a real die tumbles onto the thrower's yard, bumped pawns fly home spinning, and the board turns so your yard is in front of you. Switch to the flat **2D** board in Settings, where you can also let the game roll for you.
+- **Host options**: full or quick game, safe stars or *Cutthroat* (bump anywhere), and leave the yard on a 6 or on a 1 or 6.
+
+## Monopoly
+
+- The classic property-trading board game for 2–6 players, with the classic street names. Roll two dice, buy streets, stations and utilities, charge rent, and bankrupt everyone else.
+- Owning a whole colour set doubles its rent; then build up to four houses and a hotel (evenly across the set). **Chance** and **Community Chest** cards can send you anywhere. Doubles roll again; three doubles in a row, or landing on *Go to Jail*, locks you up. Get out by paying $50, using a Get Out of Jail Free card or rolling doubles.
+- **Trades**: offer any mix of property (without buildings) and cash to another player, who can accept or decline. Mortgage property for half its price, or sell buildings back for half. If you can't pay a debt, the bank sells your buildings and mortgages property for you; if that's still not enough you're bankrupt, and your property goes to whoever you owed.
+- **3D board** (default): metal tokens (race car, rocket, top hat, sailboat, diamond, UFO), houses and hotels that pop up, owner markers along each space, dice that tumble across the middle and coins that fly between players. Hover or tap any space for its rent card. Switch to the flat **2D** board in Settings.
+- **Host options**: *Classic* (last one standing) or *Short* (after 20 rounds the richest player wins), $1,500 or $2,500 starting cash, and an optional *Jackpot* where taxes and fees pile up on Free Parking.
 
 ## Checkers
 

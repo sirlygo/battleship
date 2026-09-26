@@ -1,0 +1,543 @@
+/* UNO page. Shared controls (buttons, chat, modals…) come from /shared/ui.css. */
+
+body.clash {
+  background:
+    radial-gradient(ellipse at 20% 0%, rgba(232, 65, 60, 0.14), transparent 50%),
+    radial-gradient(ellipse at 80% 0%, rgba(47, 127, 224, 0.16), transparent 50%),
+    radial-gradient(ellipse at 50% 120%, rgba(47, 179, 90, 0.14), transparent 60%),
+    linear-gradient(180deg, #150f2a 0%, #0a0716 100%);
+}
+
+.clash .lobby {
+  background: transparent;
+}
+
+.clash .brand h1 {
+  background: linear-gradient(90deg, #ff6a5a 0%, #ffd166 35%, #5fe08a 65%, #5aa8ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 4px 18px rgba(255, 170, 90, 0.25));
+}
+
+/* ------------------------------------------------------------------ Layout */
+
+.cc-layout {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 12px 16px 18px;
+}
+
+.cc-main {
+  flex: 1;
+  min-width: 0;
+  max-width: max(420px, calc((100dvh - 360px) * 1.6));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cc-side {
+  width: 320px;
+  flex: none;
+}
+
+.cc-table-wrap {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 35%, #233a33 0%, #0c1412 100%);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 220, 160, 0.1);
+}
+
+.cc-3d,
+.cc-2d {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  touch-action: manipulation;
+}
+
+.cc-3d[hidden],
+.cc-2d[hidden] {
+  display: none;
+}
+
+/* ------------------------------------------------------------------ 2D table */
+
+.cc-2d {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8%;
+  background:
+    radial-gradient(circle at 50% 50%, #2e6a52 0%, #173d30 70%, #0f271f 100%);
+}
+
+.cc-card-img {
+  width: 16%;
+  aspect-ratio: 2 / 3;
+  border-radius: 10px;
+  background: center / contain no-repeat;
+  border: none;
+  padding: 0;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.45);
+}
+
+.cc-deck2d {
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.45), 3px 3px 0 #ddd, 6px 6px 0 #bbb;
+}
+
+.cc-deck2d.active {
+  animation: ccGlow 1.1s ease-in-out infinite alternate;
+}
+
+@keyframes ccGlow {
+  to {
+    box-shadow: 0 0 0 3px #ffd166, 0 0 28px rgba(255, 209, 102, 0.8), 3px 3px 0 #ddd, 6px 6px 0 #bbb;
+  }
+}
+
+.cc-pile2d.pop {
+  animation: ccPop 0.35s ease;
+}
+
+@keyframes ccPop {
+  from {
+    transform: scale(1.25) rotate(-8deg);
+  }
+}
+
+.cc-dir2d {
+  position: absolute;
+  bottom: 6%;
+  font: 700 14px var(--display);
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: 0.1em;
+}
+
+.cc-color-chip {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 8px;
+  border-radius: 999px;
+  background: rgba(8, 10, 20, 0.75);
+  font: 700 13px var(--display);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.cc-color-chip i {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  box-shadow: 0 0 10px currentColor;
+}
+
+.cc-catch {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+  padding: 16px 26px;
+  font: 800 20px var(--display);
+  letter-spacing: 0.06em;
+  color: #2a0600;
+  background: linear-gradient(180deg, #ffcf5a, #ff7a3c);
+  box-shadow: 0 10px 30px rgba(255, 120, 60, 0.6);
+  animation: ccCatch 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes ccCatch {
+  to {
+    transform: translate(-50%, -50%) scale(1.08);
+    box-shadow: 0 10px 40px rgba(255, 120, 60, 0.9);
+  }
+}
+
+/* ------------------------------------------------------------------ Players */
+
+.cc-players {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cc-player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 120px;
+  padding: 5px 10px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 13px;
+  transition: background 0.3s, box-shadow 0.3s, opacity 0.3s;
+}
+
+.cc-player b {
+  max-width: 110px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cc-player .count {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 700 13px var(--display);
+  color: var(--gold);
+}
+
+.cc-player .count::before {
+  content: '';
+  width: 10px;
+  height: 14px;
+  border-radius: 2px;
+  background: linear-gradient(135deg, #3a2a6a, #120c26);
+  border: 1px solid #fff;
+}
+
+.cc-player .wins {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.cc-player.turn {
+  background: rgba(255, 209, 102, 0.18);
+  box-shadow: 0 0 0 1px rgba(255, 209, 102, 0.7), 0 0 18px rgba(255, 209, 102, 0.3);
+}
+
+.cc-player.last {
+  box-shadow: 0 0 0 1px #ff7a3c, 0 0 16px rgba(255, 122, 60, 0.5);
+}
+
+.cc-player.gone {
+  opacity: 0.35;
+}
+
+/* ------------------------------------------------------------------ Hand */
+
+.cc-hand-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cc-hand-bar[hidden] {
+  display: none;
+}
+
+.cc-hand-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  min-height: 40px;
+}
+
+.cc-hand-actions [hidden] {
+  display: none;
+}
+
+.cc-call {
+  color: #2a0600;
+  background: linear-gradient(180deg, #ffcf5a, #ff7a3c);
+  font-weight: 800;
+  animation: ccCatch 0.7s ease-in-out infinite alternate;
+  transform: none;
+}
+
+.cc-hand {
+  --card-w: clamp(62px, 7vw, 92px);
+  --overlap: 0px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  padding: 18px 10px 6px;
+  min-height: calc(var(--card-w) * 1.5 + 26px);
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-width: thin;
+}
+
+.cc-hand .card {
+  flex: none;
+  width: var(--card-w);
+  aspect-ratio: 2 / 3;
+  margin-left: var(--overlap);
+  border: none;
+  padding: 0;
+  border-radius: calc(var(--card-w) * 0.1);
+  background: center / contain no-repeat;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  transform: translateY(0) rotate(var(--tilt, 0deg));
+  transition: transform 0.18s ease, filter 0.2s, box-shadow 0.2s;
+}
+
+.cc-hand .card:first-child {
+  margin-left: 0;
+}
+
+.cc-hand.my-turn .card:not(.ok) {
+  filter: brightness(0.55) saturate(0.6);
+  cursor: not-allowed;
+}
+
+.cc-hand.my-turn .card.ok {
+  transform: translateY(-12px) rotate(var(--tilt, 0deg));
+  box-shadow: 0 0 0 2px #ffd166, 0 10px 24px rgba(255, 209, 102, 0.45);
+}
+
+.cc-hand .card.ok:hover,
+.cc-hand .card.ok:focus-visible {
+  transform: translateY(-24px) rotate(0deg) scale(1.06);
+  z-index: 2;
+}
+
+.cc-hand .card.new {
+  animation: ccDeal 0.45s cubic-bezier(0.2, 0.8, 0.3, 1.2) both;
+}
+
+@keyframes ccDeal {
+  from {
+    transform: translateY(-120px) rotate(-20deg) scale(0.6);
+    opacity: 0;
+  }
+}
+
+.cc-hand .card.shake {
+  animation: ccShake 0.3s;
+}
+
+@keyframes ccShake {
+  25% {
+    transform: translateX(-6px);
+  }
+  75% {
+    transform: translateX(6px);
+  }
+}
+
+/* ------------------------------------------------------------------ Pickers */
+
+.cc-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: center;
+}
+
+.cc-colors {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: min(320px, 80vw);
+}
+
+.cc-swatch {
+  height: 74px;
+  border: none;
+  border-radius: 14px;
+  font: 800 16px var(--display);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.25), 0 8px 18px rgba(0, 0, 0, 0.35);
+  transition: transform 0.12s;
+}
+
+.cc-swatch:hover {
+  transform: scale(1.05);
+}
+
+.cc-swatch.r {
+  background: #e8413c;
+}
+
+.cc-swatch.y {
+  background: #f5b920;
+}
+
+.cc-swatch.g {
+  background: #2fb35a;
+}
+
+.cc-swatch.b {
+  background: #2f7fe0;
+}
+
+.cc-targets {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(320px, 80vw);
+}
+
+.cc-targets .btn {
+  justify-content: space-between;
+}
+
+/* ------------------------------------------------------------------ Side panel */
+
+.cc-lobby-players {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+}
+
+.cc-lobby-players li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25);
+  font-weight: 600;
+}
+
+.cc-lobby-players li.empty {
+  color: var(--muted);
+  font-weight: 400;
+  font-style: italic;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.cc-lobby-players .host {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--gold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.cc-rules {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
+.cc-rule-label {
+  margin: 6px 0 0 !important;
+  font: 600 11px var(--display);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.cc-h {
+  margin: 0 0 8px;
+  font-family: var(--display);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--friendly);
+}
+
+.cc-log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 260px;
+  overflow-y: auto;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.cc-log li {
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.cc-log li i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-right: 5px;
+}
+
+.cc-results {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 6px 0 12px;
+}
+
+.cc-results div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25);
+  font-weight: 600;
+}
+
+.cc-results div.win {
+  background: rgba(255, 209, 102, 0.18);
+  color: var(--gold);
+}
+
+/* ------------------------------------------------------------------ Small screens */
+
+@media (max-width: 980px) {
+  .clash .tb-room {
+    overflow-y: auto;
+  }
+
+  .cc-layout {
+    flex: none;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    padding: 8px 8px 24px;
+  }
+
+  .cc-main {
+    max-width: none;
+  }
+
+  .cc-side {
+    width: 100%;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .cc-3d,
+  .cc-2d {
+    aspect-ratio: 4 / 3.4;
+  }
+
+  .cc-hand {
+    --card-w: 64px;
+    justify-content: flex-start;
+  }
+}
