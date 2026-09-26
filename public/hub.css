@@ -9,8 +9,10 @@ body.hub {
 }
 
 body.hub {
-  background: radial-gradient(ellipse at top, #0e2446 0%, #050d1c 60%);
+  background: radial-gradient(ellipse at 50% -10%, #16305c 0%, #0a1430 40%, #050914 100%);
 }
+
+/* ------------------------------------------------------------------ Background */
 
 .hub-bg {
   position: fixed;
@@ -20,39 +22,59 @@ body.hub {
   z-index: 0;
 }
 
+.hub-grid {
+  position: absolute;
+  inset: -50% -50% 0;
+  background-image:
+    linear-gradient(rgba(120, 180, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(120, 180, 255, 0.06) 1px, transparent 1px);
+  background-size: 48px 48px;
+  transform: perspective(600px) rotateX(60deg) translateY(30%);
+  transform-origin: 50% 100%;
+  mask-image: linear-gradient(180deg, transparent 0%, #000 60%, transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 60%, transparent 100%);
+  animation: gridMove 12s linear infinite;
+}
+
+@keyframes gridMove {
+  to {
+    background-position: 0 48px, 0 0;
+  }
+}
+
 .orb {
   position: absolute;
   border-radius: 50%;
-  filter: blur(60px);
-  opacity: 0.45;
+  filter: blur(70px);
+  opacity: 0.4;
   animation: drift 18s ease-in-out infinite alternate;
 }
 
 .orb-a {
-  width: 420px;
-  height: 420px;
-  left: -120px;
-  top: -80px;
+  width: 460px;
+  height: 460px;
+  left: -140px;
+  top: -100px;
   background: #1aa7c9;
 }
 
 .orb-b {
-  width: 360px;
-  height: 360px;
-  right: -100px;
-  top: 30%;
+  width: 380px;
+  height: 380px;
+  right: -120px;
+  top: 25%;
   background: #e0442a;
-  opacity: 0.25;
+  opacity: 0.22;
   animation-duration: 22s;
 }
 
 .orb-c {
-  width: 300px;
-  height: 300px;
+  width: 340px;
+  height: 340px;
   left: 30%;
-  bottom: -140px;
-  background: #ffd166;
-  opacity: 0.18;
+  bottom: -160px;
+  background: #7dffb0;
+  opacity: 0.14;
   animation-duration: 26s;
 }
 
@@ -62,12 +84,57 @@ body.hub {
   }
 }
 
+.floaty {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  opacity: 0.22;
+  filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.5));
+  animation: floaty 14s ease-in-out infinite;
+}
+
+.f1 {
+  left: 6%;
+  top: 22%;
+}
+
+.f2 {
+  right: 7%;
+  top: 14%;
+  animation-delay: -4s;
+}
+
+.f3 {
+  left: 9%;
+  bottom: 18%;
+  width: 34px;
+  animation-delay: -8s;
+}
+
+.f4 {
+  right: 10%;
+  bottom: 26%;
+  animation-delay: -2s;
+}
+
+@keyframes floaty {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-24px) rotate(18deg);
+  }
+}
+
+/* ------------------------------------------------------------------ Header */
+
 .hub-main {
   position: relative;
   z-index: 1;
-  width: min(1080px, 100%);
+  width: min(1140px, 100%);
   margin: 0 auto;
-  padding: max(28px, env(safe-area-inset-top)) 16px 48px;
+  padding: max(26px, env(safe-area-inset-top)) 16px 56px;
 }
 
 .hub-header {
@@ -76,35 +143,113 @@ body.hub {
   animation: rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
+.logo {
+  display: inline-grid;
+  place-items: center;
+  margin-bottom: 8px;
+}
+
+.logo-die {
+  width: 54px;
+  height: 54px;
+  padding: 9px;
+  display: grid;
+  grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+  border-radius: 14px;
+  background: linear-gradient(145deg, #6ff0ff 0%, #1aa7c9 100%);
+  box-shadow: 0 10px 30px rgba(26, 167, 201, 0.45), inset 0 -4px 0 rgba(0, 0, 0, 0.2), inset 0 2px 0 rgba(255, 255, 255, 0.5);
+  transform: rotate(-10deg);
+  animation: dieWobble 5s ease-in-out infinite;
+}
+
+.logo-die i {
+  width: 8px;
+  height: 8px;
+  place-self: center;
+  border-radius: 50%;
+  background: #04202c;
+}
+
+.logo-die i:nth-child(1) {
+  grid-area: 1 / 1;
+}
+.logo-die i:nth-child(2) {
+  grid-area: 1 / 3;
+}
+.logo-die i:nth-child(3) {
+  grid-area: 2 / 2;
+}
+.logo-die i:nth-child(4) {
+  grid-area: 3 / 1;
+}
+.logo-die i:nth-child(5) {
+  grid-area: 3 / 3;
+}
+
+@keyframes dieWobble {
+  0%,
+  100% {
+    transform: rotate(-10deg) translateY(0);
+  }
+  50% {
+    transform: rotate(8deg) translateY(-6px);
+  }
+}
+
 .hub-header h1 {
-  margin: 6px 0 6px;
+  margin: 4px 0 6px;
   font-family: var(--display);
   font-weight: 700;
-  font-size: clamp(40px, 10vw, 64px);
+  font-size: clamp(44px, 11vw, 76px);
+  line-height: 1;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  background: linear-gradient(180deg, #ffffff 0%, #9fe9ff 60%, #3fc3e6 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #bff3ff 45%, #3fc3e6 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  filter: drop-shadow(0 4px 18px rgba(60, 200, 240, 0.35));
+  filter: drop-shadow(0 6px 24px rgba(60, 200, 240, 0.4));
 }
 
 .hub-header p {
   margin: 0;
 }
 
+.hub-tag {
+  color: var(--muted);
+  font-size: 16px;
+}
+
+/* ------------------------------------------------------------------ Name / code bar */
+
 .hub-bar {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
   padding: 16px 18px;
+  border-radius: 18px;
   animation: rise 0.6s 0.08s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.hub-bar > *,
+.hub-bar .field {
+  min-width: 0;
 }
 
 .hub-bar .join-row {
   display: flex;
   gap: 10px;
+  min-width: 0;
+}
+
+.hub-bar .join-row input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+}
+
+.hub-bar .join-row .btn {
+  flex: none;
 }
 
 .hub-bar .code-input {
@@ -115,72 +260,158 @@ body.hub {
   margin: 10px 0 0;
 }
 
+/* ------------------------------------------------------------------ Game cards */
+
 .games {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 16px;
-  margin-top: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 18px;
+  margin-top: 22px;
 }
 
 .game-card {
+  --accent: #5ee7ff;
+  --accent-2: #1aa7c9;
+  --rx: 0deg;
+  --ry: 0deg;
+  position: relative;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border-radius: var(--radius);
-  background: var(--glass);
-  border: 1px solid var(--line);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
-  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.25s, box-shadow 0.25s;
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(14, 24, 44, 0.92), rgba(7, 13, 26, 0.95));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+  transform: perspective(900px) rotateX(var(--rx)) rotateY(var(--ry));
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.3s, box-shadow 0.3s;
   animation: rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
-.game-card:nth-child(2) { animation-delay: 0.06s; }
-.game-card:nth-child(3) { animation-delay: 0.12s; }
-.game-card:nth-child(4) { animation-delay: 0.18s; }
-.game-card:nth-child(5) { animation-delay: 0.24s; }
-.game-card:nth-child(6) { animation-delay: 0.3s; }
-
-.game-card:not(.soon):hover {
-  transform: translateY(-4px);
-  border-color: rgba(94, 231, 255, 0.45);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(94, 231, 255, 0.2);
+.game-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(140deg, var(--accent), transparent 40%, transparent 60%, var(--accent-2));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.35;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  z-index: 2;
 }
 
-.game-card.soon {
-  opacity: 0.62;
+.game-card:nth-child(2) {
+  animation-delay: 0.06s;
+}
+.game-card:nth-child(3) {
+  animation-delay: 0.12s;
+}
+.game-card:nth-child(4) {
+  animation-delay: 0.18s;
+}
+.game-card:nth-child(5) {
+  animation-delay: 0.24s;
+}
+.game-card:nth-child(6) {
+  animation-delay: 0.3s;
+}
+
+.game-card:hover {
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.55), 0 0 40px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.game-card:hover::before {
+  opacity: 0.9;
 }
 
 .game-art {
   position: relative;
-  height: 150px;
-  display: grid;
-  place-items: center;
+  height: 180px;
   overflow: hidden;
+}
+
+.game-art svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.game-card:hover .game-art svg {
+  transform: scale(1.06);
+}
+
+/* Glossy sheen that follows the pointer. */
+.game-art::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at var(--mx, 50%) var(--my, 0%), rgba(255, 255, 255, 0.18), transparent 45%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.game-card:hover .game-art::after {
+  opacity: 1;
+}
+
+/* Fade the art into the card body. */
+.game-art::before {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: 40px;
+  background: linear-gradient(180deg, transparent, rgba(14, 24, 44, 0.92));
+  z-index: 1;
+  pointer-events: none;
 }
 
 .game-body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 16px 18px 18px;
+  padding: 6px 20px 20px;
   flex: 1;
+}
+
+.game-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .game-body h2 {
   margin: 0;
   font-family: var(--display);
-  font-size: 22px;
-  letter-spacing: 0.06em;
+  font-size: 23px;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
+}
+
+.tag {
+  padding: 2px 8px;
+  border-radius: 6px;
+  font: 700 11px var(--display);
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.tag-3d {
+  color: #04202c;
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
 }
 
 .game-body p {
   margin: 0;
   color: var(--muted);
   font-size: 14px;
-  line-height: 1.45;
+  line-height: 1.5;
 }
 
 .game-meta {
@@ -188,184 +419,296 @@ body.hub {
   gap: 8px;
   flex-wrap: wrap;
   margin-top: auto;
-  padding-top: 4px;
+  padding-top: 6px;
 }
 
 .game-meta span {
-  padding: 3px 9px;
+  padding: 4px 10px;
   border-radius: 999px;
-  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   font-size: 12px;
-  color: var(--muted);
-}
-
-.game-meta .soon-tag {
-  color: var(--gold);
-  border-color: rgba(255, 209, 102, 0.35);
+  color: var(--text);
 }
 
 .host-btn {
-  margin-top: 8px;
+  margin-top: 10px;
   text-decoration: none;
+  text-align: center;
+  color: #06121c !important;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 85%, #fff 15%), var(--accent-2)) !important;
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 30%, transparent);
+  transition: transform 0.15s, box-shadow 0.2s, filter 0.2s;
 }
 
-/* ---- card art */
-
-.art-battleship {
-  background: linear-gradient(180deg, #0b2a4a 0%, #0d5566 100%);
+.host-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
-.art-battleship svg {
-  width: 88%;
-  animation: bob 4s ease-in-out infinite;
-}
+/* ------------------------------------------------------------------ Art animations */
 
-.art-battleship .wave {
-  fill: #1aa7c9;
-  opacity: 0.55;
+/* Battleship */
+.twinkle circle {
+  animation: twinkle 3s ease-in-out infinite;
 }
-
-.art-battleship .hull {
-  fill: #5d6975;
+.twinkle circle:nth-child(2n) {
+  animation-delay: -1.5s;
 }
-
-.art-battleship .deck {
-  fill: #c8cfd6;
-}
-
-.art-battleship .gun {
-  fill: #2b3038;
-}
-
-.art-battleship .mast {
-  stroke: #2b3038;
-  stroke-width: 3;
-}
-
-@keyframes bob {
+@keyframes twinkle {
   50% {
-    transform: translateY(4px) rotate(-1deg);
+    opacity: 0.2;
+  }
+}
+.ship {
+  animation: shipBob 4.5s ease-in-out infinite;
+  transform-origin: 120px 140px;
+}
+@keyframes shipBob {
+  50% {
+    transform: translateY(3px) rotate(-1deg);
+  }
+}
+.waves-back {
+  animation: waves 7s linear infinite;
+}
+.waves-front {
+  animation: waves 5s linear infinite reverse;
+}
+@keyframes waves {
+  to {
+    transform: translateX(-40px);
+  }
+}
+.missile {
+  stroke-dashoffset: 0;
+  animation: dash 1.2s linear infinite;
+}
+@keyframes dash {
+  to {
+    stroke-dashoffset: -18;
+  }
+}
+.boom {
+  transform-origin: 248px 98px;
+  animation: boom 1.8s ease-out infinite;
+}
+@keyframes boom {
+  0% {
+    transform: scale(0.3);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+.blink {
+  animation: twinkle 1.2s steps(2) infinite;
+}
+.reticle {
+  transform-origin: 248px 98px;
+  animation: spinSlow 10s linear infinite;
+}
+
+/* Checkers */
+.ck-piece.bob {
+  animation: pieceBob 2.8s ease-in-out infinite;
+}
+@keyframes pieceBob {
+  50% {
+    transform: translateY(-4px);
+  }
+}
+.ck-jump {
+  animation: dash 1s linear infinite;
+}
+
+/* Chess */
+.cs-knight {
+  animation: knightFloat 5s ease-in-out infinite;
+}
+@keyframes knightFloat {
+  50% {
+    transform: translate(92px, 22px);
+  }
+}
+.beam {
+  animation: beam 6s ease-in-out infinite;
+  transform-origin: 160px 0;
+}
+@keyframes beam {
+  50% {
+    transform: rotate(4deg);
+    opacity: 0.7;
   }
 }
 
-.art-checkers {
-  background: radial-gradient(circle at 50% 40%, #3b2414 0%, #1a0f08 100%);
+/* Clue */
+.windows .w2,
+.windows .w5 {
+  animation: flicker 3.4s steps(1) infinite;
 }
-
-.mini-board {
-  display: grid;
-  grid-template-columns: repeat(4, 30px);
-  grid-template-rows: repeat(4, 30px);
-  transform: perspective(400px) rotateX(35deg);
-  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.5);
-  border: 5px solid #4a2c17;
+.windows .w3 {
+  animation: flicker 5s steps(1) infinite reverse;
 }
-
-.mini-board i:nth-child(8n + 1),
-.mini-board i:nth-child(8n + 3),
-.mini-board i:nth-child(8n + 6),
-.mini-board i:nth-child(8n + 8) {
-  background: #ecd9b5;
-}
-
-.mini-board i {
-  background: #6d4527;
-}
-
-.disc {
-  position: absolute;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5), inset 0 -3px 0 rgba(0, 0, 0, 0.3);
-}
-
-.disc-red {
-  background: radial-gradient(circle at 35% 30%, #ff8a80, #d32f2f 50%, #8e1b1b);
-  left: calc(50% - 38px);
-  top: 52px;
-  animation: hop 3s ease-in-out infinite;
-}
-
-.disc-black {
-  background: radial-gradient(circle at 35% 30%, #777, #262626 50%, #0a0a0a);
-  left: calc(50% + 8px);
-  top: 70px;
-}
-
-.disc-red.king {
-  left: calc(50% + 14px);
-  top: 34px;
-  animation-delay: 1.5s;
-}
-
-.disc-red.king::after {
-  content: '♛';
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  color: #ffd166;
-  font-size: 15px;
-}
-
-@keyframes hop {
-  0%, 60%, 100% {
-    transform: translate(0, 0);
+@keyframes flicker {
+  0%,
+  100% {
+    fill: #ffcf5a;
   }
-  75% {
-    transform: translate(10px, -14px);
+  40% {
+    fill: #4a2a2a;
+  }
+  60% {
+    fill: #ffcf5a;
+  }
+}
+.fog {
+  animation: fog 8s ease-in-out infinite;
+}
+@keyframes fog {
+  50% {
+    transform: translateX(-20px);
+    opacity: 0.7;
+  }
+}
+.lens {
+  animation: lens 6s ease-in-out infinite;
+}
+@keyframes lens {
+  50% {
+    transform: translate(214px, 104px) rotate(-12deg);
+  }
+}
+.flame {
+  transform-origin: 16px 6px;
+  animation: flame 0.9s ease-in-out infinite alternate;
+}
+@keyframes flame {
+  to {
+    transform: scale(0.85, 1.15);
   }
 }
 
-.art-chess {
-  background: radial-gradient(circle at 50% 40%, #2a3350 0%, #0e1426 100%);
-  font-size: 92px;
-  color: #e8f1fb;
-  text-shadow: 0 10px 24px rgba(0, 0, 0, 0.6);
+/* Risk */
+.rk-attack {
+  animation: dash 0.8s linear infinite;
+}
+.flag path {
+  transform-origin: 0 4px;
+  animation: flag 1.6s ease-in-out infinite;
+}
+@keyframes flag {
+  50% {
+    transform: scaleX(0.8) skewY(6deg);
+  }
+}
+.dice {
+  animation: diceBounce 3.2s ease-in-out infinite;
+}
+@keyframes diceBounce {
+  0%,
+  70%,
+  100% {
+    transform: translate(26px, 124px);
+  }
+  80% {
+    transform: translate(26px, 116px) rotate(-4deg);
+  }
 }
 
-.art-mystery,
-.art-conquest,
-.art-life {
-  background: radial-gradient(circle at 50% 40%, #2d2338 0%, #120d18 100%);
+/* Life */
+.spinner {
+  animation: spinSlow 9s linear infinite;
 }
-
-.art-conquest {
-  background: radial-gradient(circle at 50% 40%, #213a2b 0%, #0b1610 100%);
-}
-
-.art-life {
-  background: radial-gradient(circle at 50% 40%, #3a2f19 0%, #16110a 100%);
-}
-
-.game-art svg {
-  height: 110px;
-  fill: none;
-  stroke: #e8f1fb;
-  stroke-width: 5;
-  stroke-linecap: round;
-  opacity: 0.85;
-}
-
-.art-battleship svg {
-  height: auto;
-  stroke: none;
-  opacity: 1;
-}
-
-.art-life svg {
-  animation: spin 12s linear infinite;
-}
-
-.art-life .hub-dot {
-  fill: #ffd166;
-  stroke: none;
-}
-
-@keyframes spin {
+@keyframes spinSlow {
   to {
     transform: rotate(360deg);
+  }
+}
+.clouds {
+  animation: clouds 20s linear infinite alternate;
+}
+@keyframes clouds {
+  to {
+    transform: translateX(30px);
+  }
+}
+.balloon {
+  animation: balloon 7s ease-in-out infinite;
+}
+@keyframes balloon {
+  50% {
+    transform: translate(170px, 22px);
+  }
+}
+.car {
+  animation: carBob 0.6s ease-in-out infinite alternate;
+}
+@keyframes carBob {
+  to {
+    transform: translate(128px, 131px) rotate(-12deg);
+  }
+}
+.sun {
+  animation: sun 4s ease-in-out infinite;
+  transform-origin: 44px 34px;
+}
+@keyframes sun {
+  50% {
+    transform: scale(1.12);
+  }
+}
+
+/* ------------------------------------------------------------------ How it works */
+
+.how {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-top: 28px;
+}
+
+.how-step {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.how-n {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  font: 700 16px var(--display);
+  color: #04202c;
+  background: linear-gradient(145deg, #6ff0ff, #1aa7c9);
+}
+
+.how-step b {
+  font-family: var(--display);
+  letter-spacing: 0.04em;
+}
+
+.how-step p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hub *,
+  .hub *::before,
+  .hub *::after {
+    animation: none !important;
   }
 }
 
@@ -378,7 +721,11 @@ body.hub {
     grid-template-columns: 1fr;
   }
 
-  .game-art {
-    height: 120px;
+  .how {
+    grid-template-columns: 1fr;
+  }
+
+  .floaty {
+    display: none;
   }
 }

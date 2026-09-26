@@ -51,3 +51,24 @@ if (invited) {
   codeInput.value = invited.toUpperCase().slice(0, 5);
   goToRoom(codeInput.value, { autoJoin: false });
 }
+
+// Cards tilt gently towards the pointer, with a sheen that follows it.
+const canHover = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (canHover && !calm) {
+  document.querySelectorAll('.game-card').forEach((card) => {
+    card.addEventListener('pointermove', (event) => {
+      const rect = card.getBoundingClientRect();
+      const x = (event.clientX - rect.left) / rect.width;
+      const y = (event.clientY - rect.top) / rect.height;
+      card.style.setProperty('--ry', `${(x - 0.5) * 8}deg`);
+      card.style.setProperty('--rx', `${(0.5 - y) * 6}deg`);
+      card.style.setProperty('--mx', `${x * 100}%`);
+      card.style.setProperty('--my', `${y * 100}%`);
+    });
+    card.addEventListener('pointerleave', () => {
+      card.style.setProperty('--rx', '0deg');
+      card.style.setProperty('--ry', '0deg');
+    });
+  });
+}
