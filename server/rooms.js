@@ -471,11 +471,12 @@ class RoomManager {
         if (!action) return reply(callback, { error: 'That action is not part of this game.' });
         if (!player) return reply(callback, { error: 'Spectators can only watch.' });
         const result = action(this.ctx(room), seat, payload || {}) || { ok: true };
-        reply(callback, result);
+        // Send the new state first so a client's reply handler already sees it.
         if (!result.error) {
           this.touch(room);
           this.broadcast(room);
         }
+        reply(callback, result);
       });
     });
 

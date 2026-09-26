@@ -8,7 +8,7 @@ Real-time board games to play with friends in the browser: no accounts, just sha
 | **Checkers**: forced captures, multi-jumps, kings, draw offers | 2 | Playable |
 | **Chess**: 3D or 2D board, full rules, drag-and-drop, optional clocks | 2 | Playable |
 | **Clue**: 3D or 2D mansion board, secret passages, private card showing, auto-filling notes | 2–6 | Playable |
-| Risk | 2–6 | Coming soon |
+| **Risk**: 3D or 2D world map, dice battles with blitz, cards, continent bonuses | 2–6 | Playable |
 | The Game of Life | 2–6 | Coming soon |
 
 ## Checkers
@@ -28,6 +28,17 @@ Real-time board games to play with friends in the browser: no accounts, just sha
 - In a room you can make a suggestion. The suspect and weapon move into that room, and the first player to your left holding one of those cards must show you one in secret. If they only hold one match it's shown automatically.
 - Your detective notes cross off your own cards, cards shown to you, and cards of players who left. The host can turn this auto-fill off in the lobby for classic, fully manual notes. Tap any line to mark it ✕, ? or ✓ yourself. The case log records every suggestion and who passed.
 - Accuse at any time on your turn. Right and you win; wrong and you're out, but you still show cards. The server holds the hidden cards and sends each player only what they're allowed to see.
+
+## Risk
+
+- **3D board** (default): raised territories on a wooden tabletop ocean, with small armies of infantry, cavalry (5) and cannons (10) in each owner's colour, plus a count badge. Territories lift when selected, targets glow, an arc marks the attack, and conquered land flashes into its new colour. Scroll or pinch to zoom, drag to pan, and double-click to reset. Switch to the flat **2D** map in Settings.
+- The host picks the rules in the lobby: place starting armies yourself or automatically, rising (4, 6, 8, 10, 12, 15, +5) or fixed card values, and fortifying along any chain of your territories or only next door. Then they start the game with 2–6 players.
+- The 42 territories are dealt out. Everyone places their starting armies at the same time, then turns begin.
+- **Reinforce:** you get 1 army per 3 territories (at least 3), plus continent bonuses. Tap territories to stage armies (right-click or long-press takes one back), or use Auto-place, then confirm. Trade three cards (three of a kind, one of each, or any with a wild) for more; with 5 or more cards you must trade. A traded card showing a territory you hold adds 2 armies there.
+- **Attack:** tap your territory, then a neighbouring enemy (dashed lines are sea routes, and Alaska wraps round to Kamchatka). Roll 1–3 dice against the defender's 1–2. The highest dice are compared and ties go to the defender. **Blitz** keeps rolling until one side runs out. The dice are shown to everyone. After a conquest, choose how many armies move in.
+- **Fortify:** move armies once, then end your turn. Conquer at least one territory to earn a card. Knock a player out and you take their cards.
+- A player who leaves turns into neutral armies that never attack. The last commander standing wins.
+- The map is generated from `tools/risk-map-gen.js`, and the server checks every move against the same map file the browser draws.
 
 ## Chess
 
