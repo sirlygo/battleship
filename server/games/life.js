@@ -108,7 +108,9 @@ function finalScore(ctx) {
     }
     if (p.loans) lines.push({ label: `Repay ${p.loans} loan${p.loans === 1 ? '' : 's'}`, amount: -p.loans * B.LOAN_REPAY, unit: '$' });
     const wealth = wealthPoints(p, house);
-    const total = wealth + p.knowledge + p.happiness;
+    const net = p.money + house - p.loans * B.LOAN_REPAY;
+    // "Richest wins" ranks by net worth alone (in $K).
+    const total = state.options.scoring === 'money' ? net : wealth + p.knowledge + p.happiness;
     return { seat, total, wealth, knowledge: p.knowledge, happiness: p.happiness, net: p.money + house - p.loans * B.LOAN_REPAY, lines };
   });
   results.sort((a, b) => b.total - a.total);
@@ -116,7 +118,13 @@ function finalScore(ctx) {
   state.phase = 'over';
   const winner = results[0]?.seat ?? null;
   ctx.finish(winner, 'retired');
-  if (winner !== null) ctx.system(`${state.names[winner]} wins with ${results[0].total} Life Points!`);
+  if (winner !== null) {
+    ctx.system(
+      state.options.scoring === 'money'
+        ? `${state.names[winner]} retires the richest with ${money(results[0].total)}!`
+        : `${state.names[winner]} wins with ${results[0].total} Life Points!`
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -392,6 +400,8 @@ function view(ctx, seat) {
     lastMove: state.lastMove,
     log: state.log,
     results: over ? state.results : null,
+    scoring: state.options.scoring || 'points',
+    speed: state.options.speed || 'normal',
     winner: over && room.result ? room.result.winner : null,
   };
 }
@@ -415,14 +425,28 @@ module.exports = {
   manualStart: true,
 
   defaultOptions() {
-    return {};
+    return { scoring: 'points', speed: 'normal' };
   },
 
-  canChangeOptions() {
-    return false;
+  canChangeOptions(ctx) {
+    return ctx.room.status !== 'active';
   },
 
-  applyOptions() {},
+  applyOptions(ctx, payload) {
+    const { options } = ctx.room;
+    if (['points', 'money'].includes(payload.scoring) && payload.scoring !== options.scoring) {
+      options.scoring = payload.scoring;
+      ctx.system(
+        payload.scoring === 'points'
+          ? 'Scoring: Life Points — wealth, knowledge and happiness all count.'
+          : 'Scoring: Richest wins — only your net worth counts.'
+      );
+    }
+    if (['normal', 'fast'].includes(payload.speed) && payload.speed !== options.speed) {
+      options.speed = payload.speed;
+      ctx.system(payload.speed === 'fast' ? 'Speed: Fast — every spin moves you half as far again.' : 'Speed: Normal.');
+    }
+  },
 
   start(ctx) {
     const { room } = ctx;
@@ -460,6 +484,7 @@ module.exports = {
       pending: null,
       turnNumber: 1,
       dilemmas: shuffle(B.DILEMMAS),
+      options: { ...room.options },
       retireCount: 0,
       left: [],
       lastMove: null,
@@ -503,7 +528,9 @@ module.exports = {
       if (state.phase !== 'spin') return { error: 'Finish your current choice first.' };
       const n = spin();
       const move = { spin: n, path: [], events: [] };
-      drive(ctx, seat, n, move);
+      const steps = state.options.speed === 'fast' ? Math.ceil(n * 1.5) : n;
+      if (steps !== n) move.boost = steps;
+      drive(ctx, seat, steps, move);
       recordMove(state, seat, move);
       afterMove(ctx, seat);
       return { ok: true, spin: n };

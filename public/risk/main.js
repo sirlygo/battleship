@@ -452,6 +452,8 @@ function renderStatus() {
     }[s.turnPhase];
     if (s.spectator) sub += ' You are watching.';
   }
+  const goalHint = { half: 'Goal: first to 24 territories.', continents: 'Goal: first to hold 3 continents.' }[s.goal];
+  if (goalHint && s.phase === 'playing') sub = `${sub} ${goalHint}`;
   el.statusTitle.textContent = title;
   el.statusSub.textContent = sub;
   el.status.classList.toggle('mine', isMyTurn() || inSetup());
@@ -733,14 +735,19 @@ function renderGameOver() {
   }
   const me = mySeat();
   const w = s.winner;
-  el.goKicker.textContent = s.endReason === 'domination' ? 'World domination' : 'Victory';
+  el.goKicker.textContent =
+    { domination: 'World domination', 'goal-half': 'Half the world', 'goal-continents': 'Three continents' }[s.endReason] || 'Victory';
   el.goTitle.textContent = w === null || w === undefined ? 'Stalemate' : w === me ? 'You win!' : `${seatInfo(w)?.name} wins`;
   el.goReason.textContent =
     s.endReason === 'domination'
       ? 'Every territory on the map is under one flag.'
       : s.endReason === 'last-standing'
         ? 'The last commander standing.'
-        : '';
+        : s.endReason === 'goal-half'
+          ? 'First to hold 24 territories.'
+          : s.endReason === 'goal-continents'
+            ? 'First to hold three whole continents.'
+            : '';
   el.goStats.innerHTML = '';
   [...s.seats]
     .sort((a, b) => b.territories - a.territories)

@@ -54,7 +54,7 @@ module.exports = {
   maxPlayers: 2,
 
   defaultOptions() {
-    return { forcedCapture: true };
+    return { forcedCapture: true, mode: 'classic' };
   },
 
   canChangeOptions(ctx) {
@@ -67,6 +67,15 @@ module.exports = {
       options.forcedCapture = payload.forcedCapture;
       ctx.system(payload.forcedCapture ? 'Rule change: captures are mandatory.' : 'Rule change: captures are optional.');
     }
+    const MODES = {
+      classic: 'Game mode: Classic — capture them all.',
+      giveaway: 'Game mode: Giveaway — the first to lose all their pieces (or get stuck) wins!',
+      kings: 'Game mode: All Kings — every piece starts crowned.',
+    };
+    if (payload.mode in MODES && payload.mode !== options.mode) {
+      options.mode = payload.mode;
+      ctx.system(MODES[payload.mode]);
+    }
   },
 
   start(ctx) {
@@ -77,8 +86,9 @@ module.exports = {
     room.meta.colors = colors;
     const blackSeat = colors[0] === 'b' ? 0 : 1;
     ctx.system(`${ctx.name(blackSeat)} plays Black and moves first. ${ctx.name(other(blackSeat))} plays Red.`);
+    const mode = room.options.mode || 'classic';
     return {
-      board: Rules.initialBoard(),
+      board: mode === 'kings' ? Rules.initialBoard().toUpperCase() : Rules.initialBoard(),
       colors,
       turnColor: 'b',
       history: [],
@@ -120,8 +130,14 @@ module.exports = {
       const next = Rules.opponent(color);
       if (!Rules.legalMoves(board, next, room.options).length) {
         const wiped = Rules.countPieces(board, next) === 0;
-        ctx.finish(seat, wiped ? 'captured' : 'blocked');
-        ctx.system(`${ctx.name(seat)} wins — ${wiped ? 'every piece captured' : 'no moves left for the opponent'}!`);
+        if (room.options.mode === 'giveaway') {
+          // Giveaway: running out of pieces or moves is the goal.
+          ctx.finish(other(seat), 'giveaway');
+          ctx.system(`${ctx.name(other(seat))} wins Giveaway — ${wiped ? 'all their pieces are gone' : 'they have no moves left'}!`);
+        } else {
+          ctx.finish(seat, wiped ? 'captured' : 'blocked');
+          ctx.system(`${ctx.name(seat)} wins — ${wiped ? 'every piece captured' : 'no moves left for the opponent'}!`);
+        }
       } else if (state.quietPlies >= Rules.DRAW_PLIES) {
         ctx.finish(null, 'quiet');
         ctx.system('Draw — 40 moves each without a capture or a new king.');

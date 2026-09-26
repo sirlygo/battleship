@@ -16,6 +16,31 @@ const CLOCKS = {
 // Lets automated tests exercise running out of time without waiting minutes.
 if (process.env.CHESS_TEST_CLOCK) CLOCKS.test = { base: 1500, inc: 0 };
 const START_COUNTS = { p: 8, n: 2, b: 2, r: 2, q: 1 };
+const MODES = {
+  standard: 'Standard chess.',
+  koth: 'King of the Hill — also win by walking your king onto one of the four centre squares.',
+  threecheck: 'Three-Check — also win by giving check three times.',
+  random: 'Random Start — the back-row pieces are shuffled (bishops on opposite colours, no castling).',
+};
+const PIECE_SETS = { classic: 'Classic wood', wizard: "Wizard's Chess", crystal: 'Crystal' };
+const HILL = ['d4', 'e4', 'd5', 'e5'];
+
+// A Fischer-style shuffled back row: bishops on opposite colours, king between the rooks.
+function randomBackRank() {
+  const rank = Array(8).fill(null);
+  const pick = (slots) => slots[crypto.randomInt(slots.length)];
+  const free = () => rank.map((p, i) => (p ? null : i)).filter((i) => i !== null);
+  rank[pick([0, 2, 4, 6])] = 'b';
+  rank[pick([1, 3, 5, 7])] = 'b';
+  rank[pick(free())] = 'q';
+  rank[pick(free())] = 'n';
+  rank[pick(free())] = 'n';
+  const [a, k, c] = free();
+  rank[a] = 'r';
+  rank[k] = 'k';
+  rank[c] = 'r';
+  return rank.join('');
+}
 
 function seatOfColor(state, color) {
   return state.colors[0] === color ? 0 : 1;
@@ -111,6 +136,9 @@ function view(ctx, seat, perspective) {
     captured: capturedPieces(chess),
     clock: state ? clockNow(state) : null,
     clockSetting: room.options.clock,
+    mode: room.options.mode,
+    pieceSet: room.options.pieces,
+    checks: state?.checks || { w: 0, b: 0 },
     drawOffer: state ? relativeSeat(state.drawOffer) : null,
     winner,
     endReason: room.result?.reason || null,
@@ -125,11 +153,14 @@ module.exports = {
   maxPlayers: 2,
 
   defaultOptions() {
-    return { clock: 'none' };
+    return { clock: 'none', mode: 'standard', pieces: 'classic' };
   },
 
-  canChangeOptions(ctx) {
-    return ctx.room.status !== 'active';
+  // The piece set is only cosmetic, so the host may switch it mid-game.
+  canChangeOptions(ctx, payload = {}) {
+    if (ctx.room.status !== 'active') return true;
+    const keys = Object.keys(payload);
+    return keys.length > 0 && keys.every((k) => k === 'pieces');
   },
 
   applyOptions(ctx, payload) {
@@ -137,6 +168,14 @@ module.exports = {
     if (payload.clock in CLOCKS && payload.clock !== options.clock) {
       options.clock = payload.clock;
       ctx.system(payload.clock === 'none' ? 'Clock: off — take your time.' : `Clock: ${payload.clock} (minutes + seconds per move).`);
+    }
+    if (payload.mode in MODES && payload.mode !== options.mode) {
+      options.mode = payload.mode;
+      ctx.system(`Game mode: ${MODES[payload.mode]}`);
+    }
+    if (payload.pieces in PIECE_SETS && payload.pieces !== options.pieces) {
+      options.pieces = payload.pieces;
+      ctx.system(`Piece set: ${PIECE_SETS[payload.pieces]}.`);
     }
   },
 
@@ -148,8 +187,15 @@ module.exports = {
     const whiteSeat = colors[0] === 'w' ? 0 : 1;
     ctx.system(`${ctx.name(whiteSeat)} plays White and moves first. ${ctx.name(other(whiteSeat))} plays Black.`);
     const setting = CLOCKS[room.options.clock];
+    let chess = new Chess();
+    if (room.options.mode === 'random') {
+      const back = randomBackRank();
+      chess = new Chess(`${back}/pppppppp/8/8/8/8/PPPPPPPP/${back.toUpperCase()} w - - 0 1`);
+    }
+    if (room.options.mode !== 'standard') ctx.system(MODES[room.options.mode]);
     return {
-      chess: new Chess(),
+      chess,
+      checks: { w: 0, b: 0 },
       colors,
       moves: [],
       drawOffer: null,
@@ -214,9 +260,16 @@ module.exports = {
       }
 
       const chess = state.chess;
+      if (chess.inCheck()) state.checks[color] += 1;
       if (chess.isCheckmate()) {
         ctx.finish(seat, 'checkmate');
         ctx.system(`Checkmate! ${ctx.name(seat)} wins.`);
+      } else if (room.options.mode === 'koth' && move.piece === 'k' && HILL.includes(move.to)) {
+        ctx.finish(seat, 'hill');
+        ctx.system(`${ctx.name(seat)}'s king reaches the hill and wins!`);
+      } else if (room.options.mode === 'threecheck' && state.checks[color] >= 3) {
+        ctx.finish(seat, 'three-check');
+        ctx.system(`Third check! ${ctx.name(seat)} wins.`);
       } else if (chess.isStalemate()) {
         ctx.finish(null, 'stalemate');
         ctx.system('Stalemate — draw.');
@@ -265,4 +318,5 @@ module.exports = {
   },
 
   COLOR_NAMES,
+  _internal: { randomBackRank },
 };

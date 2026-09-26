@@ -366,3 +366,23 @@ body.chess {
     height: calc(var(--board) + 20px);
   }
 }
+
+.cs-modes {
+  grid-auto-flow: row;
+  grid-template-columns: 1fr 1fr;
+}
+
+.cs-note {
+  margin-left: 6px;
+  font-style: normal;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: var(--muted);
+}
+
+.cs-checks {
+  margin-left: 6px;
+  font: 700 12px var(--display);
+  color: #ff7a59;
+  letter-spacing: 0.1em;
+}

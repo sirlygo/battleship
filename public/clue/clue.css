@@ -1019,3 +1019,19 @@ button.cl-card:disabled {
     height: calc(var(--board) + 16px);
   }
 }
+
+.cl-rules {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
+.cl-rule-label {
+  margin: 6px 0 0 !important;
+  font: 600 11px var(--display);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}

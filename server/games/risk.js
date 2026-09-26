@@ -159,6 +159,26 @@ function checkWinner(ctx) {
   return false;
 }
 
+// Shorter win conditions chosen by the host.
+function checkGoal(ctx, seat) {
+  const { state } = ctx.room;
+  const goal = state.options.goal || 'world';
+  if (goal === 'half' && owned(state, seat).length >= 24) {
+    ctx.finish(seat, 'goal-half');
+    ctx.system(`${state.names[seat]} holds half the world and wins!`);
+    return true;
+  }
+  if (goal === 'continents') {
+    const held = MAP.continents.filter((c) => c.territories.every((t) => state.owner[t] === seat));
+    if (held.length >= 3) {
+      ctx.finish(seat, 'goal-continents');
+      ctx.system(`${state.names[seat]} controls ${held.map((c) => c.name).join(', ')} and wins!`);
+      return true;
+    }
+  }
+  return false;
+}
+
 function finishTurn(ctx, seat) {
   const { state } = ctx.room;
   if (state.conquered) {
@@ -210,6 +230,7 @@ function view(ctx, seat) {
       ready: state.stage === 'setup' ? state.ready.includes(s) : undefined,
     })),
     stage: state.stage, // 'setup' | 'turns'
+    goal: state.options.goal || 'world',
     turn: state.turn,
     turnPhase: state.phase,
     turnNumber: state.turnNumber,
@@ -266,7 +287,7 @@ module.exports = {
   manualStart: true,
 
   defaultOptions() {
-    return { fortify: 'connected', cards: 'progressive', setup: 'manual' };
+    return { fortify: 'connected', cards: 'progressive', setup: 'manual', goal: 'world' };
   },
 
   canChangeOptions(ctx) {
@@ -286,6 +307,13 @@ module.exports = {
     );
     set('cards', ['progressive', 'fixed'], (v) =>
       v === 'progressive' ? 'Rule: card sets are worth more each time (4, 6, 8, 10…).' : 'Rule: card sets have fixed values (4/6/8, mixed 10).'
+    );
+    set('goal', ['world', 'half', 'continents'], (v) =>
+      ({
+        world: 'Goal: World domination — knock everyone out.',
+        half: 'Goal: Half the world — first to hold 24 territories wins.',
+        continents: 'Goal: Three continents — first to hold 3 whole continents wins.',
+      })[v]
     );
     set('setup', ['manual', 'auto'], (v) =>
       v === 'manual' ? 'Setup: everyone places their starting armies.' : 'Setup: starting armies are placed automatically.'
@@ -535,6 +563,7 @@ module.exports = {
         }
       }
       ctx.emit('risk:battle', () => battle);
+      if (conquered && ctx.room.status === 'active') checkGoal(ctx, seat);
       return { ok: true, battle };
     },
 

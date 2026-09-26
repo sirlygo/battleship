@@ -5,8 +5,8 @@ Real-time board games to play with friends in the browser: no accounts, just sha
 | Game | Players | Status |
 |---|---|---|
 | **Battleship**: 3D ocean, Classic and Salvo modes | 2 | Playable |
-| **Checkers**: 3D or 2D board, forced captures, multi-jumps, kings, draw offers | 2 | Playable |
-| **Chess**: 3D or 2D board, full rules, drag-and-drop, optional clocks | 2 | Playable |
+| **Checkers**: 3D or 2D board, Classic, Giveaway and All Kings modes, draw offers | 2 | Playable |
+| **Chess**: 3D or 2D board, four modes, Classic, Wizard's and Crystal piece sets, clocks | 2 | Playable |
 | **Clue**: 3D or 2D mansion board, secret passages, private card showing, auto-filling notes | 2–6 | Playable |
 | **Risk**: 3D or 2D world map, dice battles with blitz, cards, continent bonuses | 2–6 | Playable |
 | **The Game of Life**: 3D board, Life Points (wealth, knowledge, happiness), decision cards, pets | 2–6 | Playable |
@@ -16,6 +16,7 @@ Real-time board games to play with friends in the browser: no accounts, just sha
 - **3D board** (default): glossy ridged checkers on a wooden board with a brass inlay. Pieces hop, and jumps arc over the piece being captured, which flies off in a burst of sparks. A crowned king gets a second checker with a gold crown dropped on top. Movable pieces get a gold ring, the selected piece lifts, and jump targets glow red. The camera turns to your side. Switch to the flat **2D** board in Settings.
 - Standard American rules: black moves first, men move diagonally forward, and kings move both ways. A man that reaches the far row is crowned, and that ends its move.
 - Captures are mandatory by default; the host can make them optional. Multi-jumps must be completed.
+- **Modes** (host picks in the lobby): *Classic*; *Giveaway*, where the first side to lose all its pieces or get stuck wins; and *All Kings*, where every piece starts crowned.
 - Tap a piece, then a highlighted square. Red rings mark jumps, and you can tap the final square of a multi-jump directly.
 - Pieces glide and capture with animation. The move list uses standard square numbers (1–32).
 - You win by capturing every enemy piece or leaving them with no legal move. You can offer a draw or resign. After 40 moves each without a capture or a new king, the game is a draw.
@@ -28,6 +29,7 @@ Real-time board games to play with friends in the browser: no accounts, just sha
 - On your turn, roll and move. Glowing squares and rooms show where you can go, and the corner rooms have secret passages. Other pawns block hallway squares.
 - In a room you can make a suggestion. The suspect and weapon move into that room, and the first player to your left holding one of those cards must show you one in secret. If they only hold one match it's shown automatically.
 - Your detective notes cross off your own cards, cards shown to you, and cards of players who left. The host can turn this auto-fill off in the lobby for classic, fully manual notes. Tap any line to mark it ✕, ? or ✓ yourself. The case log records every suggestion and who passed.
+- **Movement** (host picks in the lobby): *Classic* dice and hallways, or *Quick case*, where you walk straight into any other room each turn.
 - Accuse at any time on your turn. Right and you win; wrong and you're out, but you still show cards. The server holds the hidden cards and sends each player only what they're allowed to see.
 
 ## The Game of Life
@@ -46,12 +48,13 @@ Real-time board games to play with friends in the browser: no accounts, just sha
   - **❤ Happiness** and **📘 Knowledge** spaces, pets, babies and twins, and lawsuits (sue someone for $100K).
   - Red **STOP** spaces end your move: graduation, starting a career, marriage (everyone gives a gift), buying a house, night school and retirement.
 - **Loans:** if you run out of cash the bank lends $50K at a time. Repay $60K each whenever you like, or it comes out at the end.
+- **Host rules:** win on *Life Points* or *Richest wins* (net worth only), and *Normal* or *Fast* speed (every spin moves 1.5× as far).
 - **Retirement:** the first three to arrive get $100K, $50K and $20K. Houses are sold (spin: even for the high price, odd for the low price) and loans are repaid. The results screen breaks each player's Life Points into Wealth, Knowledge and Happiness.
 
 ## Risk
 
 - **3D board** (default): raised territories on a wooden tabletop ocean, with small armies of infantry, cavalry (5) and cannons (10) in each owner's colour, plus a count badge. Territories lift when selected, targets glow, an arc marks the attack, and conquered land flashes into its new colour. Scroll or pinch to zoom, drag to pan, and double-click to reset. Switch to the flat **2D** map in Settings.
-- The host picks the rules in the lobby: place starting armies yourself or automatically, rising (4, 6, 8, 10, 12, 15, +5) or fixed card values, and fortifying along any chain of your territories or only next door. Then they start the game with 2–6 players.
+- The host picks the rules in the lobby: place starting armies yourself or automatically, rising (4, 6, 8, 10, 12, 15, +5) or fixed card values, and fortifying along any chain of your territories or only next door, and the win goal: conquer the world, hold 24 territories, or hold 3 whole continents. Then they start the game with 2–6 players.
 - The 42 territories are dealt out. Everyone places their starting armies at the same time, then turns begin.
 - **Reinforce:** you get 1 army per 3 territories (at least 3), plus continent bonuses. Tap territories to stage armies (right-click or long-press takes one back), or use Auto-place, then confirm. Trade three cards (three of a kind, one of each, or any with a wild) for more; with 5 or more cards you must trade. A traded card showing a territory you hold adds 2 armies there.
 - **Attack:** tap your territory, then a neighbouring enemy (dashed lines are sea routes, and Alaska wraps round to Kamchatka). Roll 1–3 dice against the defender's 1–2. The highest dice are compared and ties go to the defender. **Blitz** keeps rolling until one side runs out. The dice are shown to everyone. After a conquest, choose how many armies move in.
@@ -64,6 +67,8 @@ Real-time board games to play with friends in the browser: no accounts, just sha
 - All the rules, enforced by [chess.js](https://github.com/jhlywa/chess.js): castling, en passant, promotion (with a piece picker), check, checkmate, stalemate, insufficient material, threefold repetition and the 50-move rule.
 - **3D board** (default): a wooden board with turned pieces, soft shadows and reflections, built with Three.js. Pieces glide into place, knights hop, captured pieces pop off the board, and the camera turns to your side. Quality adapts to the device: phones use lighter shadows. Switch to the flat **2D** board in Settings.
 - Tap a piece and then a square, or drag and drop. It works the same on both boards. Legal moves, the last move and check are highlighted, and moves animate, including the rook when you castle.
+- **Modes** (host picks in the lobby): *Standard*; *Random start* (the back rank is shuffled, bishops on opposite colours and the king between the rooks, no castling); *King of the Hill* (also win by getting your king to one of the four centre squares, marked in gold); and *Three-Check* (also win by giving check three times).
+- **Piece sets** (host can switch any time, 3D board): *Classic* wood (the default); *Wizard's Chess*, carved stone statues with glowing eyes on a marble board that smash captured pieces to rubble; and *Crystal*, glass pieces on a glass board.
 - Before the game the host can add a clock: Off, 3+2, 5 min, 10 min or 15+10. The server keeps time, and running out loses (or draws if the opponent can't checkmate).
 - Captured pieces and the point lead are shown next to each player, with a move list in standard notation.
 - You can offer a draw or resign, and colours swap every rematch.
