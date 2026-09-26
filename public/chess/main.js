@@ -565,13 +565,15 @@ function renderGameOver() {
   }
   if (view.overShownRound !== s.round && !view.animating) {
     view.overShownRound = s.round;
-    if (s.endReason === 'checkmate') bigText('CHECKMATE', '', s.winner === 'you' || s.spectator ? 'sunk' : 'lost');
+    // Let the CHECKMATE callout finish before the results appear, so they never overlap.
+    const mate = s.endReason === 'checkmate';
+    if (mate) bigText('CHECKMATE', '', s.winner === 'you' || s.spectator ? 'sunk' : 'lost');
     setTimeout(() => {
       if (view.snap?.phase !== 'over') return;
       el.gameOver.hidden = false;
       if (s.winner === 'enemy' && !s.spectator) sound.defeat();
       else sound.victory();
-    }, 1100);
+    }, mate ? 1800 : 900);
   }
   el.gameOver.dataset.result = s.winner === 'enemy' && !s.spectator ? 'loss' : 'win';
   el.goKicker.textContent = `Round ${s.round}`;
