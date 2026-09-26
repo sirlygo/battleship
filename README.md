@@ -5,7 +5,7 @@ Real-time board games to play with friends in the browser: no accounts, just sha
 | Game | Players | Status |
 |---|---|---|
 | **Battleship**: 3D ocean, Classic and Salvo modes | 2 | Playable |
-| **Checkers**: forced captures, multi-jumps, kings, draw offers | 2 | Playable |
+| **Checkers**: 3D or 2D board, forced captures, multi-jumps, kings, draw offers | 2 | Playable |
 | **Chess**: 3D or 2D board, full rules, drag-and-drop, optional clocks | 2 | Playable |
 | **Clue**: 3D or 2D mansion board, secret passages, private card showing, auto-filling notes | 2–6 | Playable |
 | **Risk**: 3D or 2D world map, dice battles with blitz, cards, continent bonuses | 2–6 | Playable |
@@ -13,6 +13,7 @@ Real-time board games to play with friends in the browser: no accounts, just sha
 
 ## Checkers
 
+- **3D board** (default): glossy ridged checkers on a wooden board with a brass inlay. Pieces hop, and jumps arc over the piece being captured, which flies off in a burst of sparks. A crowned king gets a second checker with a gold crown dropped on top. Movable pieces get a gold ring, the selected piece lifts, and jump targets glow red. The camera turns to your side. Switch to the flat **2D** board in Settings.
 - Standard American rules: black moves first, men move diagonally forward, and kings move both ways. A man that reaches the far row is crowned, and that ends its move.
 - Captures are mandatory by default; the host can make them optional. Multi-jumps must be completed.
 - Tap a piece, then a highlighted square. Red rings mark jumps, and you can tap the final square of a multi-jump directly.

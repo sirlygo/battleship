@@ -14,6 +14,9 @@
     <link rel="stylesheet" href="/shared/ui.css" />
     <link rel="stylesheet" href="/shared/board-game.css" />
     <link rel="stylesheet" href="/checkers/checkers.css" />
+    <script type="importmap">
+      { "imports": { "three": "/vendor/three/three.module.min.js", "three/addons/": "/vendor/three-addons/" } }
+    </script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="/shared/checkers-rules.js"></script>
   </head>
@@ -88,7 +91,8 @@
       <main class="tb-layout">
         <div class="tb-table">
           <div id="topPlayer" class="tb-player"></div>
-          <div class="tb-frame">
+          <div id="boardFrame" class="tb-frame">
+            <canvas id="board3d" class="ck-3d" hidden></canvas>
             <div id="board" class="ck-board">
               <div id="squares" class="ck-squares"></div>
               <div id="pieces" class="ck-pieces"></div>
@@ -190,6 +194,10 @@
         </section>
         <section class="settings-section">
           <h3>Board</h3>
+          <div class="segmented" role="group" aria-label="Board view">
+            <button type="button" data-view="3d">3D<small>Glossy checkers</small></button>
+            <button type="button" data-view="2d">2D<small>Flat and fast</small></button>
+          </div>
           <label class="toggle">
             <input id="hintsToggle" type="checkbox" checked />
             <span class="toggle-track"><span class="toggle-thumb"></span></span>

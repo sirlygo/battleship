@@ -1,5 +1,6 @@
 import { store } from '../shared/room-client.js';
 import { setupTable, bigText, toast, sound } from '../shared/table-ui.js';
+import { CheckersBoard3D } from './board3d.js';
 
 const Rules = window.CheckersRules;
 const SIZE = Rules.SIZE;
@@ -9,6 +10,9 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const el = {
   board: $('board'),
+  frame: $('boardFrame'),
+  canvas3d: $('board3d'),
+  viewButtons: [...document.querySelectorAll('[data-view]')],
   squares: $('squares'),
   pieces: $('pieces'),
   topPlayer: $('topPlayer'),
@@ -36,13 +40,15 @@ const el = {
 };
 
 const prefs = (() => {
-  const defaults = { hints: true, numbers: false };
+  const defaults = { hints: true, numbers: false, view: '3d' };
   try {
     return { ...defaults, ...JSON.parse(store('local', 'checkers:prefs') || '{}') };
   } catch {
     return defaults;
   }
 })();
+
+let board3d = null;
 
 const view = {
   snap: null,
@@ -140,6 +146,7 @@ function makePiece(piece, x, y, { appear = false } = {}) {
 
 // Rebuilds every piece from a board string (no animation between moves).
 function syncPieces(board, { appear = false } = {}) {
+  board3d?.setPosition(board, { appear });
   el.pieces.innerHTML = '';
   view.pieces.clear();
   for (let y = 0; y < SIZE; y += 1) {
@@ -166,6 +173,12 @@ function spark(x, y) {
 }
 
 async function animateMove(move) {
+  const three = board3d?.playMove(move);
+  await animateMove2d(move);
+  await three;
+}
+
+async function animateMove2d(move) {
   const [sx, sy] = move.path[0];
   const entry = view.pieces.get(idx(sx, sy));
   if (!entry) return;
@@ -212,17 +225,27 @@ async function runQueue() {
   view.animating = false;
   // Make sure what we show matches the server exactly.
   if (view.snap && shownBoard() !== view.snap.board) syncPieces(view.snap.board);
+  else if (view.snap) board3d?.sync(view.snap.board);
   renderAll();
 }
 
 function renderHighlights() {
+  const h = { last: [], movable: [], selected: null, path: [], targets: [] };
+  renderHighlights2d(h);
+  board3d?.setHighlights(h);
+}
+
+function renderHighlights2d(h) {
   const s = view.snap;
   [...el.squares.children].forEach((sq) => sq.classList.remove('last', 'target', 'jump', 'path'));
   view.pieces.forEach((p) => p.el.classList.remove('movable', 'selected'));
   if (!s) return;
 
   const last = s.history[s.history.length - 1];
-  if (last && !view.animating) last.path.forEach(([x, y]) => squareEl(x, y).classList.add('last'));
+  if (last && !view.animating) {
+    last.path.forEach(([x, y]) => squareEl(x, y).classList.add('last'));
+    h.last = last.path;
+  }
 
   if (!isMyTurn() || view.animating || view.pending) return;
   const moves = legalMoves();
@@ -230,17 +253,21 @@ function renderHighlights() {
     if (!prefs.hints) return;
     const starts = new Set(moves.map((m) => idx(m.path[0][0], m.path[0][1])));
     starts.forEach((i) => view.pieces.get(i)?.el.classList.add('movable'));
+    h.movable = [...starts].map((i) => [i % SIZE, Math.floor(i / SIZE)]);
     return;
   }
   const [sx, sy] = view.selection[0];
   view.pieces.get(idx(sx, sy))?.el.classList.add('selected');
+  h.selected = [sx, sy];
   view.selection.slice(1).forEach(([x, y]) => squareEl(x, y).classList.add('path'));
+  h.path = view.selection.slice(1);
   candidates(moves).forEach((m) => {
     const step = m.path[view.selection.length];
     if (!step) return;
     const sq = squareEl(step[0], step[1]);
     sq.classList.add('target');
     if (m.captures.length) sq.classList.add('jump');
+    if (!h.targets.some((t) => t.x === step[0] && t.y === step[1])) h.targets.push({ x: step[0], y: step[1], jump: m.captures.length > 0 });
   });
 }
 
@@ -538,6 +565,7 @@ function onState(snap) {
 
   if (fresh) {
     view.flip = flip;
+    board3d?.setOrientation(flip);
     view.queue = [];
     buildSquares();
     syncPieces(snap.board, { appear: snap.phase === 'playing' && snap.history.length === 0 });
@@ -607,6 +635,7 @@ el.hintsToggle.addEventListener('change', () => {
 el.numbersToggle.addEventListener('change', () => {
   prefs.numbers = el.numbersToggle.checked;
   savePrefs();
+  board3d?.setShowNumbers(prefs.numbers);
   renderAll();
 });
 
@@ -616,9 +645,58 @@ window.addEventListener('keydown', (event) => {
   renderHighlights();
 });
 
+// ---- 3D board (default) or flat 2D, chosen in Settings --------------------
+
+function make3d() {
+  if (board3d) return board3d;
+  try {
+    const coarse = window.matchMedia('(pointer: coarse)').matches;
+    const forced = new URLSearchParams(location.search).get('quality');
+    const quality = ['low', 'medium', 'high'].includes(forced) ? forced : coarse ? 'medium' : 'high';
+    board3d = new CheckersBoard3D(el.canvas3d, { quality });
+    board3d.setShowNumbers(prefs.numbers);
+    board3d.onSquare = (x, y) => {
+      if (x === null || (x + y) % 2 === 0) {
+        view.selection = [];
+        renderHighlights();
+        return;
+      }
+      handleSquare(x, y);
+    };
+  } catch (error) {
+    console.warn('3D board unavailable, using 2D', error);
+    board3d = null;
+  }
+  return board3d;
+}
+
+function useView(mode) {
+  const three = mode === '3d' && make3d();
+  el.board.hidden = Boolean(three);
+  board3d?.show(Boolean(three));
+  el.frame.classList.toggle('mode-3d', Boolean(three));
+  el.viewButtons.forEach((b) => b.classList.toggle('active', b.dataset.view === (three ? '3d' : '2d')));
+  if (board3d) {
+    board3d.setOrientation(view.flip);
+    board3d.setPosition(view.snap ? view.snap.board : Rules.initialBoard());
+  }
+  renderHighlights();
+  return Boolean(three);
+}
+
+el.viewButtons.forEach((btn) =>
+  btn.addEventListener('click', () => {
+    prefs.view = btn.dataset.view;
+    savePrefs();
+    const ok = useView(prefs.view);
+    if (prefs.view === '3d' && !ok) toast('3D is not supported on this device.', 'error');
+  })
+);
+
 buildSquares();
 syncPieces(Rules.initialBoard());
+useView(prefs.view);
 client.autoStart();
 
 // Test hook: `?debug` exposes internals for automated browser tests.
-if (new URLSearchParams(location.search).has('debug')) window.checkers = { view, client, Rules };
+if (new URLSearchParams(location.search).has('debug')) window.checkers = { view, client, Rules, get board3d() { return board3d; } };
