@@ -22,6 +22,8 @@ const el = {
   statusSub: $('statusSub'),
   waitingBox: $('waitingBox'),
   forcedWrap: $('forcedWrap'),
+  modeWrap: $('modeWrap'),
+  modeButtons: [...document.querySelectorAll('[data-mode]')],
   forcedToggle: $('forcedToggle'),
   drawBox: $('drawBox'),
   drawText: $('drawText'),
@@ -427,6 +429,8 @@ function renderStatus() {
       title = `${nameFor(s.enemyColor)} is thinking…`;
       sub = `You play ${COLOR_NAME[s.myColor]}.`;
     }
+    if (s.options.mode === 'giveaway') sub += ' Giveaway: lose all your pieces to win!';
+    if (s.options.mode === 'kings') sub += ' All Kings: every piece moves both ways.';
     const left = s.drawPlies - s.quietPlies;
     if (left <= 20) sub += ` Draw in ${Math.ceil(left / 2)} moves without a capture.`;
   } else if (s.phase === 'over') {
@@ -463,6 +467,8 @@ function reasonText() {
       return `${loser} left the game.`;
     case 'agreement':
       return 'Both players agreed to a draw.';
+    case 'giveaway':
+      return `Giveaway — ${nameFor(s.winner === 'you' ? s.myColor : s.enemyColor)} got rid of everything first.`;
     case 'quiet':
       return '40 moves each without a capture or a new king.';
     default:
@@ -524,6 +530,11 @@ function renderAll() {
 
   el.waitingBox.hidden = s.phase !== 'lobby';
   el.forcedWrap.hidden = s.phase === 'playing';
+  el.modeWrap.hidden = s.phase === 'playing';
+  el.modeButtons.forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.mode === (s.options.mode || 'classic'));
+    btn.disabled = !s.isHost;
+  });
   el.forcedToggle.checked = s.options.forcedCapture;
   el.forcedToggle.disabled = !s.isHost;
   el.forcedWrap.classList.toggle('locked', !s.isHost);
@@ -602,6 +613,12 @@ const table = setupTable({
 });
 const { client } = table;
 
+el.modeButtons.forEach((btn) =>
+  btn.addEventListener('click', async () => {
+    const res = await client.send('room:options', { mode: btn.dataset.mode });
+    if (res.error) toast(res.error, 'error');
+  })
+);
 el.forcedToggle.addEventListener('change', async () => {
   const res = await client.send('room:options', { forcedCapture: el.forcedToggle.checked });
   if (res.error) toast(res.error, 'error');

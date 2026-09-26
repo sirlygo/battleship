@@ -210,7 +210,7 @@ module.exports = {
   manualStart: true,
 
   defaultOptions() {
-    return { autoNotes: true };
+    return { autoNotes: true, movement: 'dice' };
   },
 
   canChangeOptions(ctx) {
@@ -219,6 +219,14 @@ module.exports = {
 
   applyOptions(ctx, payload) {
     const { options } = ctx.room;
+    if (['dice', 'rooms'].includes(payload.movement) && payload.movement !== options.movement) {
+      options.movement = payload.movement;
+      ctx.system(
+        payload.movement === 'rooms'
+          ? 'Game mode: Quick case — skip the dice and walk straight into any room.'
+          : 'Game mode: Classic — roll the dice and walk the halls.'
+      );
+    }
     if (typeof payload.autoNotes === 'boolean' && payload.autoNotes !== options.autoNotes) {
       options.autoNotes = payload.autoNotes;
       ctx.system(
@@ -305,6 +313,7 @@ module.exports = {
       const state = room.state;
       if (room.status !== 'active' || state.turn !== seat) return { error: 'It is not your turn.' };
       if (state.phase !== 'start') return { error: 'You have already moved this turn.' };
+      if (room.options.movement === 'rooms') return { error: 'Quick case: pick a room to walk into.' };
       state.dice = [roll(), roll()];
       state.phase = 'move';
       return { ok: true, dice: state.dice };
@@ -329,6 +338,19 @@ module.exports = {
       const { room } = ctx;
       const state = room.state;
       if (room.status !== 'active' || state.turn !== seat) return { error: 'It is not your turn.' };
+      // Quick case: go straight to any other room, no dice.
+      if (room.options.movement === 'rooms' && state.phase === 'start') {
+        const suspect = state.chars[seat];
+        const token = state.tokens[suspect];
+        if (typeof payload.room !== 'string' || !Board.room(payload.room) || payload.room === token.room) {
+          return { error: 'Pick a different room.' };
+        }
+        state.lastMove = { id: state.moveId++, suspect, from: token.room || [token.x, token.y], to: payload.room, quick: true };
+        state.tokens[suspect] = { room: payload.room, x: null, y: null };
+        state.moved = true;
+        state.phase = 'suggest';
+        return { ok: true };
+      }
       if (state.phase !== 'move') return { error: 'Roll the dice first.' };
       const suspect = state.chars[seat];
       const token = state.tokens[suspect];

@@ -303,3 +303,17 @@ body.checkers {
     height: calc(var(--board) + 20px);
   }
 }
+
+.ck-mode-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ck-label {
+  font-family: var(--display);
+  font-size: 12px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--friendly);
+}

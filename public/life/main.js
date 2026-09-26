@@ -125,7 +125,7 @@ function buildWheel() {
   w.append(g, hub);
 }
 
-async function spinWheel(n) {
+async function spinWheel(n, boost = null) {
   const g = document.getElementById('wheelSpin');
   const center = (n - 0.5) * 36;
   const current = view.wheelAngle % 360;
@@ -143,7 +143,7 @@ async function spinWheel(n) {
     await wait(40 + t * t * 260);
   }
   await wait(250);
-  el.spinResult.textContent = `${n}!`;
+  el.spinResult.textContent = boost && boost !== n ? `${n}! → ${boost} spaces` : `${n}!`;
   el.spinResult.classList.remove('pop');
   void el.spinResult.offsetWidth;
   el.spinResult.classList.add('pop');
@@ -251,7 +251,7 @@ function renderPlayers() {
     chip.classList.toggle('retired', p.retired);
     const top = document.createElement('div');
     top.className = 'row1';
-    top.innerHTML = `<b>${p.name}${p.seat === mySeat() ? ' (you)' : ''}</b><span class="lp">${p.points} LP</span>`;
+    top.innerHTML = `<b>${p.name}${p.seat === mySeat() ? ' (you)' : ''}</b><span class="lp">${s.scoring === 'money' ? fmt(p.money - p.loans * B.LOAN_REPAY) : `${p.points} LP`}</span>`;
     const meters = document.createElement('div');
     meters.className = 'lf-meters';
     meters.innerHTML = `<span class="m-w" title="Wealth">💰 ${fmt(p.money)}</span><span class="m-k" title="Knowledge">📘 ${p.knowledge}</span><span class="m-h" title="Happiness">❤ ${p.happiness}</span>`;
@@ -296,6 +296,12 @@ function renderLobby() {
       li.textContent = 'Open seat';
     }
     el.lobbyPlayers.appendChild(li);
+  });
+  document.querySelectorAll('#lifeRules [data-option]').forEach((group) => {
+    group.querySelectorAll('button').forEach((b) => {
+      b.classList.toggle('active', (s.options[group.dataset.option] || '') === b.dataset.value);
+      b.disabled = !s.isHost;
+    });
   });
   const count = s.players.filter(Boolean).length;
   el.startBtn.hidden = !s.isHost;
@@ -439,7 +445,10 @@ function renderGameOver() {
   const w = s.results[0]?.seat;
   el.goKicker.textContent = 'Retirement day';
   el.goTitle.textContent = w === me ? 'You win!' : `${seatInfo(w)?.name} wins`;
-  el.goReason.textContent = `Houses are sold and loans repaid. Every ${fmt(B.MONEY_PER_POINT)} is 1 Life Point, plus Knowledge and Happiness.`;
+  const byMoney = s.scoring === 'money';
+  el.goReason.textContent = byMoney
+    ? 'Houses are sold and loans repaid — the richest retiree wins.'
+    : `Houses are sold and loans repaid. Every ${fmt(B.MONEY_PER_POINT)} is 1 Life Point, plus Knowledge and Happiness.`;
   el.goResults.innerHTML = '';
   const top = Math.max(...s.results.map((r) => r.total), 1);
   s.results.forEach((r, i) => {
@@ -448,9 +457,9 @@ function renderGameOver() {
     card.className = 'lf-result';
     card.style.setProperty('--pc', p?.color || '#888');
     const pct = (v) => `${(Math.max(0, v) / top) * 100}%`;
-    card.innerHTML = `<div class="head"><span class="rank">${i + 1}</span><b>${p?.name}</b><span class="total">${r.total} LP</span></div>
-      <div class="lf-bar"><span class="w" style="width:${pct(r.wealth)}"></span><span class="k" style="width:${pct(r.knowledge)}"></span><span class="h" style="width:${pct(r.happiness)}"></span></div>
-      <div class="lf-split"><span>💰 ${r.wealth}</span><span>📘 ${r.knowledge}</span><span>❤ ${r.happiness}</span></div>
+    card.innerHTML = `<div class="head"><span class="rank">${i + 1}</span><b>${p?.name}</b><span class="total">${byMoney ? fmt(r.total) : `${r.total} LP`}</span></div>
+      ${byMoney ? '' : `<div class="lf-bar"><span class="w" style="width:${pct(r.wealth)}"></span><span class="k" style="width:${pct(r.knowledge)}"></span><span class="h" style="width:${pct(r.happiness)}"></span></div>
+      <div class="lf-split"><span>💰 ${r.wealth}</span><span>📘 ${r.knowledge}</span><span>❤ ${r.happiness}</span></div>`}
       <ul>${r.lines.map((l) => `<li><span>${l.label}</span><span class="${l.amount < 0 ? 'down' : ''}">${fmt(l.amount)}</span></li>`).join('')}<li><span>Net worth</span><span>${fmt(r.net)}</span></li></ul>`;
     el.goResults.appendChild(card);
   });
@@ -518,7 +527,7 @@ async function playMove(move, before) {
   const startPos = before?.seats?.find((p) => p.seat === move.seat)?.pos ?? move.path[0];
   view.animPos = startPos;
   renderAll();
-  if (move.spin) await spinWheel(move.spin);
+  if (move.spin) await spinWheel(move.spin, move.boost);
   const stepsBy = new Map();
   move.events.forEach((e) => (stepsBy.get(e.at) || stepsBy.set(e.at, []).get(e.at)).push(e));
   const shownEvents = new Set();
@@ -750,6 +759,12 @@ el.board2d.addEventListener('mousemove', (e) => {
 });
 el.board2d.addEventListener('mouseleave', () => (el.hoverTip.hidden = true));
 
+document.getElementById('lifeRules').addEventListener('click', async (event) => {
+  const b = event.target.closest('button[data-value]');
+  if (!b || b.disabled) return;
+  const res = await client.send('room:options', { [b.parentElement.dataset.option]: b.dataset.value });
+  if (res.error) toast(res.error, 'error');
+});
 el.spinBtn.addEventListener('click', () => {
   sound.click();
   send('life:spin');

@@ -129,6 +129,25 @@
             </div>
           </div>
 
+          <div id="modeWrap" class="cs-clock-pick">
+            <span class="cs-label">Game mode</span>
+            <div class="segmented cs-modes" role="group" aria-label="Game mode">
+              <button type="button" data-mode="standard">Standard<small>Classic rules</small></button>
+              <button type="button" data-mode="random">Random start<small>Shuffled back row</small></button>
+              <button type="button" data-mode="koth">King of the Hill<small>Reach the centre</small></button>
+              <button type="button" data-mode="threecheck">Three-Check<small>Check 3 times</small></button>
+            </div>
+          </div>
+
+          <div id="piecesWrap" class="cs-clock-pick">
+            <span class="cs-label">Piece set <em id="piecesNote" class="cs-note"></em></span>
+            <div class="segmented" role="group" aria-label="Piece set">
+              <button type="button" data-pieces="classic">Classic<small>Carved wood</small></button>
+              <button type="button" data-pieces="wizard">Wizard's<small>Stone statues</small></button>
+              <button type="button" data-pieces="crystal">Crystal<small>Glass</small></button>
+            </div>
+          </div>
+
           <div id="drawBox" class="tb-draw" hidden>
             <span id="drawText"></span>
             <div class="row">

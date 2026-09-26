@@ -3,6 +3,7 @@
 
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { squareCanvases, makeSetMaterials, makeWizardPiece, shatter } from './piece-sets.js';
 
 const FILES = 'abcdefgh';
 const fileOf = (sq) => FILES.indexOf(sq[0]);
@@ -108,14 +109,15 @@ function woodCanvas(size, base, grain, seed) {
   return canvas;
 }
 
-function boardTexture({ flip, coords }) {
+function boardTexture({ flip, coords, set = 'classic' }) {
   const size = 1024;
   const cell = size / 8;
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = size;
   const ctx = canvas.getContext('2d');
-  const light = woodCanvas(cell, '#e8cfa0', '#8a6030', 7);
-  const dark = woodCanvas(cell, '#7a4a28', '#2a1508', 13);
+  const custom = squareCanvases(set, cell);
+  const light = custom ? custom.light : woodCanvas(cell, '#e8cfa0', '#8a6030', 7);
+  const dark = custom ? custom.dark : woodCanvas(cell, '#7a4a28', '#2a1508', 13);
   for (let row = 0; row < 8; row += 1) {
     for (let col = 0; col < 8; col += 1) {
       const rank = 7 - row; // canvas top row is rank 8
@@ -189,6 +191,10 @@ export class Board3D {
     this.pointer = new THREE.Vector2();
     this.parallax = new THREE.Vector2();
     this.quality = quality;
+    this.set = 'classic';
+    this.setMats = null;
+    this.setCache = {};
+    this.shake = 0;
 
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, quality === 'low' ? 1 : 2));
@@ -257,6 +263,8 @@ export class Board3D {
     frameTex.wrapS = frameTex.wrapT = THREE.RepeatWrapping;
     frameTex.repeat.set(3, 0.4);
     const frameMat = new THREE.MeshStandardMaterial({ map: frameTex, roughness: 0.45, metalness: 0.05 });
+    this.woodFrameMat = frameMat;
+    this.frameMeshes = [];
     const w = 0.55;
     const h = 0.28;
     [
@@ -270,10 +278,12 @@ export class Board3D {
       m.castShadow = true;
       m.receiveShadow = true;
       this.scene.add(m);
+      this.frameMeshes.push(m);
     });
     const under = new THREE.Mesh(new THREE.BoxGeometry(8, 0.26, 8), frameMat);
     under.position.y = -0.14;
     this.scene.add(under);
+    this.frameMeshes.push(under);
 
     // Table beneath, fading into the page background.
     const fade = document.createElement('canvas');
@@ -311,6 +321,7 @@ export class Board3D {
             w: new THREE.MeshPhysicalMaterial({ color: 0xf2e8d5, roughness: 0.32, clearcoat: 0.6, clearcoatRoughness: 0.25 }),
             b: new THREE.MeshPhysicalMaterial({ color: 0x2b211c, roughness: 0.28, clearcoat: 0.9, clearcoatRoughness: 0.15 }),
           };
+    this.classicMaterials = this.materials;
     this.geometries = {};
     ['p', 'r', 'b', 'q', 'k', 'n'].forEach((t) => {
       this.geometries[t] = latheGeometry(PROFILES[t]);
@@ -348,7 +359,35 @@ export class Board3D {
     this.scene.add(this.overlays);
   }
 
+  // Switches between the classic, Wizard's Chess and Crystal looks, keeping every piece in place.
+  setPieceSet(set) {
+    if (!['classic', 'wizard', 'crystal'].includes(set) || set === this.set) return;
+    this.set = set;
+    this.setMats = set === 'classic' ? null : (this.setCache[set] ||= makeSetMaterials(set, this.quality));
+    this.materials = set === 'crystal' ? { w: this.setMats.w, b: this.setMats.b } : this.classicMaterials;
+    const frame = this.setMats?.frame || this.woodFrameMat;
+    this.frameMeshes.forEach((m) => (m.material = frame));
+    const boardLook = this.setMats?.board || { roughness: 0.55, metalness: 0 };
+    this.boardMat.roughness = boardLook.roughness;
+    this.boardMat.metalness = boardLook.metalness;
+    this.refreshBoardTexture();
+    this.pieces.forEach((p, sq) => {
+      const { lift } = p.group.userData;
+      this.scene.remove(p.group);
+      const group = this.makePiece(p.type, p.color);
+      group.position.set(worldX(sq), 0, worldZ(sq));
+      group.userData.lift = lift || 0;
+      p.group = group;
+    });
+    this.dirty = true;
+  }
+
   makePiece(type, color) {
+    if (this.set === 'wizard') {
+      const statue = makeWizardPiece(type, color, this.setMats, this.geometries.knightHead);
+      this.scene.add(statue);
+      return statue;
+    }
     const group = new THREE.Group();
     const material = this.materials[color];
     const add = (geo, x = 0, y = 0, z = 0) => {
@@ -414,6 +453,10 @@ export class Board3D {
       Math.cos(angle) * horizontal - Math.sin(angle) * px
     );
     this.camera.lookAt(Math.sin(angle) * 0.2, 0, Math.cos(angle) * 0.2);
+    if (this.shake > 0.001) {
+      this.camera.position.x += (Math.random() - 0.5) * this.shake;
+      this.camera.position.y += (Math.random() - 0.5) * this.shake;
+    }
   }
 
   // Smallest camera distance at which every corner of the board's rim stays on screen.
@@ -472,7 +515,7 @@ export class Board3D {
 
   refreshBoardTexture() {
     this.boardMat.map?.dispose();
-    this.boardMat.map = boardTexture({ flip: this.flip, coords: this.coords });
+    this.boardMat.map = boardTexture({ flip: this.flip, coords: this.coords, set: this.set });
     this.boardMat.needsUpdate = true;
     this.dirty = true;
   }
@@ -517,6 +560,10 @@ export class Board3D {
       this.scene.remove(piece.group);
       return;
     }
+    if (this.set === 'wizard' && this.visible) {
+      shatter(this, piece.group, piece.color);
+      return;
+    }
     const g = piece.group;
     const y0 = g.position.y;
     const spin = (Math.random() - 0.5) * 2;
@@ -547,7 +594,13 @@ export class Board3D {
       this.pieces.delete(from);
       const knight = moving.type === 'n';
       const castle = moving.type === 'k' && Math.abs(fileOf(from) - fileOf(to)) === 2;
-      const slides = [this.slide(moving.group, from, to, { hop: knight ? 0.7 : 0.2, duration: knight ? 380 : 300 })];
+      const smash = this.set === 'wizard' && this.pieces.has(to);
+      const slides = [
+        this.slide(moving.group, from, to, {
+          hop: knight ? 0.7 : smash ? 0.55 : 0.2,
+          duration: knight ? 380 : smash ? 460 : 300,
+        }),
+      ];
       if (castle) {
         const rank = from[1];
         const [rookFrom, rookTo] = fileOf(to) === 6 ? [`h${rank}`, `f${rank}`] : [`a${rank}`, `d${rank}`];
@@ -605,6 +658,25 @@ export class Board3D {
     });
     this.dirty = true;
     return { captured };
+  }
+
+  // King of the Hill marks the four centre squares with a gold glow.
+  setMode(mode) {
+    if (this.mode === mode) return;
+    this.mode = mode;
+    if (this.hillGroup) this.scene.remove(this.hillGroup);
+    this.hillGroup = null;
+    if (mode === 'koth') {
+      const g = new THREE.Group();
+      ['d4', 'e4', 'd5', 'e5'].forEach((sq) => {
+        const m = new THREE.Mesh(this.overlayGeo.square, new THREE.MeshBasicMaterial({ color: 0xffc94d, transparent: true, opacity: 0.28, depthWrite: false }));
+        m.position.set(worldX(sq), 0.002, worldZ(sq));
+        g.add(m);
+      });
+      this.hillGroup = g;
+      this.scene.add(g);
+    }
+    this.dirty = true;
   }
 
   setHighlights({ last = null, selected = null, targets = [], check = null, hover = null } = {}) {
@@ -726,6 +798,10 @@ export class Board3D {
     if (this.checkGlow) {
       const s = 1.3 + Math.sin(now / 180) * 0.12;
       this.checkGlow.scale.setScalar(s);
+    }
+    if (this.shake > 0.001) {
+      this.shake *= Math.pow(0.02, dt);
+      active = true;
     }
 
     if (!active && !this.dirty) return;

@@ -115,6 +115,18 @@
               <button id="copyLinkBtn" class="btn btn-primary" type="button">Share invite link</button>
             </div>
             <ul id="lobbyPlayers" class="lf-lobby-players"></ul>
+            <div id="lifeRules" class="lf-rules">
+              <p class="lf-rule-label">Scoring</p>
+              <div class="segmented" data-option="scoring">
+                <button type="button" data-value="points">Life Points<small>Wealth + knowledge + happiness</small></button>
+                <button type="button" data-value="money">Richest wins<small>Net worth only</small></button>
+              </div>
+              <p class="lf-rule-label">Speed</p>
+              <div class="segmented" data-option="speed">
+                <button type="button" data-value="normal">Normal<small>Spin 1–10</small></button>
+                <button type="button" data-value="fast">Fast<small>Spins go 1.5× as far</small></button>
+              </div>
+            </div>
             <button id="startBtn" class="btn btn-primary btn-lg" type="button">Start game</button>
             <p id="startNote" class="muted small"></p>
           </div>

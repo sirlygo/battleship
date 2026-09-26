@@ -393,7 +393,7 @@ class RoomManager {
       const { room, seat } = this.memberOf(socket);
       if (!room) return reply(callback, { error: 'Not in a room.' });
       if (seat !== this.hostSeat(room)) return reply(callback, { error: 'Only the host can change the rules.' });
-      if (!room.module.canChangeOptions(this.ctx(room))) {
+      if (!room.module.canChangeOptions(this.ctx(room), payload || {})) {
         return reply(callback, { error: 'Rules are locked once the game is underway.' });
       }
       room.module.applyOptions(this.ctx(room), payload);

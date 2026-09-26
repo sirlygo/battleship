@@ -22,6 +22,11 @@ const el = {
   waitingBox: $('waitingBox'),
   clockWrap: $('clockWrap'),
   clockButtons: [...document.querySelectorAll('[data-clock]')],
+  modeWrap: $('modeWrap'),
+  modeButtons: [...document.querySelectorAll('[data-mode]')],
+  piecesWrap: $('piecesWrap'),
+  piecesNote: $('piecesNote'),
+  pieceButtons: [...document.querySelectorAll('[data-pieces]')],
   drawBox: $('drawBox'),
   drawText: $('drawText'),
   acceptDrawBtn: $('acceptDrawBtn'),
@@ -351,6 +356,15 @@ function renderPlayer(node, color, isBottom) {
   }
   node.appendChild(material);
 
+  if (s.mode === 'threecheck') {
+    const checks = document.createElement('span');
+    checks.className = 'cs-checks';
+    const n = s.checks?.[color] || 0;
+    checks.textContent = `${'✚'.repeat(n)}${'·'.repeat(Math.max(0, 3 - n))}`;
+    checks.title = `${n} of 3 checks given`;
+    node.appendChild(checks);
+  }
+
   if (s.clockSetting !== 'none' && s.clock) {
     const clock = document.createElement('span');
     clock.className = 'cs-clock';
@@ -381,6 +395,8 @@ function reasonText() {
       agreement: 'Both players agreed to a draw.',
       timeout: `${loser} ran out of time.`,
       'timeout-material': 'Time ran out, but the other side could not checkmate.',
+      hill: `King of the Hill — the king reached the centre.`,
+      'three-check': `Three-Check — ${loser}'s king was checked three times.`,
     }[s.endReason] || ''
   );
 }
@@ -409,6 +425,12 @@ function renderStatus() {
     title = resultTitle();
     sub = reasonText();
   }
+  const modeNote = {
+    koth: 'King of the Hill: reach d4, e4, d5 or e5 with your king to win.',
+    threecheck: 'Three-Check: give three checks to win.',
+    random: 'Random start: back rows shuffled, no castling.',
+  }[s.options.mode];
+  if (modeNote && s.phase !== 'over') sub = sub ? `${sub} ${modeNote}` : modeNote;
   el.statusTitle.textContent = title;
   el.statusSub.textContent = sub;
   el.status.classList.toggle('mine', mine);
@@ -475,6 +497,19 @@ function renderAll() {
     btn.classList.toggle('active', btn.dataset.clock === s.options.clock);
     btn.disabled = !s.isHost;
   });
+  el.modeWrap.hidden = s.phase === 'playing';
+  el.modeButtons.forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.mode === (s.options.mode || 'standard'));
+    btn.disabled = !s.isHost;
+  });
+  el.piecesWrap.hidden = board !== board3d;
+  el.pieceButtons.forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.pieces === (s.options.pieces || 'classic'));
+    btn.disabled = !s.isHost;
+  });
+  el.piecesNote.textContent = s.isHost ? '(everyone sees your choice)' : '(chosen by the host)';
+  board3d?.setPieceSet(s.options.pieces || 'classic');
+  board3d?.setMode(s.options.mode || 'standard');
 
   const playing = s.phase === 'playing' && !s.spectator;
   el.gameActions.hidden = !playing;
@@ -499,7 +534,9 @@ async function onState(snap, prev) {
   view.chess = new Chess(snap.fen);
   view.clock = snap.clock ? { ...snap.clock, at: performance.now() } : null;
   const flip = snap.myColor === 'b';
-  const fresh = !prev || snap.round !== view.shownRound || snap.history.length < view.shownPly || flip !== view.flip;
+  // A new game (e.g. a shuffled Random Start position) always redraws the board.
+  const starting = prev && prev.phase !== 'playing' && snap.phase === 'playing';
+  const fresh = !prev || starting || snap.round !== view.shownRound || snap.history.length < view.shownPly || flip !== view.flip;
 
   if (!prev || prev.phase !== snap.phase) {
     view.selected = null;
@@ -564,6 +601,19 @@ el.clockButtons.forEach((btn) =>
   btn.addEventListener('click', async () => {
     const res = await client.send('room:options', { clock: btn.dataset.clock });
     if (res.error) toast(res.error, 'error');
+  })
+);
+el.modeButtons.forEach((btn) =>
+  btn.addEventListener('click', async () => {
+    const res = await client.send('room:options', { mode: btn.dataset.mode });
+    if (res.error) toast(res.error, 'error');
+  })
+);
+el.pieceButtons.forEach((btn) =>
+  btn.addEventListener('click', async () => {
+    const res = await client.send('room:options', { pieces: btn.dataset.pieces });
+    if (res.error) toast(res.error, 'error');
+    else sound.click();
   })
 );
 el.drawBtn.addEventListener('click', async () => {

@@ -133,6 +133,7 @@ const view = {
   trail: [],
 };
 
+const quickCase = () => view.snap?.options?.movement === 'rooms';
 const mySeat = () => (view.snap && !view.snap.spectator ? view.snap.seat : null);
 const seatInfo = (seat) => view.snap?.seats?.find((s) => s.seat === seat) || null;
 const seatName = (seat) => (seat === mySeat() ? 'You' : seatInfo(seat)?.name || 'Someone');
@@ -342,6 +343,11 @@ function renderTrail() {
 
 function reachableNow() {
   const s = view.snap;
+  // Quick case: every other room is one tap away.
+  if (quickCase() && isMyTurn() && s.turnPhase === 'start' && !view.animating && !view.pending) {
+    const here = myToken()?.room;
+    return { squares: new Map(), rooms: new Map(ROOMS.filter((r) => r.id !== here).map((r) => [r.id, []])) };
+  }
   if (!isMyTurn() || s.turnPhase !== 'move' || !s.dice || view.animating || view.pending) return null;
   const token = myToken();
   const blocked = new Set();
@@ -439,6 +445,10 @@ function renderLobby() {
   el.autoNotesToggle.checked = auto;
   el.autoNotesToggle.disabled = !s.isHost;
   el.autoNotesWrap.classList.toggle('locked', !s.isHost);
+  document.querySelectorAll('[data-movement]').forEach((b) => {
+    b.classList.toggle('active', b.dataset.movement === (s.options.movement || 'dice'));
+    b.disabled = !s.isHost;
+  });
   el.autoNotesHint.textContent = auto
     ? 'Your cards and cards shown to you are crossed off for you.'
     : 'Classic style: everyone marks their own notes.';
@@ -472,6 +482,7 @@ function renderStatus() {
     title = 'Your turn';
     if (s.turnPhase === 'start') {
       if (s.canSuggestHere && token.room) sub = `You were summoned to the ${cardName(token.room)} — suggest here, or roll.`;
+      else if (quickCase()) sub = 'Quick case: tap any glowing room to walk straight in.';
       else sub = token.room && Board.room(token.room).passage ? 'Roll the dice or take the secret passage.' : 'Roll the dice to move.';
     } else if (s.turnPhase === 'move') {
       sub = `Move up to ${s.dice[0] + s.dice[1]} squares — tap a glowing square or room.`;
@@ -512,7 +523,7 @@ function renderTurnBox() {
   const phase = s.turnPhase;
   const inRoom = Boolean(token?.room);
   const busy = view.pending || view.animating;
-  el.rollBtn.hidden = !(mine && phase === 'start');
+  el.rollBtn.hidden = !(mine && phase === 'start') || quickCase();
   el.passageBtn.hidden = !(mine && phase === 'start' && inRoom && Board.room(token.room).passage);
   if (!el.passageBtn.hidden) el.passageBtn.textContent = `Passage to ${cardName(Board.room(token.room).passage)}`;
   el.suggestBtn.hidden = !(mine && inRoom && (phase === 'suggest' || (phase === 'start' && s.canSuggestHere)));
@@ -1190,6 +1201,12 @@ el.autoNotesToggle.addEventListener('change', async () => {
     toast(res.error, 'error');
     renderLobby();
   }
+});
+document.getElementById('movementPick').addEventListener('click', async (event) => {
+  const b = event.target.closest('[data-movement]');
+  if (!b || b.disabled) return;
+  const res = await client.send('room:options', { movement: b.dataset.movement });
+  if (res.error) toast(res.error, 'error');
 });
 el.rollBtn.addEventListener('click', act('clue:roll'));
 el.passageBtn.addEventListener('click', act('clue:passage'));

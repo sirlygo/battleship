@@ -526,22 +526,29 @@ body.hub {
 }
 
 /* Chess */
-.cs-knight {
-  animation: knightFloat 5s ease-in-out infinite;
+.gp-lift {
+  animation: gpLift 2.2s ease-in-out infinite;
 }
-@keyframes knightFloat {
+@keyframes gpLift {
   50% {
-    transform: translate(92px, 22px);
+    translate: 0 -2px;
   }
 }
-.beam {
-  animation: beam 6s ease-in-out infinite;
-  transform-origin: 160px 0;
+.gp-ring,
+.gp-dot {
+  animation: gpPulse 1.4s ease-in-out infinite;
 }
-@keyframes beam {
+@keyframes gpPulse {
   50% {
-    transform: rotate(4deg);
-    opacity: 0.7;
+    opacity: 0.35;
+  }
+}
+.gp-lamp {
+  animation: gpLamp 5s ease-in-out infinite;
+}
+@keyframes gpLamp {
+  50% {
+    opacity: 0.6;
   }
 }
 
