@@ -23,10 +23,33 @@ function lanAddresses() {
     .map((net) => net.address);
 }
 
+// The last public address someone actually reached this server through
+// (e.g. a Cloudflare tunnel or the Codespaces link). It beats any guess.
+let seenPublicUrl = null;
+
+function isPrivateHost(hostname) {
+  return (
+    ['localhost', '127.0.0.1', '::1', '[::1]'].includes(hostname) ||
+    /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.)/.test(hostname) ||
+    hostname.endsWith('.local')
+  );
+}
+
+app.use((req, _res, next) => {
+  const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').split(',')[0].trim();
+  const hostname = host.replace(/:\d+$/, '');
+  if (host && !isPrivateHost(hostname)) {
+    const proto = String(req.headers['x-forwarded-proto'] || req.protocol || 'http').split(',')[0].trim();
+    seenPublicUrl = `${proto}://${host}`;
+  }
+  next();
+});
+
 // The address other players should open. Browsers only know the address the
 // host typed (often localhost), so the server works out a shareable one.
 function publicBaseUrl() {
   if (process.env.PUBLIC_URL) return process.env.PUBLIC_URL.replace(/\/+$/, '');
+  if (seenPublicUrl) return seenPublicUrl;
   if (process.env.RENDER_EXTERNAL_URL) return process.env.RENDER_EXTERNAL_URL.replace(/\/+$/, '');
   const { CODESPACE_NAME, GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN } = process.env;
   if (CODESPACE_NAME && GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN) {

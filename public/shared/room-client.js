@@ -67,14 +67,18 @@ export async function copyText(text) {
 
 // Works out the address other players should open (see /api/share on the server).
 const share = { publicUrl: null, lanUrl: null, listeners: [] };
-fetch('/api/share')
-  .then((res) => res.json())
-  .then((info) => {
-    share.publicUrl = info.publicUrl || null;
-    share.lanUrl = info.lanUrls?.[0] || null;
-    share.listeners.forEach((fn) => fn());
-  })
-  .catch(() => {});
+
+export function refreshShareInfo() {
+  return fetch('/api/share')
+    .then((res) => res.json())
+    .then((info) => {
+      share.publicUrl = info.publicUrl || null;
+      share.lanUrl = info.lanUrls?.[0] || null;
+      share.listeners.forEach((fn) => fn());
+    })
+    .catch(() => {});
+}
+refreshShareInfo();
 
 export function onShareInfo(fn) {
   share.listeners.push(fn);
@@ -136,6 +140,7 @@ export class RoomClient {
     url.searchParams.set('room', code);
     ['create', 'join'].forEach((p) => url.searchParams.delete(p));
     history.replaceState(null, '', url);
+    refreshShareInfo();
     this.handlers.onEnter?.(code, spectator);
   }
 

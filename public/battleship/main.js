@@ -313,14 +313,17 @@ async function copyText(text) {
 // Where other players should go. Filled in from the server, which knows its
 // public address (Codespaces, Render, PUBLIC_URL) and its local network address.
 const share = { publicUrl: null, lanUrl: null };
-fetch('/api/share')
-  .then((res) => res.json())
-  .then((info) => {
-    share.publicUrl = info.publicUrl || null;
-    share.lanUrl = info.lanUrls?.[0] || null;
-    if (app.snap) renderHud();
-  })
-  .catch(() => {});
+function refreshShareInfo() {
+  fetch('/api/share')
+    .then((res) => res.json())
+    .then((info) => {
+      share.publicUrl = info.publicUrl || null;
+      share.lanUrl = info.lanUrls?.[0] || null;
+      if (app.snap) renderHud();
+    })
+    .catch(() => {});
+}
+refreshShareInfo();
 
 function shareTarget() {
   const host = location.hostname;
@@ -423,6 +426,7 @@ function enterRoom(code) {
   url.searchParams.set('room', code);
   history.replaceState(null, '', url);
   stopDemo();
+  refreshShareInfo();
   el.lobby.hidden = true;
   el.hud.hidden = false;
   el.lobbyError.textContent = '';
