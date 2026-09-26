@@ -1,7 +1,7 @@
 {
   "name": "battleship-3d",
   "version": "1.0.0",
-  "description": "3D multiplayer Battleship game with room-based matchmaking",
+  "description": "Game Room: multiplayer board games (Battleship, Checkers) with room codes",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

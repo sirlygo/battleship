@@ -1,5 +1,5 @@
 import { BattleScene, wait } from './scene.js';
-import { sound } from './audio.js';
+import { sound } from '../shared/audio.js';
 
 const $ = (id) => document.getElementById(id);
 const ROWS = 'ABCDEFGHIJ';
@@ -334,7 +334,7 @@ function shareTarget() {
 }
 
 function inviteLink() {
-  return `${shareTarget().url}/?room=${app.code}`;
+  return `${shareTarget().url}/battleship/?room=${app.code}`;
 }
 
 function renderShareInfo() {
@@ -463,7 +463,7 @@ function exitRoom(message) {
 function hostGame() {
   sound.click();
   el.hostBtn.disabled = true;
-  socket.emit('room:create', { name: playerName(), token }, (res) => {
+  socket.emit('room:create', { game: 'battleship', name: playerName(), token }, (res) => {
     el.hostBtn.disabled = false;
     if (!res?.ok) {
       el.lobbyError.textContent = res?.error || 'Could not create a room.';
@@ -482,7 +482,11 @@ function joinGame(rawCode) {
     return;
   }
   sound.click();
-  socket.emit('room:join', { code, name: playerName(), token }, (res) => {
+  socket.emit('room:join', { game: 'battleship', code, name: playerName(), token }, (res) => {
+    if (res?.game && res.game !== 'battleship') {
+      location.href = `/${res.game}/?room=${code}&join=1`;
+      return;
+    }
     if (!res?.ok) {
       el.lobbyError.textContent = res?.error || 'Could not join that room.';
       sound.error();
@@ -1642,6 +1646,26 @@ bindUi();
 bindSocket();
 applySettings();
 startDemo();
+
+// Arriving from the home page: host straight away, or join the code given.
+{
+  const params = new URLSearchParams(location.search);
+  const autoRoom = (params.get('room') || '').toUpperCase();
+  const auto = () => {
+    if (app.code) return;
+    if (params.get('create') === '1') hostGame();
+    else if (params.get('join') === '1' && autoRoom.length === 5) joinGame(autoRoom);
+  };
+  if (params.get('create') === '1' || params.get('join') === '1') {
+    store('session', 'battleship:room', null);
+    const url = new URL(location.href);
+    url.searchParams.delete('create');
+    url.searchParams.delete('join');
+    history.replaceState(null, '', url);
+    if (socket.connected) setTimeout(auto, 300);
+    else socket.once('connect', () => setTimeout(auto, 300));
+  }
+}
 
 // Test hook: `?debug` exposes internals for automated browser tests.
 if (new URLSearchParams(location.search).has('debug')) {

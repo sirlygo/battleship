@@ -374,6 +374,24 @@ class Sound {
     );
   }
 
+  // Board-game pieces
+  clack() {
+    this.noise({ duration: 0.09, filter: 'bandpass', freq: 2200, q: 2.5, gain: 0.5, attack: 0.002 });
+    this.tone({ type: 'triangle', freq: 320, freqEnd: 180, duration: 0.08, gain: 0.25, attack: 0.002 });
+  }
+
+  capture() {
+    this.clack();
+    this.noise({ duration: 0.25, filter: 'lowpass', freq: 900, freqEnd: 200, gain: 0.5, delay: 0.05 });
+    this.tone({ type: 'sine', freq: 140, freqEnd: 60, duration: 0.25, gain: 0.4, delay: 0.04 });
+  }
+
+  crown() {
+    [784, 988, 1175, 1568].forEach((freq, i) =>
+      this.tone({ type: 'triangle', freq, duration: 0.35, gain: 0.14, delay: i * 0.07 })
+    );
+  }
+
   message() {
     this.tone({ type: 'sine', freq: 1200, duration: 0.07, gain: 0.08 });
   }
