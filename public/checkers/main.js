@@ -1,5 +1,5 @@
-import { RoomClient, toast, copyText, shareTarget, shareWarning, onShareInfo, store } from '../shared/room-client.js';
-import { sound } from '../shared/audio.js';
+import { store } from '../shared/room-client.js';
+import { setupTable, bigText, toast, sound } from '../shared/table-ui.js';
 
 const Rules = window.CheckersRules;
 const SIZE = Rules.SIZE;
@@ -8,17 +8,6 @@ const $ = (id) => document.getElementById(id);
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const el = {
-  lobby: $('lobby'),
-  room: $('room'),
-  nameInput: $('nameInput'),
-  hostBtn: $('hostBtn'),
-  joinForm: $('joinForm'),
-  codeInput: $('codeInput'),
-  lobbyError: $('lobbyError'),
-  roomChip: $('roomChip'),
-  roomCodeLabel: $('roomCodeLabel'),
-  watchers: $('watchers'),
-  watchersCount: $('watchersCount'),
   board: $('board'),
   squares: $('squares'),
   pieces: $('pieces'),
@@ -28,11 +17,6 @@ const el = {
   statusTitle: $('statusTitle'),
   statusSub: $('statusSub'),
   waitingBox: $('waitingBox'),
-  waitingCode: $('waitingCode'),
-  shareUrl: $('shareUrl'),
-  shareWarning: $('shareWarning'),
-  copyCodeBtn: $('copyCodeBtn'),
-  copyLinkBtn: $('copyLinkBtn'),
   forcedWrap: $('forcedWrap'),
   forcedToggle: $('forcedToggle'),
   drawBox: $('drawBox'),
@@ -43,31 +27,12 @@ const el = {
   drawBtn: $('drawBtn'),
   resignBtn: $('resignBtn'),
   moveList: $('moveList'),
-  settingsBtn: $('settingsBtn'),
-  settings: $('settings'),
-  settingsClose: $('settingsClose'),
-  volEffects: $('volEffects'),
-  volMusic: $('volMusic'),
   hintsToggle: $('hintsToggle'),
   numbersToggle: $('numbersToggle'),
-  chatBtn: $('chatBtn'),
-  chatBadge: $('chatBadge'),
-  chat: $('chat'),
-  chatClose: $('chatClose'),
-  chatLog: $('chatLog'),
-  chatForm: $('chatForm'),
-  chatInput: $('chatInput'),
-  leaveBtn: $('leaveBtn'),
   gameOver: $('gameOver'),
   goKicker: $('goKicker'),
   goTitle: $('goTitle'),
   goReason: $('goReason'),
-  rematchBtn: $('rematchBtn'),
-  rematchNote: $('rematchNote'),
-  goViewBtn: $('goViewBtn'),
-  goLeaveBtn: $('goLeaveBtn'),
-  bigText: $('bigText'),
-  net: $('netStatus'),
 };
 
 const prefs = (() => {
@@ -89,8 +54,6 @@ const view = {
   queue: [],
   selection: [],
   pending: false,
-  chatOpen: false,
-  unread: 0,
   overShownRound: null,
   lastTurn: null,
 };
@@ -103,24 +66,6 @@ const idx = (x, y) => y * SIZE + x;
 const squareNumber = (x, y) => y * 4 + Math.floor(x / 2) + 1;
 const screenX = (x) => (view.flip ? SIZE - 1 - x : x);
 const screenY = (y) => (view.flip ? SIZE - 1 - y : y);
-
-function bigText(title, sub = '', kind = 'info') {
-  el.bigText.innerHTML = '';
-  const node = document.createElement('div');
-  node.className = `big big-${kind}`;
-  const t = document.createElement('div');
-  t.className = 'big-title';
-  t.textContent = title;
-  node.appendChild(t);
-  if (sub) {
-    const s = document.createElement('div');
-    s.className = 'big-sub';
-    s.textContent = sub;
-    node.appendChild(s);
-  }
-  el.bigText.appendChild(node);
-  setTimeout(() => node.remove(), 1700);
-}
 
 function nameFor(color) {
   const s = view.snap;
@@ -538,39 +483,12 @@ function renderGameOver() {
   el.goKicker.textContent = `Round ${s.round}`;
   el.goTitle.textContent = resultTitle();
   el.goReason.textContent = reasonText();
-  const opponent = s.players.find((p, i) => p && i !== s.perspective);
-  el.rematchBtn.hidden = s.spectator;
-  if (s.spectator) {
-    el.rematchNote.textContent = 'Stick around — the players may start a rematch.';
-  } else if (!opponent) {
-    el.rematchBtn.textContent = 'Find a new opponent';
-    el.rematchBtn.disabled = false;
-    el.rematchNote.textContent = 'Reopen the room and share the code again.';
-  } else if (s.rematch.you) {
-    el.rematchBtn.textContent = 'Rematch requested';
-    el.rematchBtn.disabled = true;
-    el.rematchNote.textContent = `Waiting for ${opponent.name}…`;
-  } else {
-    el.rematchBtn.textContent = s.rematch.enemy ? 'Accept rematch' : 'Rematch (swap colours)';
-    el.rematchBtn.disabled = false;
-    el.rematchNote.textContent = s.rematch.enemy ? `${opponent.name} wants a rematch!` : '';
-  }
+  table.renderRematch(s);
 }
 
 function renderAll() {
   const s = view.snap;
   if (!s) return;
-  el.roomCodeLabel.textContent = s.code;
-  el.waitingCode.textContent = s.code;
-  el.watchers.hidden = s.spectators.length === 0;
-  el.watchersCount.textContent = s.spectators.length;
-  el.watchers.title = `Watching: ${s.spectators.join(', ')}`;
-
-  const { url, scope } = shareTarget();
-  el.shareUrl.textContent = url.replace(/^https?:\/\//, '');
-  el.shareWarning.hidden = scope === 'public';
-  el.shareWarning.textContent = shareWarning(scope);
-
   renderPlayer(el.bottomPlayer, s.myColor, true);
   renderPlayer(el.topPlayer, s.enemyColor, false);
   renderStatus();
@@ -636,144 +554,25 @@ function onState(snap) {
 }
 
 // ---------------------------------------------------------------------------
-// Chat, settings, lobby
+// Wiring
 // ---------------------------------------------------------------------------
-
-function setChatOpen(open) {
-  view.chatOpen = open;
-  el.chat.hidden = !open;
-  el.chatBtn.classList.toggle('active', open);
-  if (open) {
-    view.unread = 0;
-    el.chatLog.scrollTop = el.chatLog.scrollHeight;
-  }
-  el.chatBadge.hidden = view.unread === 0;
-  el.chatBadge.textContent = view.unread > 9 ? '9+' : String(view.unread);
-}
-
-function addChat(entry, { quiet = false } = {}) {
-  const row = document.createElement('div');
-  row.className = `msg msg-${entry.kind}${entry.mine ? ' mine' : ''}`;
-  if (entry.kind !== 'system') {
-    const who = document.createElement('span');
-    who.className = 'who';
-    who.textContent = `${entry.mine ? 'You' : entry.name}${entry.spectator ? ' · watching' : ''}`;
-    row.appendChild(who);
-  }
-  const text = document.createElement('span');
-  text.className = 'text';
-  text.textContent = entry.message;
-  row.appendChild(text);
-  el.chatLog.appendChild(row);
-  while (el.chatLog.children.length > 120) el.chatLog.firstElementChild.remove();
-  el.chatLog.scrollTop = el.chatLog.scrollHeight;
-  if (!quiet && entry.kind === 'user' && !entry.mine) {
-    if (!view.chatOpen) {
-      view.unread += 1;
-      setChatOpen(false);
-      toast(`${entry.name}: ${entry.message}`, 'chat');
-    }
-    sound.message();
-  }
-}
-
-function syncSettingsUi() {
-  el.volEffects.value = Math.round(sound.volumes.effects * 100);
-  el.volMusic.value = Math.round(sound.volumes.music * 100);
-  [el.volEffects, el.volMusic].forEach((input) => {
-    input.style.setProperty('--fill', `${input.value}%`);
-    input.nextElementSibling.textContent = `${input.value}%`;
-  });
-  el.hintsToggle.checked = prefs.hints;
-  el.numbersToggle.checked = prefs.numbers;
-}
 
 function savePrefs() {
   store('local', 'checkers:prefs', JSON.stringify(prefs));
 }
 
-const client = new RoomClient('checkers', {
-  onEnter() {
-    el.lobby.hidden = true;
-    el.room.hidden = false;
-    el.lobbyError.textContent = '';
-    el.chatLog.innerHTML = '';
-  },
-  onExit(message) {
+const table = setupTable({
+  game: 'checkers',
+  title: 'Checkers',
+  onState,
+  onExit() {
     view.snap = null;
     view.shownRound = null;
     view.overShownRound = null;
-    el.room.hidden = true;
-    el.lobby.hidden = false;
-    el.gameOver.hidden = true;
-    setChatOpen(false);
-    el.lobbyError.textContent = message;
-    sound.setMood('calm');
   },
-  onState,
-  onChat: (entry) => addChat(entry),
-  onChatHistory(entries) {
-    el.chatLog.innerHTML = '';
-    entries.forEach((entry) => addChat(entry, { quiet: true }));
-  },
-  onConnection(connected) {
-    el.net.hidden = connected || !client.code;
-  },
-  onError(message) {
-    el.lobbyError.textContent = message;
-  },
+  isPlaying: (snap) => snap.phase === 'playing' && !snap.spectator,
 });
-
-onShareInfo(() => view.snap && renderAll());
-
-el.nameInput.value = client.name;
-el.nameInput.addEventListener('input', () => {
-  client.name = el.nameInput.value;
-});
-el.codeInput.addEventListener('input', () => {
-  el.codeInput.value = el.codeInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);
-});
-const invited = new URLSearchParams(location.search).get('room');
-if (invited) {
-  el.codeInput.value = invited.toUpperCase().slice(0, 5);
-  el.joinForm.classList.add('invited');
-}
-
-el.hostBtn.addEventListener('click', async () => {
-  sound.click();
-  el.hostBtn.disabled = true;
-  const res = await client.host();
-  el.hostBtn.disabled = false;
-  if (res.error) el.lobbyError.textContent = res.error;
-});
-el.joinForm.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  sound.click();
-  const res = await client.join(el.codeInput.value);
-  if (res.error && !res.game) el.lobbyError.textContent = res.error;
-});
-
-el.roomChip.addEventListener('click', async () => {
-  const ok = await copyText(client.code);
-  toast(ok ? `Room code ${client.code} copied.` : `Room code: ${client.code}`);
-});
-el.copyCodeBtn.addEventListener('click', async () => {
-  const ok = await copyText(client.code);
-  toast(ok ? `Code copied. Friends open ${shareTarget().url.replace(/^https?:\/\//, '')}` : `Room code: ${client.code}`);
-});
-el.copyLinkBtn.addEventListener('click', async () => {
-  const link = client.inviteLink();
-  if (navigator.share && window.matchMedia('(pointer: coarse)').matches) {
-    try {
-      await navigator.share({ title: 'Checkers', text: `Play checkers with me — room ${client.code}`, url: link });
-      return;
-    } catch {
-      /* fall back to copying */
-    }
-  }
-  const ok = await copyText(link);
-  toast(ok ? 'Invite link copied.' : link);
-});
+const { client } = table;
 
 el.forcedToggle.addEventListener('change', async () => {
   const res = await client.send('room:options', { forcedCapture: el.forcedToggle.checked });
@@ -792,56 +591,14 @@ el.resignBtn.addEventListener('click', async () => {
   if (res.error) toast(res.error, 'error');
 });
 
-el.rematchBtn.addEventListener('click', async () => {
-  sound.click();
-  const res = await client.send('rematch');
-  if (res.error) toast(res.error, 'error');
-});
-el.goViewBtn.addEventListener('click', () => {
-  el.gameOver.hidden = true;
-});
 el.status.addEventListener('click', () => {
   if (view.snap?.phase === 'over') el.gameOver.hidden = false;
 });
-const leave = () => {
-  const playing = view.snap?.phase === 'playing' && !view.snap.spectator;
-  if (!playing || window.confirm('Leave the game? Your opponent wins by forfeit.')) client.leave();
-};
-el.leaveBtn.addEventListener('click', leave);
-el.goLeaveBtn.addEventListener('click', () => client.leave());
-
-el.chatBtn.addEventListener('click', () => setChatOpen(!view.chatOpen));
-el.chatClose.addEventListener('click', () => setChatOpen(false));
-el.chatForm.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  const message = el.chatInput.value.trim();
-  if (!message) return;
-  el.chatInput.value = '';
-  const res = await client.send('chat', { message });
-  if (res.error) toast(res.error, 'error');
+// The shared settings dialog handles volume; keep the board toggles in sync with it.
+$('settingsBtn').addEventListener('click', () => {
+  el.hintsToggle.checked = prefs.hints;
+  el.numbersToggle.checked = prefs.numbers;
 });
-
-el.settingsBtn.addEventListener('click', () => {
-  syncSettingsUi();
-  el.settings.hidden = false;
-});
-el.settingsClose.addEventListener('click', () => {
-  el.settings.hidden = true;
-});
-el.settings.addEventListener('click', (event) => {
-  if (event.target === el.settings) el.settings.hidden = true;
-});
-[
-  [el.volEffects, 'effects'],
-  [el.volMusic, 'music'],
-].forEach(([input, bus]) => {
-  input.addEventListener('input', () => {
-    sound.setVolume(bus, Number(input.value) / 100);
-    if (sound.muted && Number(input.value) > 0) sound.setMuted(false);
-    syncSettingsUi();
-  });
-});
-el.volEffects.addEventListener('change', () => sound.clack());
 el.hintsToggle.addEventListener('change', () => {
   prefs.hints = el.hintsToggle.checked;
   savePrefs();
@@ -854,13 +611,9 @@ el.numbersToggle.addEventListener('change', () => {
 });
 
 window.addEventListener('keydown', (event) => {
-  if (event.key !== 'Escape') return;
-  if (!el.settings.hidden) el.settings.hidden = true;
-  else if (view.chatOpen) setChatOpen(false);
-  else {
-    view.selection = [];
-    renderHighlights();
-  }
+  if (event.key !== 'Escape' || table.handleEscape()) return;
+  view.selection = [];
+  renderHighlights();
 });
 
 buildSquares();

@@ -87,6 +87,8 @@ class RoomManager {
         });
       },
       finish: (winnerSeat, reason) => this.finish(room, winnerSeat, reason),
+      // For changes that happen outside a player action (e.g. a clock running out).
+      broadcast: () => this.broadcast(room),
     };
   }
 
@@ -127,6 +129,7 @@ class RoomManager {
   }
 
   closeRoom(room) {
+    if (room.status === 'active') room.module.onFinish?.(this.ctx(room));
     room.players.forEach((p) => p?.disconnectTimer && clearTimeout(p.disconnectTimer));
     room.spectators.forEach((s) => {
       if (s.disconnectTimer) clearTimeout(s.disconnectTimer);
@@ -143,6 +146,7 @@ class RoomManager {
   }
 
   finish(room, winnerSeat, reason) {
+    room.module.onFinish?.(this.ctx(room));
     room.status = 'over';
     room.result = { winner: winnerSeat, reason };
     room.rematch.clear();

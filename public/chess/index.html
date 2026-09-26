@@ -3,29 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#1a0f08" />
-    <title>Checkers · Game Room</title>
+    <meta name="theme-color" content="#101418" />
+    <title>Chess · Game Room</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600&family=Noto+Sans+Symbols+2&display=swap"
     />
     <link rel="stylesheet" href="/shared/ui.css" />
     <link rel="stylesheet" href="/shared/board-game.css" />
-    <link rel="stylesheet" href="/checkers/checkers.css" />
+    <link rel="stylesheet" href="/chess/chess.css" />
     <script src="/socket.io/socket.io.js"></script>
-    <script src="/shared/checkers-rules.js"></script>
   </head>
-  <body class="checkers">
+  <body class="chess">
     <!-- Lobby -->
     <section id="lobby" class="lobby">
       <div class="lobby-card glass">
         <a class="all-games" href="/">← All games</a>
         <div class="brand">
           <span class="kicker">Game Room</span>
-          <h1>Checkers</h1>
-          <p>Jump, capture, crown a king.</p>
+          <h1>Chess</h1>
+          <p>Castle, fork, and checkmate.</p>
         </div>
         <label class="field">
           <span>Your name</span>
@@ -45,11 +44,11 @@
         <details class="howto">
           <summary>How to play</summary>
           <ol>
-            <li>Move diagonally forward onto dark squares. Black moves first.</li>
-            <li>Capture by jumping over an opponent's piece. Keep jumping if you can.</li>
-            <li>Captures are mandatory (the host can turn this off).</li>
-            <li>Reach the far row to crown a king — kings move backwards too.</li>
-            <li>Win by capturing or blocking every enemy piece.</li>
+            <li>Host a room and share the code; your friend joins with it.</li>
+            <li>Colours are random, then swap every rematch. White moves first.</li>
+            <li>Tap a piece, then a highlighted square — or drag it.</li>
+            <li>All the rules are enforced: castling, en passant, promotion, check, and every kind of draw.</li>
+            <li>The host can add a clock (e.g. 5 minutes each) before the game starts.</li>
           </ol>
         </details>
       </div>
@@ -89,9 +88,9 @@
         <div class="tb-table">
           <div id="topPlayer" class="tb-player"></div>
           <div class="tb-frame">
-            <div id="board" class="ck-board">
-              <div id="squares" class="ck-squares"></div>
-              <div id="pieces" class="ck-pieces"></div>
+            <div id="board" class="cs-board">
+              <div id="squares" class="cs-squares"></div>
+              <div id="pieces" class="cs-pieces"></div>
             </div>
           </div>
           <div id="bottomPlayer" class="tb-player"></div>
@@ -115,11 +114,16 @@
             <div class="waiting-line"><span class="spinner"></span>Waiting for an opponent…</div>
           </div>
 
-          <label id="forcedWrap" class="toggle">
-            <input id="forcedToggle" type="checkbox" checked />
-            <span class="toggle-track"><span class="toggle-thumb"></span></span>
-            <span>Captures are mandatory</span>
-          </label>
+          <div id="clockWrap" class="cs-clock-pick">
+            <span class="cs-label">Clock</span>
+            <div class="segmented" role="group" aria-label="Time control">
+              <button type="button" data-clock="none">Off</button>
+              <button type="button" data-clock="3+2">3+2</button>
+              <button type="button" data-clock="5+0">5 min</button>
+              <button type="button" data-clock="10+0">10 min</button>
+              <button type="button" data-clock="15+10">15+10</button>
+            </div>
+          </div>
 
           <div id="drawBox" class="tb-draw" hidden>
             <span id="drawText"></span>
@@ -196,17 +200,26 @@
             <span>Highlight legal moves</span>
           </label>
           <label class="toggle">
-            <input id="numbersToggle" type="checkbox" />
+            <input id="coordsToggle" type="checkbox" checked />
             <span class="toggle-track"><span class="toggle-thumb"></span></span>
-            <span>Show square numbers</span>
+            <span>Show coordinates</span>
           </label>
         </section>
+      </div>
+    </div>
+
+    <!-- Promotion picker -->
+    <div id="promotion" class="modal promo-modal" hidden>
+      <div class="modal-card glass promo-card">
+        <p class="kicker">Promote pawn to</p>
+        <div id="promoChoices" class="promo-choices"></div>
+        <button id="promoCancel" class="btn btn-ghost" type="button">Cancel</button>
       </div>
     </div>
 
     <div id="bigText" class="big-text" aria-live="assertive"></div>
     <div id="netStatus" class="net" hidden><span class="spinner"></span>Connection lost — reconnecting…</div>
 
-    <script type="module" src="/checkers/main.js"></script>
+    <script type="module" src="/chess/main.js"></script>
   </body>
 </html>

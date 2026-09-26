@@ -386,6 +386,12 @@ class Sound {
     this.tone({ type: 'sine', freq: 140, freqEnd: 60, duration: 0.25, gain: 0.4, delay: 0.04 });
   }
 
+  check() {
+    this.clack();
+    this.tone({ type: 'square', freq: 880, duration: 0.09, gain: 0.07, delay: 0.04 });
+    this.tone({ type: 'square', freq: 660, duration: 0.14, gain: 0.07, delay: 0.13 });
+  }
+
   crown() {
     [784, 988, 1175, 1568].forEach((freq, i) =>
       this.tone({ type: 'triangle', freq, duration: 0.35, gain: 0.14, delay: i * 0.07 })

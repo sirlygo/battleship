@@ -6,10 +6,10 @@ Real-time board games to play with friends in the browser: no accounts, just sha
 |---|---|---|
 | **Battleship**: 3D ocean, Classic and Salvo modes | 2 | Playable |
 | **Checkers**: forced captures, multi-jumps, kings, draw offers | 2 | Playable |
-| Chess | 2 | Coming soon |
-| Mansion Mystery (whodunit) | 3–6 | Coming soon |
-| Conquest (world domination) | 2–6 | Coming soon |
-| Life Path | 2–6 | Coming soon |
+| **Chess**: full rules, drag-and-drop, optional clocks | 2 | Playable |
+| Clue | 3–6 | Coming soon |
+| Risk | 2–6 | Coming soon |
+| The Game of Life | 2–6 | Coming soon |
 
 ## Checkers
 
@@ -19,6 +19,14 @@ Real-time board games to play with friends in the browser: no accounts, just sha
 - Pieces glide and capture with animation. The move list uses standard square numbers (1–32).
 - You win by capturing every enemy piece or leaving them with no legal move. You can offer a draw or resign. After 40 moves each without a capture or a new king, the game is a draw.
 - Colours swap every rematch. The server checks every move with the same rules file the browser uses.
+
+## Chess
+
+- All the rules, enforced by [chess.js](https://github.com/jhlywa/chess.js): castling, en passant, promotion (with a piece picker), check, checkmate, stalemate, insufficient material, threefold repetition and the 50-move rule.
+- Tap a piece and then a square, or drag and drop. Legal moves, the last move and check are highlighted, and moves animate, including the rook when you castle.
+- Before the game the host can add a clock: Off, 3+2, 5 min, 10 min or 15+10. The server keeps time, and running out loses (or draws if the opponent can't checkmate).
+- Captured pieces and the point lead are shown next to each player, with a move list in standard notation.
+- You can offer a draw or resign, and colours swap every rematch.
 
 ## Battleship
 
