@@ -9,6 +9,7 @@ const games = {
   battleship: require('./server/games/battleship'),
   checkers: require('./server/games/checkers'),
   chess: require('./server/games/chess'),
+  clue: require('./server/games/clue'),
 };
 
 const app = express();
