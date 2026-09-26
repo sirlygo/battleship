@@ -273,3 +273,33 @@ body.checkers {
     opacity: 0;
   }
 }
+
+/* ------------------------------------------------------------------ 3D board */
+
+.tb-frame.mode-3d {
+  padding: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.ck-board[hidden] {
+  display: none;
+}
+
+.ck-3d {
+  display: block;
+  width: calc(var(--board) + 28px);
+  height: calc(var(--board) + 28px);
+  touch-action: manipulation;
+}
+
+.ck-3d[hidden] {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .ck-3d {
+    width: calc(var(--board) + 20px);
+    height: calc(var(--board) + 20px);
+  }
+}
