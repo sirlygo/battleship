@@ -1,18 +1,17 @@
 import { Chess } from '/vendor/chess/chess.js';
 import { store } from '../shared/room-client.js';
 import { setupTable, bigText, toast, sound } from '../shared/table-ui.js';
+import { Board2D, GLYPH, VS } from './board2d.js';
+import { Board3D } from './board3d.js';
 
 const $ = (id) => document.getElementById(id);
-const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const FILES = 'abcdefgh';
 const COLOR_NAME = { w: 'White', b: 'Black' };
-// Solid glyphs for both colours (CSS colours them); U+FE0E keeps them out of emoji style.
-const GLYPH = { k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟' };
-const VS = '︎';
 const VALUE = { p: 1, n: 3, b: 3, r: 5, q: 9 };
 
 const el = {
   board: $('board'),
+  canvas3d: $('board3d'),
+  frame: $('boardFrame'),
   squares: $('squares'),
   pieces: $('pieces'),
   topPlayer: $('topPlayer'),
@@ -33,6 +32,7 @@ const el = {
   moveList: $('moveList'),
   hintsToggle: $('hintsToggle'),
   coordsToggle: $('coordsToggle'),
+  viewButtons: [...document.querySelectorAll('[data-view]')],
   gameOver: $('gameOver'),
   goKicker: $('goKicker'),
   goTitle: $('goTitle'),
@@ -43,7 +43,7 @@ const el = {
 };
 
 const prefs = (() => {
-  const defaults = { hints: true, coords: true };
+  const defaults = { hints: true, coords: true, view: '3d' };
   try {
     return { ...defaults, ...JSON.parse(store('local', 'chess:prefs') || '{}') };
   } catch {
@@ -55,8 +55,6 @@ const view = {
   snap: null,
   chess: new Chess(),
   flip: false,
-  squares: new Map(), // square name -> element
-  pieces: new Map(), // square name -> { el, type, color }
   shownPly: 0,
   shownRound: null,
   animating: false,
@@ -69,178 +67,72 @@ const view = {
 };
 
 // ---------------------------------------------------------------------------
-// Geometry
+// Boards: 3D (default) or flat 2D, chosen in Settings
 // ---------------------------------------------------------------------------
 
-const fileOf = (sq) => FILES.indexOf(sq[0]);
-const rankOf = (sq) => Number(sq[1]) - 1;
-const displayCol = (sq) => (view.flip ? 7 - fileOf(sq) : fileOf(sq));
-const displayRow = (sq) => (view.flip ? rankOf(sq) : 7 - rankOf(sq));
+const board2d = new Board2D({ board: el.board, squares: el.squares, pieces: el.pieces });
+let board3d = null;
+let board = board2d;
 
-function squareAt(col, row) {
-  const file = view.flip ? 7 - col : col;
-  const rank = view.flip ? row : 7 - row;
-  return `${FILES[file]}${rank + 1}`;
-}
-
-function squareFromPoint(clientX, clientY) {
-  const rect = el.board.getBoundingClientRect();
-  const col = Math.floor(((clientX - rect.left) / rect.width) * 8);
-  const row = Math.floor(((clientY - rect.top) / rect.height) * 8);
-  if (col < 0 || row < 0 || col > 7 || row > 7) return null;
-  return squareAt(col, row);
-}
-
-// ---------------------------------------------------------------------------
-// Rendering the board
-// ---------------------------------------------------------------------------
-
-function buildSquares() {
-  el.squares.innerHTML = '';
-  view.squares.clear();
-  for (let row = 0; row < 8; row += 1) {
-    for (let col = 0; col < 8; col += 1) {
-      const sq = squareAt(col, row);
-      const node = document.createElement('div');
-      const light = (fileOf(sq) + rankOf(sq)) % 2 === 1;
-      node.className = `cs-sq ${light ? 'light' : 'dark'}`;
-      node.dataset.sq = sq;
-      if (col === 0) {
-        const r = document.createElement('span');
-        r.className = 'coord rank';
-        r.textContent = sq[1];
-        node.appendChild(r);
-      }
-      if (row === 7) {
-        const f = document.createElement('span');
-        f.className = 'coord file';
-        f.textContent = sq[0];
-        node.appendChild(f);
-      }
-      el.squares.appendChild(node);
-      view.squares.set(sq, node);
-    }
+function make3d() {
+  if (board3d) return board3d;
+  try {
+    const coarse = window.matchMedia('(pointer: coarse)').matches;
+    const forced = new URLSearchParams(location.search).get('quality');
+    const quality = ['low', 'medium', 'high'].includes(forced) ? forced : coarse ? 'medium' : 'high';
+    board3d = new Board3D(el.canvas3d, { quality });
+    attachInput(board3d);
+  } catch (error) {
+    console.warn('3D board unavailable, using 2D', error);
+    board3d = null;
   }
+  return board3d;
 }
 
-function place(node, sq) {
-  node.style.setProperty('--x', displayCol(sq));
-  node.style.setProperty('--y', displayRow(sq));
+function useView(mode) {
+  board = (mode === '3d' && make3d()) || board2d;
+  board2d.show(board === board2d);
+  board3d?.show(board === board3d);
+  el.frame.classList.toggle('mode-3d', board === board3d);
+  board.setOrientation(view.flip);
+  board.setShowCoords(prefs.coords);
+  board.setPosition(view.chess);
+  renderHighlights();
 }
 
-function makePiece(type, color, sq, { appear = false } = {}) {
-  const node = document.createElement('div');
-  node.className = `cs-pc ${color}${appear ? ' appear' : ''}`;
-  const glyph = document.createElement('span');
-  glyph.textContent = GLYPH[type] + VS;
-  node.appendChild(glyph);
-  place(node, sq);
-  el.pieces.appendChild(node);
-  return { el: node, type, color };
+function kingInCheck() {
+  const s = view.snap;
+  if (!s || !s.inCheck || s.phase === 'lobby') return null;
+  const king = view.chess.board().flat().find((p) => p && p.type === 'k' && p.color === s.turnColor);
+  return king ? king.square : null;
 }
 
-function boardMap(chess) {
-  const map = new Map();
-  chess.board().flat().forEach((p) => {
-    if (p) map.set(p.square, { type: p.type, color: p.color });
-  });
-  return map;
-}
-
-function syncPieces(chess, { appear = false } = {}) {
-  el.pieces.innerHTML = '';
-  view.pieces.clear();
-  boardMap(chess).forEach((p, sq) => view.pieces.set(sq, makePiece(p.type, p.color, sq, { appear })));
-}
-
-function removePiece(sq, { fade = true } = {}) {
-  const piece = view.pieces.get(sq);
-  if (!piece) return;
-  view.pieces.delete(sq);
-  if (fade) {
-    piece.el.classList.add('taken-out');
-    setTimeout(() => piece.el.remove(), 420);
-  } else {
-    piece.el.remove();
+function renderHighlights(hover = null) {
+  const s = view.snap;
+  if (!s) {
+    board.setHighlights({});
+    return;
   }
-}
-
-// Brings the shown pieces in line with a position, animating differences.
-function reconcile(chess) {
-  const target = boardMap(chess);
-  view.pieces.forEach((piece, sq) => {
-    const want = target.get(sq);
-    if (!want) removePiece(sq);
-    else if (want.type !== piece.type || want.color !== piece.color) {
-      removePiece(sq, { fade: false });
-      view.pieces.set(sq, makePiece(want.type, want.color, sq, { appear: true }));
-    }
-  });
-  target.forEach((want, sq) => {
-    if (!view.pieces.has(sq)) view.pieces.set(sq, makePiece(want.type, want.color, sq, { appear: true }));
+  board.setHighlights({
+    last: s.lastMove ? [s.lastMove.from, s.lastMove.to] : null,
+    selected: view.selected,
+    targets:
+      view.selected && prefs.hints
+        ? legalTargets(view.selected).map((m) => ({ sq: m.to, capture: Boolean(m.captured) }))
+        : [],
+    check: kingInCheck(),
+    hover,
   });
 }
 
-async function animateMove({ from, to }, chess) {
-  const moving = view.pieces.get(from);
-  let captured = false;
-  if (moving) {
-    if (view.pieces.has(to)) {
-      removePiece(to);
-      captured = true;
-    }
-    view.pieces.delete(from);
-    view.pieces.set(to, moving);
-    moving.el.classList.add('moving');
-    place(moving.el, to);
-    // Castling: slide the rook too.
-    if (moving.type === 'k' && Math.abs(fileOf(from) - fileOf(to)) === 2) {
-      const rank = from[1];
-      const [rookFrom, rookTo] = fileOf(to) === 6 ? [`h${rank}`, `f${rank}`] : [`a${rank}`, `d${rank}`];
-      const rook = view.pieces.get(rookFrom);
-      if (rook) {
-        view.pieces.delete(rookFrom);
-        view.pieces.set(rookTo, rook);
-        place(rook.el, rookTo);
-      }
-    }
-    await wait(240);
-    moving.el.classList.remove('moving');
-  }
-  const before = view.pieces.size;
-  reconcile(chess);
-  if (view.pieces.size < before) captured = true; // en passant
-  if (chess.inCheck()) sound.check();
+function playMoveSound(captured) {
+  if (view.chess.inCheck()) sound.check();
   else if (captured) sound.capture();
   else sound.clack();
 }
 
-function renderHighlights() {
-  const s = view.snap;
-  view.squares.forEach((node) => node.classList.remove('last', 'selected', 'target', 'capture', 'check', 'hover-target'));
-  if (!s) return;
-  if (s.lastMove) {
-    view.squares.get(s.lastMove.from)?.classList.add('last');
-    view.squares.get(s.lastMove.to)?.classList.add('last');
-  }
-  if (s.inCheck && s.phase !== 'lobby') {
-    const king = view.chess.board().flat().find((p) => p && p.type === 'k' && p.color === s.turnColor);
-    if (king) view.squares.get(king.square)?.classList.add('check');
-  }
-  if (view.selected) {
-    view.squares.get(view.selected)?.classList.add('selected');
-    if (prefs.hints) {
-      view.chess.moves({ square: view.selected, verbose: true }).forEach((m) => {
-        const node = view.squares.get(m.to);
-        node?.classList.add('target');
-        if (m.captured) node?.classList.add('capture');
-      });
-    }
-  }
-}
-
 // ---------------------------------------------------------------------------
-// Input: tap-to-move and drag-and-drop
+// Input: tap-to-move and drag-and-drop (works on either board)
 // ---------------------------------------------------------------------------
 
 function isMyTurn() {
@@ -285,29 +177,21 @@ async function attemptMove(from, to) {
   const moves = legalTargets(from).filter((m) => m.to === to);
   view.selected = null;
   if (!moves.length) {
-    snapBack(from);
+    board.dragEnd(from);
     renderHighlights();
-    return false;
+    return;
   }
   let promotion;
   if (moves.some((m) => m.promotion)) {
     promotion = await choosePromotion(view.snap.myColor);
     if (!promotion) {
-      snapBack(from);
+      board.dragEnd(from);
       renderHighlights();
-      return false;
+      return;
     }
   }
   // Show the move straight away; the server's answer confirms or reverts it.
-  const piece = view.pieces.get(from);
-  if (piece) {
-    if (view.pieces.has(to)) removePiece(to);
-    view.pieces.delete(from);
-    view.pieces.set(to, piece);
-    piece.el.classList.remove('dragging');
-    piece.el.style.transform = '';
-    place(piece.el, to);
-  }
+  board.applyLocalMove(from, to);
   view.pending = { from, to };
   renderHighlights();
   const res = await client.send('move', { from, to, promotion });
@@ -315,91 +199,84 @@ async function attemptMove(from, to) {
     view.pending = null;
     toast(res.error, 'error');
     sound.error();
-    syncPieces(view.chess);
+    board.setPosition(view.chess);
     renderHighlights();
   }
-  return true;
 }
 
-function snapBack(sq) {
-  const piece = view.pieces.get(sq);
-  if (!piece) return;
-  piece.el.classList.remove('dragging');
-  piece.el.style.transform = '';
-}
+function attachInput(target) {
+  const input = target.inputEl;
 
-el.board.addEventListener('pointerdown', (event) => {
-  const s = view.snap;
-  if (!s || s.phase !== 'playing' || s.spectator) return;
-  const sq = squareFromPoint(event.clientX, event.clientY);
-  if (!sq) return;
-  if (!isMyTurn()) {
-    if (ownPieceAt(sq)) toast(`Waiting for ${nameFor(s.enemyColor)} to move.`);
-    return;
-  }
-  if (view.selected && view.selected !== sq && !ownPieceAt(sq)) {
-    attemptMove(view.selected, sq);
-    return;
-  }
-  if (!ownPieceAt(sq)) {
-    view.selected = null;
-    renderHighlights();
-    return;
-  }
-  const wasSelected = view.selected === sq;
-  view.selected = sq;
-  renderHighlights();
-  if (!legalTargets(sq).length) toast("That piece can't move.", 'error');
-  view.drag = { from: sq, x: event.clientX, y: event.clientY, moved: false, wasSelected, pointerId: event.pointerId };
-  el.board.setPointerCapture(event.pointerId);
-});
-
-el.board.addEventListener('pointermove', (event) => {
-  const drag = view.drag;
-  if (!drag) return;
-  const dist = Math.hypot(event.clientX - drag.x, event.clientY - drag.y);
-  if (!drag.moved && dist < 6) return;
-  drag.moved = true;
-  const piece = view.pieces.get(drag.from);
-  if (!piece) return;
-  const rect = el.board.getBoundingClientRect();
-  const size = rect.width / 8;
-  piece.el.classList.add('dragging');
-  piece.el.style.transform = `translate(${event.clientX - rect.left - size / 2}px, ${event.clientY - rect.top - size / 2}px)`;
-  const over = squareFromPoint(event.clientX, event.clientY);
-  view.squares.forEach((node) => node.classList.remove('hover-target'));
-  if (over && legalTargets(drag.from).some((m) => m.to === over)) view.squares.get(over).classList.add('hover-target');
-});
-
-function endDrag(event) {
-  const drag = view.drag;
-  if (!drag) return;
-  view.drag = null;
-  if (el.board.hasPointerCapture?.(drag.pointerId)) el.board.releasePointerCapture(drag.pointerId);
-  if (drag.moved) {
-    const to = squareFromPoint(event.clientX, event.clientY);
-    if (to && to !== drag.from) attemptMove(drag.from, to);
-    else {
-      snapBack(drag.from);
-      renderHighlights();
+  input.addEventListener('pointerdown', (event) => {
+    if (board !== target) return;
+    const s = view.snap;
+    if (!s || s.phase !== 'playing' || s.spectator) return;
+    const sq = target.squareFromEvent(event);
+    if (!sq) return;
+    if (!isMyTurn()) {
+      if (ownPieceAt(sq)) toast(`Waiting for ${nameFor(s.enemyColor)} to move.`);
+      return;
     }
-    return;
-  }
-  // A plain tap on an already-selected piece deselects it.
-  if (drag.wasSelected) {
-    view.selected = null;
+    if (view.selected && view.selected !== sq && !ownPieceAt(sq)) {
+      attemptMove(view.selected, sq);
+      return;
+    }
+    if (!ownPieceAt(sq)) {
+      view.selected = null;
+      renderHighlights();
+      return;
+    }
+    const wasSelected = view.selected === sq;
+    view.selected = sq;
     renderHighlights();
-  } else {
-    sound.click();
-  }
+    if (!legalTargets(sq).length) toast("That piece can't move.", 'error');
+    view.drag = { from: sq, x: event.clientX, y: event.clientY, moved: false, wasSelected, pointerId: event.pointerId };
+    input.setPointerCapture?.(event.pointerId);
+  });
+
+  input.addEventListener('pointermove', (event) => {
+    const drag = view.drag;
+    if (!drag || board !== target) return;
+    if (!drag.moved && Math.hypot(event.clientX - drag.x, event.clientY - drag.y) < 6) return;
+    if (!drag.moved) target.dragStart(drag.from);
+    drag.moved = true;
+    target.dragMove(event);
+    const over = target.squareFromEvent(event);
+    const legal = over && legalTargets(drag.from).some((m) => m.to === over);
+    renderHighlights(legal ? over : null);
+  });
+
+  input.addEventListener('pointerup', (event) => {
+    const drag = view.drag;
+    if (!drag || board !== target) return;
+    view.drag = null;
+    if (input.hasPointerCapture?.(drag.pointerId)) input.releasePointerCapture(drag.pointerId);
+    if (drag.moved) {
+      const to = target.squareFromEvent(event);
+      if (to && to !== drag.from) attemptMove(drag.from, to);
+      else {
+        target.dragEnd(drag.from);
+        renderHighlights();
+      }
+      return;
+    }
+    // A plain tap on an already-selected piece deselects it.
+    if (drag.wasSelected) {
+      view.selected = null;
+      renderHighlights();
+    } else {
+      sound.click();
+    }
+  });
+
+  input.addEventListener('pointercancel', (event) => {
+    if (view.drag) target.dragEnd(view.drag.from);
+    view.drag = null;
+    renderHighlights();
+    if (input.hasPointerCapture?.(event.pointerId)) input.releasePointerCapture(event.pointerId);
+  });
 }
-el.board.addEventListener('pointerup', endDrag);
-el.board.addEventListener('pointercancel', (event) => {
-  if (view.drag) snapBack(view.drag.from);
-  view.drag = null;
-  renderHighlights();
-  if (el.board.hasPointerCapture?.(event.pointerId)) el.board.releasePointerCapture(event.pointerId);
-});
+attachInput(board2d);
 
 // ---------------------------------------------------------------------------
 // Panels
@@ -605,7 +482,6 @@ function renderAll() {
   el.drawBtn.textContent = s.drawOffer === 'you' ? 'Draw offered' : 'Offer draw';
   el.drawBox.hidden = !(playing && s.drawOffer === 'enemy');
   if (!el.drawBox.hidden) el.drawText.textContent = `${nameFor(s.enemyColor)} offers a draw.`;
-  el.board.classList.toggle('hide-coords', !prefs.coords);
   renderGameOver();
 
   if (s.phase === 'playing' && !s.spectator && s.turn === 'you' && view.lastTurn !== 'you' && s.history.length) {
@@ -636,8 +512,8 @@ async function onState(snap, prev) {
   if (fresh) {
     view.flip = flip;
     view.pending = null;
-    buildSquares();
-    syncPieces(view.chess, { appear: snap.phase === 'playing' && snap.history.length === 0 });
+    board.setOrientation(flip);
+    board.setPosition(view.chess, { appear: snap.phase === 'playing' && snap.history.length === 0 });
     view.shownPly = snap.history.length;
     view.shownRound = snap.round;
   } else if (snap.history.length > view.shownPly) {
@@ -648,17 +524,15 @@ async function onState(snap, prev) {
     view.pending = null;
     if (single && pending && pending.from === snap.lastMove.from && pending.to === snap.lastMove.to) {
       // Our own move was already shown; just settle captures/castling/promotion.
-      const before = view.pieces.size;
-      reconcile(view.chess);
-      if (view.chess.inCheck()) sound.check();
-      else if (view.pieces.size < before || snap.history[snap.history.length - 1].includes('x')) sound.capture();
-      else sound.clack();
+      const { captured } = board.settle(view.chess);
+      playMoveSound(captured || snap.history[snap.history.length - 1].includes('x'));
     } else if (single) {
       view.animating = true;
-      await animateMove(snap.lastMove, view.chess);
+      const { captured } = await board.playMove(snap.lastMove, view.chess);
       view.animating = false;
+      playMoveSound(captured);
     } else {
-      syncPieces(view.chess);
+      board.setPosition(view.chess);
     }
   }
   renderAll();
@@ -708,10 +582,22 @@ el.status.addEventListener('click', () => {
 });
 
 // The shared settings dialog handles volume; keep the board toggles in sync with it.
-$('settingsBtn').addEventListener('click', () => {
+function syncBoardSettings() {
   el.hintsToggle.checked = prefs.hints;
   el.coordsToggle.checked = prefs.coords;
-});
+  el.viewButtons.forEach((btn) => btn.classList.toggle('active', btn.dataset.view === (board === board3d ? '3d' : '2d')));
+}
+$('settingsBtn').addEventListener('click', syncBoardSettings);
+el.viewButtons.forEach((btn) =>
+  btn.addEventListener('click', () => {
+    prefs.view = btn.dataset.view;
+    savePrefs();
+    useView(prefs.view);
+    if (prefs.view === '3d' && board !== board3d) toast('3D is not supported on this device.', 'error');
+    syncBoardSettings();
+    sound.click();
+  })
+);
 el.hintsToggle.addEventListener('change', () => {
   prefs.hints = el.hintsToggle.checked;
   savePrefs();
@@ -720,7 +606,7 @@ el.hintsToggle.addEventListener('change', () => {
 el.coordsToggle.addEventListener('change', () => {
   prefs.coords = el.coordsToggle.checked;
   savePrefs();
-  renderAll();
+  board.setShowCoords(prefs.coords);
 });
 
 window.addEventListener('keydown', (event) => {
@@ -734,10 +620,10 @@ window.addEventListener('keydown', (event) => {
   renderHighlights();
 });
 
-buildSquares();
-syncPieces(view.chess);
-el.board.classList.toggle('hide-coords', !prefs.coords);
+useView(prefs.view);
 client.autoStart();
 
 // Test hook: `?debug` exposes internals for automated browser tests.
-if (new URLSearchParams(location.search).has('debug')) window.chessPage = { view, client };
+if (new URLSearchParams(location.search).has('debug')) {
+  window.chessPage = { view, client, board: () => board };
+}

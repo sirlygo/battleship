@@ -339,3 +339,30 @@ body.chess {
 .tb-move-list.cs-moves .latest {
   color: var(--gold);
 }
+
+/* ------------------------------------------------------------------ 3D board */
+
+.tb-frame.mode-3d {
+  padding: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.cs-3d {
+  display: block;
+  width: calc(var(--board) + 28px);
+  height: calc(var(--board) + 28px);
+  touch-action: none;
+  cursor: pointer;
+}
+
+.cs-3d[hidden] {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .cs-3d {
+    width: calc(var(--board) + 20px);
+    height: calc(var(--board) + 20px);
+  }
+}

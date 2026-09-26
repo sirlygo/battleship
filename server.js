@@ -59,6 +59,7 @@ app.get('/api/games', (_req, res) => {
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/vendor/three', express.static(path.join(__dirname, 'node_modules', 'three', 'build')));
+app.use('/vendor/three-addons', express.static(path.join(__dirname, 'node_modules', 'three', 'examples', 'jsm')));
 app.use('/vendor/chess', express.static(path.join(__dirname, 'node_modules', 'chess.js', 'dist', 'esm')));
 
 server.listen(PORT, '0.0.0.0', () => {
