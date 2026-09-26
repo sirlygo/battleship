@@ -1,4 +1,5 @@
 // The Game of Life: spin, drive, pick a career, marry, buy a house and retire.
+// Players build up Wealth, Knowledge and Happiness; together they make Life Points.
 // The board and decks live in public/shared/life-board.js. Money is in $1,000s.
 
 const crypto = require('crypto');
@@ -48,9 +49,22 @@ function adjust(state, seat, amount) {
   return loans;
 }
 
-function drawLife(state) {
-  if (!state.lifeDeck.length) return null;
-  return state.lifeDeck.pop();
+const PET_NAMES = { dog: 'dog', cat: 'cat', bunny: 'bunny', parrot: 'parrot' };
+
+function gain(state, seat, { happy = 0, know = 0 } = {}) {
+  const p = state.players[seat];
+  p.happiness = Math.max(0, p.happiness + happy);
+  p.knowledge = Math.max(0, p.knowledge + know);
+}
+
+function wealthPoints(p, houseValue) {
+  return Math.floor((p.money + houseValue - p.loans * B.LOAN_REPAY) / B.MONEY_PER_POINT);
+}
+
+// Life Points so far, valuing a house at its purchase price.
+function lifePoints(p) {
+  const house = p.house ? HOUSE[p.house].price : 0;
+  return wealthPoints(p, house) + p.knowledge + p.happiness;
 }
 
 function careerOptions(state, degreeOnly, allowDegree) {
@@ -84,30 +98,25 @@ function finalScore(ctx) {
   const { state } = ctx.room;
   const results = active(state).map((seat) => {
     const p = state.players[seat];
-    const lines = [];
+    const lines = [{ label: 'Cash', amount: p.money, unit: '$' }];
     let house = 0;
     if (p.house) {
       const roll = spin();
       const h = HOUSE[p.house];
       house = roll % 2 === 0 ? h.high : h.low;
-      lines.push({ label: `Sold the ${h.name} (spun ${roll})`, amount: house });
+      lines.push({ label: `Sold the ${h.name} (spun ${roll})`, amount: house, unit: '$' });
     }
-    const tiles = p.lifeTiles.reduce((a, b) => a + b, 0);
-    const kids = p.kids * B.KID_GIFT;
-    const repay = p.loans * B.LOAN_REPAY;
-    lines.unshift({ label: 'Cash', amount: p.money });
-    if (tiles) lines.push({ label: `${p.lifeTiles.length} LIFE tiles`, amount: tiles });
-    if (kids) lines.push({ label: `${p.kids} ${p.kids === 1 ? 'child' : 'children'} × $${B.KID_GIFT}K`, amount: kids });
-    if (repay) lines.push({ label: `Repay ${p.loans} loan${p.loans === 1 ? '' : 's'}`, amount: -repay });
-    const total = p.money + house + tiles + kids - repay;
-    return { seat, total, lines };
+    if (p.loans) lines.push({ label: `Repay ${p.loans} loan${p.loans === 1 ? '' : 's'}`, amount: -p.loans * B.LOAN_REPAY, unit: '$' });
+    const wealth = wealthPoints(p, house);
+    const total = wealth + p.knowledge + p.happiness;
+    return { seat, total, wealth, knowledge: p.knowledge, happiness: p.happiness, net: p.money + house - p.loans * B.LOAN_REPAY, lines };
   });
   results.sort((a, b) => b.total - a.total);
   state.results = results;
   state.phase = 'over';
   const winner = results[0]?.seat ?? null;
   ctx.finish(winner, 'retired');
-  if (winner !== null) ctx.system(`${state.names[winner]} retires the richest with ${money(results[0].total)}!`);
+  if (winner !== null) ctx.system(`${state.names[winner]} wins with ${results[0].total} Life Points!`);
 }
 
 // ---------------------------------------------------------------------------
@@ -146,9 +155,15 @@ function drive(ctx, seat, steps, move) {
 
 function collectPay(state, seat, move, passing) {
   const p = state.players[seat];
-  if (!p.salary) return;
-  adjust(state, seat, p.salary);
-  move.events.push({ at: p.pos, text: `${passing ? 'Passed' : 'Landed on'} payday: +${money(p.salary)}`, amount: p.salary });
+  if (p.salary) {
+    adjust(state, seat, p.salary);
+    move.events.push({ at: p.pos, text: `${passing ? 'Passed' : 'Landed on'} payday: +${money(p.salary)}`, amount: p.salary });
+  }
+  if (p.pets.length) {
+    const h = p.pets.length * B.HAPPY.payPet;
+    gain(state, seat, { happy: h });
+    move.events.push({ at: p.pos, text: `Your pet${p.pets.length > 1 ? 's' : ''} made your day: +${h} happiness`, happy: h });
+  }
 }
 
 function land(ctx, seat, move) {
@@ -166,18 +181,44 @@ function land(ctx, seat, move) {
       ev(`${s.text}: ${s.amount > 0 ? '+' : ''}${money(s.amount)}${loans ? ` (took ${loans} loan${loans > 1 ? 's' : ''})` : ''}`, s.amount);
       break;
     }
-    case 'life': {
-      const tile = drawLife(state);
-      if (tile) p.lifeTiles.push(tile);
-      ev(`${s.text}: ${tile ? 'take a LIFE tile' : 'no LIFE tiles left'}`, 0, { life: Boolean(tile) });
+    case 'life':
+      gain(state, seat, { happy: s.amount });
+      ev(`${s.text}: +${s.amount} happiness`, 0, { happy: s.amount });
+      break;
+    case 'learn':
+      gain(state, seat, { know: s.amount });
+      ev(`${s.text}: +${s.amount} knowledge`, 0, { know: s.amount });
+      break;
+    case 'pet': {
+      const pet = B.PETS[crypto.randomInt(B.PETS.length)];
+      p.pets.push(pet);
+      gain(state, seat, { happy: B.HAPPY.pet });
+      ev(`Adopts a ${PET_NAMES[pet]}! +${B.HAPPY.pet} happiness`, 0, { pet, happy: B.HAPPY.pet });
+      break;
+    }
+    case 'choice': {
+      const card = state.dilemmas.pop() || B.DILEMMAS[crypto.randomInt(B.DILEMMAS.length)];
+      if (!state.dilemmas.length) state.dilemmas = shuffle(B.DILEMMAS);
+      state.phase = 'choice';
+      state.pending = {
+        kind: 'dilemma',
+        seat,
+        remaining: 0,
+        prompt: card.text,
+        options: [
+          { value: 'a', label: card.a.label, fx: card.a },
+          { value: 'b', label: card.b.label, fx: card.b },
+        ],
+      };
+      ev(`Decision: ${card.text}`);
       break;
     }
     case 'baby':
     case 'twins': {
       p.kids += s.kind;
-      const tile = drawLife(state);
-      if (tile) p.lifeTiles.push(tile);
-      ev(`${s.text} Now ${p.kids} ${p.kids === 1 ? 'child' : 'children'}${tile ? ' and a LIFE tile' : ''}`, 0, { baby: s.kind });
+      const h = B.HAPPY.baby * s.kind;
+      gain(state, seat, { happy: h });
+      ev(`${s.text} Now ${p.kids} ${p.kids === 1 ? 'child' : 'children'}. +${h} happiness`, 0, { baby: s.kind, happy: h });
       break;
     }
     case 'sue': {
@@ -209,6 +250,10 @@ function stopSpace(ctx, seat, s, move) {
   switch (s.kind) {
     case 'career':
     case 'graduation':
+      if (s.kind === 'graduation') {
+        gain(state, seat, { know: B.KNOW.graduation });
+        ev(`Graduated: +${B.KNOW.graduation} knowledge`, 0, { know: B.KNOW.graduation });
+      }
       state.phase = 'choice';
       state.pending = {
         kind: 'career',
@@ -222,6 +267,7 @@ function stopSpace(ctx, seat, s, move) {
     case 'nightschool':
       adjust(state, seat, -B.NIGHT_SCHOOL_COST);
       p.degree = true;
+      gain(state, seat, { know: B.KNOW.nightschool });
       state.phase = 'choice';
       state.pending = {
         kind: 'career',
@@ -237,6 +283,7 @@ function stopSpace(ctx, seat, s, move) {
       break;
     case 'marry': {
       p.married = true;
+      gain(state, seat, { happy: B.HAPPY.marry });
       const roll = spin();
       const gift = roll >= 6 ? 20 : 10;
       let total = 0;
@@ -247,7 +294,7 @@ function stopSpace(ctx, seat, s, move) {
           total += gift;
         });
       adjust(state, seat, total);
-      ev(`Gets married! Gift spin ${roll}: everyone gives ${money(gift)}`, total, { marry: true });
+      ev(`Gets married! +${B.HAPPY.marry} happiness. Gift spin ${roll}: everyone gives ${money(gift)}`, total, { marry: true, happy: B.HAPPY.marry });
       break;
     }
     case 'house': {
@@ -271,6 +318,7 @@ function stopSpace(ctx, seat, s, move) {
       p.retireRank = state.retireCount;
       const bonus = B.RETIRE_BONUS[state.retireCount - 1] || 0;
       if (bonus) adjust(state, seat, bonus);
+      gain(state, seat, { happy: B.HAPPY.retire });
       ev(`Retires${bonus ? ` — #${state.retireCount} to retire earns ${money(bonus)}` : ''}!`, bonus, { retire: true });
       break;
     }
@@ -327,9 +375,10 @@ function view(ctx, seat) {
         married: p.married,
         kids: p.kids,
         house: p.house,
-        lifeTiles: p.lifeTiles.length,
-        // Tile values stay secret until the end (except your own).
-        lifeValue: over || s === seat ? p.lifeTiles.reduce((a, b) => a + b, 0) : null,
+        knowledge: p.knowledge,
+        happiness: p.happiness,
+        pets: p.pets,
+        points: lifePoints(p),
         retired: p.retired,
         retireRank: p.retireRank,
         left: state.left.includes(s),
@@ -341,7 +390,6 @@ function view(ctx, seat) {
     turnNumber: state.turnNumber,
     pending: state.pending,
     lastMove: state.lastMove,
-    lifeLeft: state.lifeDeck.length,
     log: state.log,
     results: over ? state.results : null,
     winner: over && room.result ? room.result.winner : null,
@@ -395,7 +443,9 @@ module.exports = {
         married: false,
         kids: 0,
         house: null,
-        lifeTiles: [],
+        knowledge: 0,
+        happiness: 0,
+        pets: [],
         retired: false,
         retireRank: null,
       };
@@ -409,7 +459,7 @@ module.exports = {
       phase: 'spin',
       pending: null,
       turnNumber: 1,
-      lifeDeck: shuffle(B.LIFE_TILES),
+      dilemmas: shuffle(B.DILEMMAS),
       retireCount: 0,
       left: [],
       lastMove: null,
@@ -419,7 +469,9 @@ module.exports = {
       logId: 1,
     };
     room.state = state;
-    ctx.system(`Buckle up! ${seats.map((s) => names[s]).join(', ')} hit the road. Everyone starts with ${money(START_MONEY)}.`);
+    ctx.system(
+      `Buckle up! ${seats.map((s) => names[s]).join(', ')} hit the road. Collect Wealth, Knowledge and Happiness — the most Life Points wins.`
+    );
     return state;
   },
 
@@ -474,6 +526,7 @@ module.exports = {
         if (lane === 'college') {
           p.degree = true;
           adjust(state, seat, -B.COLLEGE_COST);
+          gain(state, seat, { know: B.KNOW.college });
           move.events.push({ at: p.pos, text: `Off to college: −${money(B.COLLEGE_COST)} in student loans`, amount: -B.COLLEGE_COST });
         } else {
           move.events.push({ at: p.pos, text: `Takes the ${option.label.toLowerCase()}`, amount: 0 });
@@ -500,6 +553,7 @@ module.exports = {
           const h = HOUSE[option.value];
           const loans = adjust(state, seat, -h.price);
           p.house = h.id;
+          gain(state, seat, { happy: B.HAPPY.house });
           move.events.push({
             at: p.pos,
             text: `Buys a ${h.name} for ${money(h.price)}${loans ? ` (${loans} loan${loans > 1 ? 's' : ''})` : ''}`,
@@ -509,6 +563,42 @@ module.exports = {
         } else {
           move.events.push({ at: p.pos, text: 'Keeps renting', amount: 0 });
         }
+      } else if (pending.kind === 'dilemma') {
+        const fx = option.fx;
+        const parts = [];
+        let amount = 0;
+        if (fx.risk) {
+          adjust(state, seat, -fx.risk.cost);
+          const roll = spin();
+          const won = roll >= fx.risk.need;
+          if (won) adjust(state, seat, fx.risk.win);
+          amount = won ? fx.risk.win - fx.risk.cost : -fx.risk.cost;
+          parts.push(`spun ${roll} — ${won ? `it pays off: +${money(fx.risk.win)}` : 'it flops'}`);
+        }
+        if (fx.money) {
+          adjust(state, seat, fx.money);
+          amount += fx.money;
+          parts.push(`${fx.money > 0 ? '+' : ''}${money(fx.money)}`);
+        }
+        if (fx.happy || fx.know) gain(state, seat, { happy: fx.happy || 0, know: fx.know || 0 });
+        if (fx.happy) parts.push(`${fx.happy > 0 ? '+' : ''}${fx.happy} happiness`);
+        if (fx.know) parts.push(`+${fx.know} knowledge`);
+        if (fx.pet) {
+          p.pets.push(fx.pet);
+          parts.push(`new ${fx.pet}!`);
+        }
+        if (fx.raise && p.salary) {
+          p.salary += fx.raise;
+          parts.push(`salary +${money(fx.raise)}`);
+        }
+        move.events.push({
+          at: p.pos,
+          text: `${option.label}${parts.length ? `: ${parts.join(', ')}` : ''}`,
+          amount,
+          happy: fx.happy || 0,
+          know: fx.know || 0,
+          pet: fx.pet,
+        });
       } else if (pending.kind === 'sue') {
         const target = option.value;
         adjust(state, target, -100);

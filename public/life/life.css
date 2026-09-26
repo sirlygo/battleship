@@ -528,3 +528,99 @@ body.life {
     aspect-ratio: 22 / 17;
   }
 }
+
+/* ------------------------------------------------------------------ Life Points */
+
+.lf-player .lp {
+  font: 700 13px var(--display);
+  color: var(--gold);
+}
+
+.lf-meters {
+  display: flex;
+  gap: 8px;
+  font: 600 12px var(--display);
+}
+
+.lf-meters .m-w {
+  color: #7dffb0;
+}
+
+.lf-meters .m-k {
+  color: #8ec5ff;
+}
+
+.lf-meters .m-h {
+  color: #ff9ec7;
+}
+
+.lf-option .fx {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.lf-option .fx i {
+  font-style: normal;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.lf-option.dilemma {
+  --pc: #f5b82e;
+}
+
+.lf-option .c-up {
+  color: #7dffb0;
+}
+
+.lf-option .c-down {
+  color: #ff8a7a;
+}
+
+.lf-option .c-know {
+  color: #8ec5ff;
+}
+
+.lf-option .c-happy {
+  color: #ff9ec7;
+}
+
+.lf-option .c-risk {
+  color: var(--gold);
+}
+
+.lf-bar {
+  display: flex;
+  height: 10px;
+  margin: 6px 0 3px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.lf-bar span {
+  transition: width 1s ease;
+}
+
+.lf-bar .w {
+  background: #3fb35a;
+}
+
+.lf-bar .k {
+  background: #2f6fe0;
+}
+
+.lf-bar .h {
+  background: #e0508a;
+}
+
+.lf-split {
+  display: flex;
+  gap: 12px;
+  font: 600 12px var(--display);
+  color: var(--muted);
+}

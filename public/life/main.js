@@ -7,6 +7,7 @@ const SP = B.spaces;
 const CAREER = Object.fromEntries(B.CAREERS.map((c) => [c.id, c]));
 const HOUSE = Object.fromEntries(B.HOUSES.map((h) => [h.id, h]));
 const SVGNS = 'http://www.w3.org/2000/svg';
+const PET_ICON = { dog: '🐶', cat: '🐱', bunny: '🐰', parrot: '🦜' };
 const $ = (id) => document.getElementById(id);
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -177,7 +178,7 @@ function build2d() {
     } else {
       mk('circle', { cx: s.x, cy: s.z, r, fill: color, stroke: '#fff', 'stroke-width': 0.05 });
     }
-    const label = { payday: '$', life: 'L', sue: '⚖', baby: '♥', twins: '♥♥', start: 'GO', stop: 'STOP' }[s.type] ??
+    const label = { payday: '$', life: '❤', learn: '📘', pet: '🐾', choice: '?', sue: '⚖', baby: '👶', twins: '👶👶', start: 'GO', stop: 'STOP' }[s.type] ??
       (s.type === 'money' ? `${s.amount > 0 ? '+' : '−'}${Math.abs(s.amount)}` : '');
     const t = mk('text', { x: s.x, y: s.z + 0.1, 'font-size': s.type === 'stop' ? 0.2 : 0.26, 'text-anchor': 'middle', fill: '#fff', 'font-weight': 700 });
     t.textContent = label;
@@ -224,6 +225,7 @@ function carList() {
       pos: view.animSeat === p.seat && view.animPos !== null ? view.animPos : p.pos,
       married: p.married,
       kids: p.kids,
+      pets: p.pets || [],
     }));
 }
 
@@ -249,7 +251,10 @@ function renderPlayers() {
     chip.classList.toggle('retired', p.retired);
     const top = document.createElement('div');
     top.className = 'row1';
-    top.innerHTML = `<b>${p.name}${p.seat === mySeat() ? ' (you)' : ''}</b><span class="cash">${fmt(p.money)}</span>`;
+    top.innerHTML = `<b>${p.name}${p.seat === mySeat() ? ' (you)' : ''}</b><span class="lp">${p.points} LP</span>`;
+    const meters = document.createElement('div');
+    meters.className = 'lf-meters';
+    meters.innerHTML = `<span class="m-w" title="Wealth">💰 ${fmt(p.money)}</span><span class="m-k" title="Knowledge">📘 ${p.knowledge}</span><span class="m-h" title="Happiness">❤ ${p.happiness}</span>`;
     const meta = document.createElement('div');
     meta.className = 'meta';
     const bits = [];
@@ -260,11 +265,11 @@ function renderPlayers() {
       if (p.married) bits.push('💍');
       if (p.kids) bits.push(`👶×${p.kids}`);
       if (p.house) bits.push('🏠');
-      if (p.lifeTiles) bits.push(`${p.lifeTiles} LIFE`);
+      if (p.pets?.length) bits.push(p.pets.map((x) => PET_ICON[x]).join(''));
       if (p.retired) bits.push(`retired #${p.retireRank}`);
     }
     meta.textContent = bits.join(' · ');
-    chip.append(top, meta);
+    chip.append(top, meters, meta);
     el.playerStrip.appendChild(chip);
   });
 }
@@ -347,6 +352,17 @@ function optionCard(opt, kind) {
   } else if (kind === 'house') {
     if (opt.value === 'skip') b.innerHTML = `<span class="k">No thanks</span><b>Keep renting</b><span class="v">Save your cash</span>`;
     else b.innerHTML = `<span class="k">House</span><b>${opt.label}</b><span class="v">Buy ${fmt(opt.price)}</span><span class="s">Sells for ${fmt(opt.low)}–${fmt(opt.high)}</span>`;
+  } else if (kind === 'dilemma') {
+    const fx = opt.fx || {};
+    const chips = [];
+    if (fx.risk) chips.push(`<i class="c-risk">🎲 −${fmt(fx.risk.cost)} · spin ${fx.risk.need}+ wins ${fmt(fx.risk.win)}</i>`);
+    if (fx.money) chips.push(`<i class="${fx.money > 0 ? 'c-up' : 'c-down'}">💰 ${fx.money > 0 ? '+' : ''}${fmt(fx.money)}</i>`);
+    if (fx.know) chips.push(`<i class="c-know">📘 +${fx.know}</i>`);
+    if (fx.happy) chips.push(`<i class="${fx.happy > 0 ? 'c-happy' : 'c-down'}">❤ ${fx.happy > 0 ? '+' : ''}${fx.happy}</i>`);
+    if (fx.pet) chips.push(`<i class="c-happy">${PET_ICON[fx.pet]} new pet</i>`);
+    if (fx.raise) chips.push(`<i class="c-up">💼 salary +${fmt(fx.raise)}</i>`);
+    if (!chips.length) chips.push('<i>nothing changes</i>');
+    b.innerHTML = `<span class="k">Option ${opt.value.toUpperCase()}</span><b>${opt.label}</b><span class="fx">${chips.join('')}</span>`;
   } else if (kind === 'sue') {
     const p = seatInfo(opt.value);
     b.style.setProperty('--pc', p?.color || '#888');
@@ -386,7 +402,10 @@ function renderMe() {
     ['Loans', me.loans ? `${me.loans} (${fmt(me.loans * B.LOAN_REPAY)} to repay)` : 'none'],
     ['Family', `${me.married ? 'Married' : 'Single'}${me.kids ? ` · ${me.kids} ${me.kids === 1 ? 'kid' : 'kids'}` : ''}`],
     ['Home', me.house ? HOUSE[me.house].name : 'Renting'],
-    ['LIFE tiles', me.lifeTiles ? `${me.lifeTiles} (worth ${fmt(me.lifeValue)})` : 'none yet'],
+    ['Pets', me.pets?.length ? me.pets.map((x) => `${PET_ICON[x]} ${x}`).join(', ') : 'none yet'],
+    ['📘 Knowledge', String(me.knowledge)],
+    ['❤ Happiness', String(me.happiness)],
+    ['Life Points', `${me.points} LP`],
   ];
   el.meStats.innerHTML = rows.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('');
   el.repayBtn.hidden = !me.loans || s.phase !== 'playing';
@@ -420,15 +439,19 @@ function renderGameOver() {
   const w = s.results[0]?.seat;
   el.goKicker.textContent = 'Retirement day';
   el.goTitle.textContent = w === me ? 'You win!' : `${seatInfo(w)?.name} wins`;
-  el.goReason.textContent = 'Houses are sold, loans repaid and LIFE tiles counted.';
+  el.goReason.textContent = `Houses are sold and loans repaid. Every ${fmt(B.MONEY_PER_POINT)} is 1 Life Point, plus Knowledge and Happiness.`;
   el.goResults.innerHTML = '';
+  const top = Math.max(...s.results.map((r) => r.total), 1);
   s.results.forEach((r, i) => {
     const p = seatInfo(r.seat);
     const card = document.createElement('div');
     card.className = 'lf-result';
     card.style.setProperty('--pc', p?.color || '#888');
-    card.innerHTML = `<div class="head"><span class="rank">${i + 1}</span><b>${p?.name}</b><span class="total">${fmt(r.total)}</span></div>
-      <ul>${r.lines.map((l) => `<li><span>${l.label}</span><span class="${l.amount < 0 ? 'down' : ''}">${fmt(l.amount)}</span></li>`).join('')}</ul>`;
+    const pct = (v) => `${(Math.max(0, v) / top) * 100}%`;
+    card.innerHTML = `<div class="head"><span class="rank">${i + 1}</span><b>${p?.name}</b><span class="total">${r.total} LP</span></div>
+      <div class="lf-bar"><span class="w" style="width:${pct(r.wealth)}"></span><span class="k" style="width:${pct(r.knowledge)}"></span><span class="h" style="width:${pct(r.happiness)}"></span></div>
+      <div class="lf-split"><span>💰 ${r.wealth}</span><span>📘 ${r.knowledge}</span><span>❤ ${r.happiness}</span></div>
+      <ul>${r.lines.map((l) => `<li><span>${l.label}</span><span class="${l.amount < 0 ? 'down' : ''}">${fmt(l.amount)}</span></li>`).join('')}<li><span>Net worth</span><span>${fmt(r.net)}</span></li></ul>`;
     el.goResults.appendChild(card);
   });
   renderRematch();
@@ -502,11 +525,20 @@ async function playMove(move, before) {
   const showEvents = (at, final) => {
     (stepsBy.get(at) || []).forEach((e) => {
       if (shownEvents.has(e)) return;
-      const passing = /^Passed payday/.test(e.text);
+      const passing = /^Passed payday|^Your pet/.test(e.text);
       if (!final && !passing) return;
       shownEvents.add(e);
-      const text = e.amount ? `${e.amount > 0 ? '+' : ''}${fmt(e.amount)}` : e.life ? 'LIFE tile!' : e.baby ? (e.baby === 2 ? 'Twins!' : 'Baby!') : '';
-      if (text) board3d?.floatText(at, text, e.amount < 0 ? '#ff8a7a' : e.amount > 0 ? '#7dffb0' : '#ffe08a');
+      const bits = [];
+      if (e.amount) bits.push({ t: `💰 ${e.amount > 0 ? '+' : ''}${fmt(e.amount)}`, c: e.amount < 0 ? '#ff8a7a' : '#7dffb0' });
+      if (e.know) bits.push({ t: `📘 +${e.know}`, c: '#8ec5ff' });
+      if (e.happy) bits.push({ t: `❤ ${e.happy > 0 ? '+' : ''}${e.happy}`, c: e.happy > 0 ? '#ff9ec7' : '#ff8a7a' });
+      if (e.pet) bits.push({ t: `${PET_ICON[e.pet]} New pet!`, c: '#ffe08a' });
+      bits.forEach((b, i) => setTimeout(() => board3d?.floatText(at, b.t, b.c), i * 280));
+      const party = e.marry || e.retire || e.baby || e.house || e.pet || e.career || e.amount >= 100;
+      if (party) {
+        board3d?.confetti(at, e.retire || e.marry ? 120 : 70);
+        if (e.marry || e.retire || e.baby) board3d?.celebrate(move.seat);
+      }
       if (e.amount > 0) sound.crown?.();
       else if (e.amount < 0) sound.error();
       else sound.place();
@@ -515,6 +547,7 @@ async function playMove(move, before) {
       else if (e.baby) bigText(e.baby === 2 ? 'TWINS!' : "IT'S A BABY!", nameOf(move.seat), 'info');
       else if (e.career) bigText('NEW CAREER', e.text.replace(/^Becomes an? /, ''), 'info');
       else if (e.house) bigText('HOME SWEET HOME', HOUSE[e.house]?.name || '', 'info');
+      else if (e.pet) bigText('NEW BEST FRIEND', `A ${e.pet} joins the family`, 'info');
       else if (e.sue !== undefined) bigText('LAWSUIT!', e.text, 'hit');
       else if (Math.abs(e.amount) >= 100) bigText(e.amount > 0 ? 'JACKPOT!' : 'OUCH!', e.text, e.amount > 0 ? 'info' : 'hit');
     });
@@ -695,7 +728,7 @@ function showTip(id, clientX, clientY) {
     return;
   }
   const s = SP[id];
-  const kind = { payday: 'Payday', money: 'Money', life: 'LIFE tile', stop: 'STOP', sue: 'Lawsuit', baby: 'Baby', twins: 'Twins', start: 'Start' }[s.type];
+  const kind = { payday: 'Payday', money: 'Money', life: '❤ Happiness', learn: '📘 Knowledge', pet: '🐾 Pet', choice: 'Decision card', stop: 'STOP', sue: 'Lawsuit', baby: 'Baby', twins: 'Twins', start: 'Start' }[s.type];
   el.hoverTip.innerHTML = `<b>${kind}</b><span>${s.text}</span>`;
   el.hoverTip.hidden = false;
   const rect = el.boardWrap.getBoundingClientRect();

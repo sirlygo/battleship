@@ -15,7 +15,10 @@ export const TYPE_COLORS = {
   start: '#ffffff',
   payday: '#2fbf5b',
   money: '#f2a93b',
-  life: '#8e5bd6',
+  life: '#e0508a',
+  learn: '#2f6fe0',
+  pet: '#1fb5a0',
+  choice: '#f5b82e',
   stop: '#d9352b',
   sue: '#e0622a',
   baby: '#58a8f0',
@@ -69,7 +72,19 @@ function tileTexture(space) {
       big(`${space.amount > 0 ? '+' : '−'}${Math.abs(space.amount)}K`, Math.abs(space.amount) >= 100 ? 32 : 38);
       break;
     case 'life':
-      big('LIFE', 36);
+      big('❤', 48, 52);
+      big(`+${space.amount}`, 24, 98);
+      break;
+    case 'learn':
+      big('📘', 44, 54);
+      big(`+${space.amount}`, 24, 98);
+      break;
+    case 'pet':
+      big('🐾', 48, 56);
+      big('PET', 20, 100);
+      break;
+    case 'choice':
+      big('?', 64, 60);
       break;
     case 'sue':
       big('⚖', 50, 54);
@@ -437,6 +452,45 @@ export class LifeBoard3D {
       g.rotation.y = rand() * Math.PI;
       this.scene.add(g);
     };
+    // Clouds and hot-air balloons drifting over the board.
+    this.floaters = [];
+    const cloudMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, transparent: true, opacity: 0.92 });
+    for (let i = 0; i < 6; i += 1) {
+      const cloud = new THREE.Group();
+      for (let j = 0; j < 5; j += 1) {
+        const puff = new THREE.Mesh(new THREE.SphereGeometry(0.35 + rand() * 0.3, 12, 10), cloudMat);
+        puff.position.set((j - 2) * 0.4 + rand() * 0.2, rand() * 0.2, rand() * 0.3);
+        puff.scale.y = 0.7;
+        cloud.add(puff);
+      }
+      cloud.position.set(-12 + rand() * 24, 3.2 + rand() * 1.2, -7 + rand() * 12);
+      cloud.castShadow = true;
+      this.scene.add(cloud);
+      this.floaters.push({ obj: cloud, speed: 0.12 + rand() * 0.12, kind: 'cloud' });
+    }
+    [0xff4d6d, 0xffd166, 0x4cc9f0].forEach((color, i) => {
+      const b = new THREE.Group();
+      const envelope = new THREE.Mesh(
+        new THREE.SphereGeometry(0.32, 16, 14),
+        new THREE.MeshStandardMaterial({ color, roughness: 0.5 })
+      );
+      envelope.scale.y = 1.2;
+      const stripe = new THREE.Mesh(
+        new THREE.TorusGeometry(0.31, 0.03, 6, 24),
+        new THREE.MeshStandardMaterial({ color: 0xffffff })
+      );
+      stripe.rotation.x = Math.PI / 2;
+      const basket = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 0.12), new THREE.MeshStandardMaterial({ color: 0x8b5a2b }));
+      basket.position.y = -0.5;
+      [envelope, stripe, basket].forEach((m) => {
+        m.castShadow = true;
+        b.add(m);
+      });
+      b.position.set(-6 + i * 6, 2.2 + i * 0.3, -3 + i * 2);
+      this.scene.add(b);
+      this.floaters.push({ obj: b, speed: 0.25, kind: 'balloon', phase: i * 2, base: b.position.clone() });
+    });
+
     landmark('graduation', 0xd9c7a0, 0x8a2a2a, 1.2);
     landmark('marry', 0xffffff, 0xc9a0dc);
     landmark('house', 0xf2d7a7, 0x3b6ea5);
@@ -487,11 +541,17 @@ export class LifeBoard3D {
     return car;
   }
 
-  setPeople(car, married, kids) {
-    const key = `${married}:${kids}`;
+  setPeople(car, married, kids, pets = []) {
+    const key = `${married}:${kids}:${pets.join(',')}`;
     if (car.people === key) return;
     car.people = key;
     car.pegs.clear();
+    pets.slice(0, 2).forEach((kind, i) => {
+      const pet = this.petModel(kind);
+      pet.position.set(-0.26, 0.15, i === 0 ? 0.06 : -0.06);
+      pet.rotation.y = Math.PI / 2;
+      car.pegs.add(pet);
+    });
     // Seats in two rows of three on top of the car.
     const seats = [];
     for (let row = 0; row < 3; row += 1) for (const side of [0.07, -0.07]) seats.push([0.1 - row * 0.13, side]);
@@ -505,6 +565,32 @@ export class LifeBoard3D {
       peg.castShadow = true;
       car.pegs.add(peg);
     });
+  }
+
+  petModel(kind) {
+    const g = new THREE.Group();
+    const colors = { dog: 0xb07a45, cat: 0x9a9a9a, bunny: 0xf2f2f2, parrot: 0x2fbf5b };
+    const mat = new THREE.MeshStandardMaterial({ color: colors[kind] || 0xaaaaaa, roughness: 0.6 });
+    const add = (geo, x, y, z, m = mat) => {
+      const mesh = new THREE.Mesh(geo, m);
+      mesh.position.set(x, y, z);
+      mesh.castShadow = true;
+      g.add(mesh);
+      return mesh;
+    };
+    if (kind === 'parrot') {
+      add(new THREE.SphereGeometry(0.03, 10, 8), 0, 0.03, 0).scale.set(1, 1.4, 1);
+      add(new THREE.SphereGeometry(0.022, 10, 8), 0, 0.075, 0.005);
+      add(new THREE.ConeGeometry(0.01, 0.025, 6), 0, 0.072, 0.03, new THREE.MeshStandardMaterial({ color: 0xffa31a })).rotation.x = Math.PI / 2;
+    } else {
+      add(new THREE.SphereGeometry(0.035, 10, 8), 0, 0.03, 0).scale.set(1, 0.85, 1.35);
+      add(new THREE.SphereGeometry(0.027, 10, 8), 0, 0.065, 0.04);
+      const ear = kind === 'bunny' ? new THREE.CapsuleGeometry(0.007, 0.04, 3, 6) : new THREE.ConeGeometry(0.012, 0.025, 6);
+      add(ear, 0.013, kind === 'bunny' ? 0.11 : 0.095, 0.04);
+      add(ear, -0.013, kind === 'bunny' ? 0.11 : 0.095, 0.04);
+      if (kind === 'dog') add(new THREE.SphereGeometry(0.012, 8, 6), 0, 0.058, 0.066, new THREE.MeshStandardMaterial({ color: 0x222222 }));
+    }
+    return g;
   }
 
   // Where a car parks on a space (several cars share by fanning out).
@@ -522,7 +608,7 @@ export class LifeBoard3D {
     list.forEach((p) => (bySpace[p.pos] ||= []).push(p.seat));
     list.forEach((p) => {
       const car = this.cars.get(p.seat) || this.makeCar(p.seat, p.color);
-      this.setPeople(car, p.married, p.kids);
+      this.setPeople(car, p.married, p.kids, p.pets || []);
       if (p.seat === animatingSeat) return;
       const same = bySpace[p.pos];
       const sl = this.slot(p.pos, same.indexOf(p.seat), same.length);
@@ -562,6 +648,71 @@ export class LifeBoard3D {
   focusOn(space) {
     if (!this.follow) return;
     this.focus = { x: space.x, z: space.z, zoom: 1.9, until: performance.now() + 2500 };
+  }
+
+  confetti(spaceId, count = 70) {
+    const s = SP[spaceId];
+    if (!s || !this.visible) return;
+    const geo = new THREE.PlaneGeometry(0.06, 0.035);
+    const colors = [0xff4d6d, 0xffd166, 0x06d6a0, 0x4cc9f0, 0x9b5de5, 0xffffff];
+    const mesh = new THREE.InstancedMesh(geo, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }), count);
+    const parts = [];
+    const c = new THREE.Color();
+    for (let i = 0; i < count; i += 1) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 1.2 + Math.random() * 1.8;
+      parts.push({
+        p: new THREE.Vector3(s.x, 0.4, s.z),
+        v: new THREE.Vector3(Math.cos(a) * sp * 0.5, 2.6 + Math.random() * 2, Math.sin(a) * sp * 0.5),
+        r: new THREE.Euler(Math.random() * 6, Math.random() * 6, 0),
+        w: (Math.random() - 0.5) * 16,
+      });
+      mesh.setColorAt(i, c.setHex(colors[i % colors.length]));
+    }
+    this.fx.add(mesh);
+    const m = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const one = new THREE.Vector3(1, 1, 1);
+    let last = performance.now();
+    this.tween(2200, (k) => {
+      const now = performance.now();
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      parts.forEach((pt, i) => {
+        pt.v.y -= 6 * dt;
+        pt.v.multiplyScalar(0.985);
+        pt.p.addScaledVector(pt.v, dt);
+        if (pt.p.y < 0.15) {
+          pt.p.y = 0.15;
+          pt.v.set(0, 0, 0);
+        }
+        pt.r.x += pt.w * dt;
+        pt.r.y += pt.w * 0.7 * dt;
+        q.setFromEuler(pt.r);
+        m.compose(pt.p, q, one);
+        mesh.setMatrixAt(i, m);
+      });
+      mesh.instanceMatrix.needsUpdate = true;
+      mesh.material.opacity = k > 0.8 ? 1 - (k - 0.8) / 0.2 : 1;
+      mesh.material.transparent = k > 0.8;
+    }).then(() => {
+      this.fx.remove(mesh);
+      geo.dispose();
+      mesh.material.dispose();
+    });
+  }
+
+  // A happy little jump-and-spin for a car.
+  celebrate(seat) {
+    const car = this.cars.get(seat);
+    if (!car || !this.visible) return;
+    const g = car.group;
+    const y0 = g.position.y;
+    const r0 = g.rotation.y;
+    this.tween(700, (k) => {
+      g.position.y = y0 + Math.sin(Math.PI * k) * 0.45;
+      g.rotation.y = r0 + easeInOut(k) * Math.PI * 2;
+    });
   }
 
   setHighlight(ids) {
@@ -777,6 +928,15 @@ export class LifeBoard3D {
         tw.resolve();
       }
     }
+    this.floaters?.forEach((f) => {
+      if (f.kind === 'cloud') {
+        f.obj.position.x += f.speed * dt;
+        if (f.obj.position.x > 13) f.obj.position.x = -13;
+      } else {
+        const t = now / 1000 * 0.12 + f.phase;
+        f.obj.position.set(f.base.x + Math.cos(t) * 2.5, f.base.y + Math.sin(t * 2.3) * 0.25, f.base.z + Math.sin(t) * 1.8);
+      }
+    });
     const pulse = 0.5 + Math.sin(now / 200) * 0.5;
     this.highlight.forEach((i) => {
       const t = this.tiles[i];

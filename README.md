@@ -9,7 +9,7 @@ Real-time board games to play with friends in the browser: no accounts, just sha
 | **Chess**: 3D or 2D board, full rules, drag-and-drop, optional clocks | 2 | Playable |
 | **Clue**: 3D or 2D mansion board, secret passages, private card showing, auto-filling notes | 2–6 | Playable |
 | **Risk**: 3D or 2D world map, dice battles with blitz, cards, continent bonuses | 2–6 | Playable |
-| **The Game of Life**: 3D or 2D board, spinner, careers, houses, LIFE tiles | 2–6 | Playable |
+| **The Game of Life**: 3D board, Life Points (wealth, knowledge, happiness), decision cards, pets | 2–6 | Playable |
 
 ## Checkers
 
@@ -32,12 +32,20 @@ Real-time board games to play with friends in the browser: no accounts, just sha
 ## The Game of Life
 
 - The host starts the game with 2–6 players. Everyone starts with $10K.
-- **3D board** (default): a winding road over green hills, with trees and landmarks (a university, chapel, house, night school and retirement villa). Each player drives a car carrying peg people: a spouse and kids join as your family grows. Scroll or pinch to zoom, drag to look around, and tap or hover over a space to read it. The camera follows the moving car (you can turn this off). Switch to the flat **2D** board in Settings.
-- Spin the wheel (1–10) and drive. At the first fork, choose **college** ($100K in loans, but any career) or **start a career** right away. Later forks offer the family or adventure path, night school, and the risky or safe road.
-- **Payday** pays your salary whenever you pass or land on it. Red **STOP** spaces end your move: graduation, starting a career, marriage (everyone gives a gift), buying a house, night school and retirement.
-- **LIFE** tiles hide cash values revealed at the end. Babies and twins add passengers and LIFE tiles. On a lawsuit space you pick someone to sue for $100K.
-- If you run out of cash the bank lends $50K at a time. Repay $60K each whenever you like, or it comes out at the end.
-- At retirement the first three to arrive get $100K, $50K and $20K. Houses are sold (spin: even for the high price, odd for the low price), loans are repaid, and LIFE tiles and children ($50K each) are counted. The richest retiree wins.
+- **Life Points win.** Build all three sides of a good life: 💰 **Wealth** (every $10K of net worth is 1 point), 📘 **Knowledge** and ❤ **Happiness**.
+- **3D board** (default):
+  - A winding road over green hills, with trees, drifting clouds, hot-air balloons, and landmarks such as a university, chapel, house, night school and retirement villa.
+  - Each player drives a car with peg people. A spouse and kids join as your family grows, and pets ride along too.
+  - Confetti and a happy car spin mark weddings, babies, new homes, pets, careers, jackpots and retirement.
+  - Scroll or pinch to zoom, and drag to look around. The camera follows the moving car (you can turn this off). Switch to the flat **2D** board in Settings.
+- **Moving:** spin the wheel (1–10) and drive. At the first fork, choose **college** ($100K in loans, +Knowledge, and any career) or **start a career** right away. Later forks offer the family or adventure path, night school, and the risky or safe road.
+- **Decision cards (?):** pick option A or B, such as concert tickets or studying, investing in a friend's startup (spin to see if it pays off), adopting a puppy, or taking a promotion with overtime. Each card shows its effect on cash, Knowledge, Happiness and salary.
+- **Other spaces:**
+  - **Payday** pays your salary whenever you pass it, and your pets cheer you up there too.
+  - **❤ Happiness** and **📘 Knowledge** spaces, pets, babies and twins, and lawsuits (sue someone for $100K).
+  - Red **STOP** spaces end your move: graduation, starting a career, marriage (everyone gives a gift), buying a house, night school and retirement.
+- **Loans:** if you run out of cash the bank lends $50K at a time. Repay $60K each whenever you like, or it comes out at the end.
+- **Retirement:** the first three to arrive get $100K, $50K and $20K. Houses are sold (spin: even for the high price, odd for the low price) and loans are repaid. The results screen breaks each player's Life Points into Wealth, Knowledge and Happiness.
 
 ## Risk
 
