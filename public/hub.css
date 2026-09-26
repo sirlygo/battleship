@@ -318,6 +318,9 @@ body.hub {
 .game-card:nth-child(6) {
   animation-delay: 0.3s;
 }
+.game-card:nth-child(n + 7) {
+  animation-delay: 0.36s;
+}
 
 .game-card:hover {
   box-shadow: 0 28px 70px rgba(0, 0, 0, 0.55), 0 0 40px color-mix(in srgb, var(--accent) 22%, transparent);
@@ -666,6 +669,116 @@ body.hub {
 @keyframes sun {
   50% {
     transform: scale(1.12);
+  }
+}
+
+/* Four in a Row */
+.fr-drop {
+  animation: frDrop 2.6s cubic-bezier(0.55, 0, 1, 0.45) infinite;
+}
+@keyframes frDrop {
+  0%,
+  15% {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  55%,
+  100% {
+    transform: translateY(119px);
+    opacity: 1;
+  }
+}
+.fr-line {
+  animation: gpPulse 1.2s ease-in-out infinite;
+}
+
+/* Color Clash */
+.cc-lift {
+  animation: ccLift 2.4s ease-in-out infinite;
+}
+@keyframes ccLift {
+  50% {
+    translate: 4px -10px;
+  }
+}
+.cc-ring {
+  transform-origin: 166px 94px;
+  animation: spinSlow 14s linear infinite;
+}
+.cc-bubble {
+  animation: gpPulse 1.6s ease-in-out infinite;
+}
+
+/* Ludo */
+.ld-hop {
+  animation: ldHop 1.4s ease-in-out infinite;
+}
+@keyframes ldHop {
+  50% {
+    translate: 0 -6px;
+  }
+}
+.ld-die {
+  animation: ldDie 2.8s ease-in-out infinite;
+}
+@keyframes ldDie {
+  0%,
+  60%,
+  100% {
+    transform: translate(70px, 96px) rotate(0deg);
+  }
+  20% {
+    transform: translate(64px, 80px) rotate(-120deg);
+  }
+  40% {
+    transform: translate(72px, 94px) rotate(-340deg);
+  }
+}
+.ld-six {
+  animation: twinkle 1.4s ease-in-out infinite;
+}
+
+/* Tycoon */
+.ty-pop {
+  animation: tyPop 3s ease-in-out infinite;
+}
+.ty-pop.d2 {
+  animation-delay: 0.4s;
+}
+@keyframes tyPop {
+  0%,
+  70%,
+  100% {
+    translate: 0 0;
+  }
+  80% {
+    translate: 0 -5px;
+  }
+}
+.ty-hop {
+  animation: ldHop 1.8s ease-in-out infinite;
+}
+.ty-coin {
+  animation: tyCoin 2s linear infinite;
+}
+@keyframes tyCoin {
+  0% {
+    transform: translate(292px, 44px) scaleX(1);
+  }
+  25% {
+    transform: translate(292px, 40px) scaleX(0.1);
+  }
+  50% {
+    transform: translate(292px, 44px) scaleX(1);
+  }
+  75% {
+    transform: translate(292px, 40px) scaleX(0.1);
+  }
+  100% {
+    transform: translate(292px, 44px) scaleX(1);
   }
 }
 

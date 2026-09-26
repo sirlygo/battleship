@@ -1,0 +1,632 @@
+/* Tycoon page. Shared controls (buttons, chat, modals…) come from /shared/ui.css. */
+
+body.tycoon {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(90, 200, 120, 0.14), transparent 60%),
+    radial-gradient(ellipse at 50% 120%, rgba(245, 197, 24, 0.1), transparent 60%),
+    linear-gradient(180deg, #0f1a16 0%, #070b0a 100%);
+}
+
+.tycoon .lobby {
+  background: transparent;
+}
+
+.tycoon .brand h1 {
+  background: linear-gradient(180deg, #fff 0%, #b8f5c8 45%, #f5c518 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 4px 18px rgba(120, 220, 150, 0.3));
+}
+
+/* ------------------------------------------------------------------ Layout */
+
+.ty-layout {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 12px 16px 18px;
+}
+
+.ty-main {
+  flex: 1;
+  min-width: 0;
+  max-width: calc((100dvh - 150px) * 1.2);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ty-side {
+  width: 340px;
+  flex: none;
+}
+
+.ty-board-wrap {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 35%, #1f2e2a 0%, #0a100e 100%);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(160, 230, 180, 0.1);
+}
+
+.ty-3d,
+.ty-2d {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1.2 / 1;
+  touch-action: manipulation;
+}
+
+.ty-3d[hidden],
+.ty-2d[hidden] {
+  display: none;
+}
+
+.ty-2d {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ty-2d canvas {
+  height: 96%;
+  aspect-ratio: 1;
+  border-radius: 6px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+}
+
+.ty-tip {
+  position: absolute;
+  z-index: 4;
+  width: 210px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fbfaf5;
+  color: #16211b;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.ty-tip .band {
+  padding: 8px 10px;
+  font: 800 14px var(--display);
+  text-align: center;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  background: #3a4a44;
+}
+
+.ty-tip .rows {
+  padding: 8px 12px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 10px;
+}
+
+.ty-tip .rows .on {
+  font-weight: 800;
+  color: #1f7a3f;
+}
+
+.ty-tip .owner {
+  padding: 6px 12px 8px;
+  border-top: 1px solid #ddd;
+  font-weight: 700;
+}
+
+.ty-dice-chip,
+.ty-pot-chip {
+  position: absolute;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(8, 12, 10, 0.75);
+  font: 700 14px var(--display);
+  pointer-events: none;
+}
+
+.ty-dice-chip {
+  top: 12px;
+}
+
+.ty-pot-chip {
+  top: 50px;
+  color: var(--gold);
+}
+
+.ty-dice-chip b {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: #fbfaf5;
+  color: #b3261e;
+}
+
+/* ------------------------------------------------------------------ Players */
+
+.ty-players {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ty-player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 140px;
+  padding: 5px 10px;
+  border-radius: 10px;
+  border-left: 4px solid var(--pc);
+  background: rgba(0, 0, 0, 0.35);
+  font-size: 13px;
+  transition: background 0.3s, box-shadow 0.3s, opacity 0.3s;
+}
+
+.ty-player .tok {
+  font-size: 18px;
+}
+
+.ty-player b {
+  max-width: 100px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ty-player .cash {
+  margin-left: auto;
+  font: 700 14px var(--display);
+  color: #7dffb0;
+}
+
+.ty-player .cash.flash-up {
+  animation: tyUp 0.8s ease;
+}
+
+.ty-player .cash.flash-down {
+  animation: tyDown 0.8s ease;
+}
+
+@keyframes tyUp {
+  30% {
+    color: #fff;
+    transform: scale(1.2);
+    text-shadow: 0 0 12px #7dffb0;
+  }
+}
+
+@keyframes tyDown {
+  30% {
+    color: #ff8a7a;
+    transform: scale(1.2);
+  }
+}
+
+.ty-player.turn {
+  background: color-mix(in srgb, var(--pc) 24%, rgba(0, 0, 0, 0.4));
+  box-shadow: 0 0 0 1px var(--pc), 0 0 18px color-mix(in srgb, var(--pc) 45%, transparent);
+}
+
+.ty-player.out {
+  opacity: 0.35;
+  text-decoration: line-through;
+}
+
+.tycoon .tb-status {
+  border-left: 4px solid var(--pc, transparent);
+  padding-left: 10px;
+}
+
+/* ------------------------------------------------------------------ Actions */
+
+.ty-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ty-actions[hidden],
+.ty-offer[hidden],
+.ty-my[hidden] {
+  display: none;
+}
+
+.ty-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ty-action-row .btn {
+  flex: 1;
+}
+
+.ty-action-row [hidden] {
+  display: none;
+}
+
+.ty-action-row.small .btn {
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.ty-buy {
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fbfaf5;
+  color: #16211b;
+  animation: rise 0.3s ease both;
+}
+
+.ty-buy .band {
+  padding: 10px;
+  font: 800 16px var(--display);
+  text-align: center;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.ty-buy .info {
+  padding: 8px 12px;
+  font-size: 13px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.ty-offer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 209, 102, 0.1);
+  border: 1px solid rgba(255, 209, 102, 0.4);
+  font-size: 13px;
+  animation: rise 0.3s ease both;
+}
+
+.ty-offer b {
+  color: var(--gold);
+}
+
+.ty-offer .row .btn {
+  flex: 1;
+}
+
+/* ------------------------------------------------------------------ My property */
+
+.ty-my-props {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.ty-prop {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 4px 0;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+  font-size: 12px;
+}
+
+.ty-prop .sw {
+  width: 6px;
+  align-self: stretch;
+  border-radius: 8px 0 0 8px;
+}
+
+.ty-prop .nm {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ty-prop .nm small {
+  display: block;
+  color: var(--muted);
+}
+
+.ty-prop.mortgaged .nm {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
+.ty-prop button {
+  min-width: 28px;
+  height: 26px;
+  padding: 0 6px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+  font: 700 12px var(--display);
+  cursor: pointer;
+}
+
+.ty-prop button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.ty-prop button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* ------------------------------------------------------------------ Card pop */
+
+.ty-card-pop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+}
+
+.ty-card-pop[hidden] {
+  display: none;
+}
+
+.ty-card-face {
+  width: min(320px, 80vw);
+  padding: 22px 22px 26px;
+  border-radius: 16px;
+  color: #16211b;
+  background: #fbfaf5;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
+  text-align: center;
+  font-size: 17px;
+  line-height: 1.4;
+  animation: tyFlip 0.55s cubic-bezier(0.2, 0.8, 0.3, 1.1) both;
+}
+
+.ty-card-face h3 {
+  margin: 0 0 12px;
+  padding: 8px;
+  border-radius: 10px;
+  color: #fff;
+  font: 800 18px var(--display);
+  letter-spacing: 0.1em;
+}
+
+.ty-card-face .who {
+  margin-top: 12px;
+  font-size: 12px;
+  color: #5a6a62;
+}
+
+@keyframes tyFlip {
+  from {
+    transform: perspective(800px) rotateY(90deg) scale(0.6);
+    opacity: 0;
+  }
+}
+
+/* ------------------------------------------------------------------ Trade */
+
+.ty-trade-card {
+  width: min(560px, 94vw);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ty-trade-card select,
+.ty-trade-card input[type='number'] {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--text);
+  font: inherit;
+}
+
+.ty-trade-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.ty-trade-cols h4 {
+  margin: 0 0 6px;
+  font-family: var(--display);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.ty-trade-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 220px;
+  overflow-y: auto;
+  margin-bottom: 8px;
+}
+
+.ty-trade-list label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ty-trade-list label i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.ty-trade-list .none {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: italic;
+}
+
+.ty-lobby-players {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+}
+
+.ty-lobby-players li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25);
+  font-weight: 600;
+}
+
+.ty-lobby-players li.empty {
+  color: var(--muted);
+  font-weight: 400;
+  font-style: italic;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.ty-lobby-players .host {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--gold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.ty-rules {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
+.ty-rule-label {
+  margin: 6px 0 0 !important;
+  font: 600 11px var(--display);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ty-h {
+  margin: 0 0 8px;
+  font-family: var(--display);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--friendly);
+}
+
+.ty-log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 260px;
+  overflow-y: auto;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.ty-log li {
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.ty-log li i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-right: 5px;
+}
+
+.ty-results {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 6px 0 12px;
+}
+
+.ty-results div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25);
+  font-weight: 600;
+}
+
+.ty-results div.win {
+  background: rgba(255, 209, 102, 0.18);
+  color: var(--gold);
+}
+
+/* ------------------------------------------------------------------ Small screens */
+
+@media (max-width: 980px) {
+  .tycoon .tb-room {
+    overflow-y: auto;
+  }
+
+  .ty-layout {
+    flex: none;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    padding: 8px 8px 24px;
+  }
+
+  .ty-main {
+    max-width: none;
+  }
+
+  .ty-side {
+    width: 100%;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .ty-3d,
+  .ty-2d {
+    aspect-ratio: 1 / 1.05;
+  }
+
+  .ty-trade-cols {
+    grid-template-columns: 1fr;
+  }
+}
