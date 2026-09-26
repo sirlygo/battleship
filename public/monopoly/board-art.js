@@ -89,12 +89,12 @@ function drawSpace(ctx, id, u) {
     ctx.rotate(Math.PI / 4 * (id === 10 ? 0 : 1));
     if (id === 0) {
       ctx.fillStyle = '#e0413b';
-      ctx.font = font(u * 0.34, 800);
-      ctx.fillText('START', 0, -u * 0.02);
+      ctx.font = font(u * 0.5, 800);
+      ctx.fillText('GO', 0, -u * 0.02);
       ctx.font = font(u * 0.16, 600);
       ctx.fillStyle = '#16211b';
       ctx.fillText('Collect $200', 0, u * 0.28);
-      ctx.fillText('as you pass', 0, u * 0.46);
+      ctx.fillText('salary as you pass', 0, u * 0.46);
       ctx.fillStyle = '#e0413b';
       ctx.beginPath();
       ctx.moveTo(-u * 0.5, -u * 0.45);
@@ -131,10 +131,10 @@ function drawSpace(ctx, id, u) {
       ctx.fillText('VISITING', 0, h / 2 - u * 0.2);
     } else if (id === 20) {
       ctx.font = font(u * 0.22, 800);
-      ctx.fillText('REST', 0, -u * 0.36);
-      ctx.fillText('STOP', 0, u * 0.36);
+      ctx.fillText('FREE', 0, -u * 0.36);
+      ctx.fillText('PARKING', 0, u * 0.36);
       ctx.font = font(u * 0.5, 400);
-      ctx.fillText('☕', 0, 0);
+      ctx.fillText('🚗', 0, 0);
     } else {
       ctx.font = font(u * 0.2, 800);
       ctx.fillText('GO TO', 0, -u * 0.38);
@@ -152,12 +152,19 @@ function drawSpace(ctx, id, u) {
     ctx.strokeRect(-w / 2, inner, w, h * 0.22);
   }
   ctx.fillStyle = '#16211b';
-  ctx.font = font(u * 0.135, 700);
+  // Shrink the font until the longest word fits the space.
+  let px = u * 0.135;
+  ctx.font = font(px, 700);
+  const longest = Math.max(...s.name.toUpperCase().split(' ').map((word) => ctx.measureText(word).width));
+  if (longest > w * 0.92) {
+    px *= (w * 0.92) / longest;
+    ctx.font = font(px, 700);
+  }
   const top = s.type === 'street' ? inner + h * 0.34 : inner + h * 0.16;
   wrapText(ctx, s.name.toUpperCase(), w * 0.9).forEach((line, i) => ctx.fillText(line, 0, top + i * u * 0.15));
   if (s.type === 'card') {
     ctx.font = font(u * 0.44, 400);
-    ctx.fillText(s.deck === 'lucky' ? '❓' : '🏛️', 0, h * 0.06);
+    ctx.fillText(s.deck === 'lucky' ? '❓' : '🎁', 0, h * 0.06);
   } else if (s.type === 'tax') {
     ctx.font = font(u * 0.38, 400);
     ctx.fillText(s.amount === 200 ? '💰' : '💎', 0, h * 0.04);
@@ -212,14 +219,14 @@ export function drawBoard(ctx, size) {
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.fillStyle = '#fff';
-    ctx.font = `800 ${Math.round(u * 0.22)}px "Chakra Petch", sans-serif`;
+    ctx.font = `800 ${Math.round(u * (label.length > 10 ? 0.17 : 0.22))}px "Chakra Petch", sans-serif`;
     ctx.fillText(label, 0, u * 0.42);
     ctx.font = `${Math.round(u * 0.6)}px sans-serif`;
     ctx.fillText(icon, 0, -u * 0.1);
     ctx.restore();
   };
-  pile(-u * 2.2, -u * 2.4, 'LUCKY BREAK', '#f08a2e', '❓');
-  pile(u * 2.2, u * 2.4, 'TOWN HALL', '#3b82e0', '🏛️');
+  pile(-u * 2.2, -u * 2.4, 'CHANCE', '#f08a2e', '❓');
+  pile(u * 2.2, u * 2.4, 'COMMUNITY CHEST', '#3b82e0', '🎁');
   ctx.restore();
   for (let id = 0; id < 40; id += 1) drawSpace(ctx, id, u);
   ctx.strokeStyle = '#16211b';

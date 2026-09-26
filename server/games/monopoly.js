@@ -12,7 +12,7 @@ const LOG_LIMIT = 60;
 const OPTION_TEXT = {
   cash: { 1500: 'Everyone starts with $1,500.', 2500: 'Rich start — everyone gets $2,500.' },
   length: { classic: 'Play until one tycoon is left standing.', short: 'Short game — after 20 rounds the richest player wins.' },
-  jackpot: { off: 'Rest Stop is just a rest.', on: 'Jackpot! Taxes and fees pile up on Rest Stop for whoever lands there.' },
+  jackpot: { off: 'Free Parking is just a rest.', on: 'Jackpot! Taxes and fees pile up on Free Parking for whoever lands there.' },
 };
 const SHORT_ROUNDS = 20;
 
@@ -224,7 +224,7 @@ function moveTo(ctx, seat, target, { passStart = true, steps = null } = {}) {
   event(state, { type: 'move', seat, path });
   if (passStart && forward > 0 && from + forward >= 40) {
     gain(state, seat, PASS_START, 'passed Start');
-    log(state, `passes Start and collects ${money(PASS_START)}`, seat);
+    log(state, `passes GO and collects ${money(PASS_START)}`, seat);
   }
 }
 

@@ -7,7 +7,7 @@ const B = window.TycoonBoard;
 const $ = (id) => document.getElementById(id);
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const TOKEN_EMOJI = { car: '🏎️', rocket: '🚀', hat: '🎩', boat: '⛵', gem: '💎', ufo: '🛸' };
-const DECK = { lucky: { title: 'LUCKY BREAK', color: '#f08a2e' }, town: { title: 'TOWN HALL', color: '#3b82e0' } };
+const DECK = { lucky: { title: 'CHANCE', color: '#f08a2e' }, town: { title: 'COMMUNITY CHEST', color: '#3b82e0' } };
 const money = (n) => `$${Math.round(n).toLocaleString('en-US')}`;
 
 const el = {
@@ -147,7 +147,7 @@ function spaceInfoHtml(id) {
   } else if (space.type === 'tax') {
     rows = `<span>Pay</span><span>${money(space.amount)}</span>`;
   } else {
-    const text = { start: 'Collect $200 every time you pass.', card: 'Draw a card.', jail: 'Just visiting — unless you were sent here.', rest: s?.options?.jackpot === 'on' ? `Collect the jackpot (${money(s?.pot || 0)}).` : 'Take a breather. Nothing happens.', gotojail: 'Go straight to Jail. Do not pass Start.' }[space.type];
+    const text = { start: 'Collect $200 salary every time you pass GO.', card: 'Draw a card.', jail: 'Just visiting — unless you were sent here.', rest: s?.options?.jackpot === 'on' ? `Collect the jackpot (${money(s?.pot || 0)}).` : 'Take a breather. Nothing happens.', gotojail: 'Go straight to Jail. Do not pass Start.' }[space.type];
     rows = `<span style="grid-column: span 2">${text}</span>`;
   }
   if (space.price) rows += `<span>Price</span><span>${money(space.price)}</span><span>Mortgage</span><span>${money(space.price / 2)}</span>`;
@@ -620,7 +620,7 @@ async function playEvent(e) {
     }
     case 'pay': {
       if (e.from === null && e.reason === 'passed Start') {
-        bigText('+$200', `${nameOf(e.to)} passed Start`, 'info');
+        bigText('+$200', `${nameOf(e.to)} passed GO`, 'info');
       } else if (e.reason === 'rent') {
         bigText(`RENT ${money(e.amount)}`, `${nameOf(e.from)} → ${nameOf(e.to)}`, e.from === mySeat() ? 'hit' : 'info');
       } else if (e.reason === 'jackpot') {
