@@ -2035,3 +2035,21 @@ input[type='range']:focus-visible {
   font-size: 13px;
   line-height: 1.4;
 }
+
+.all-games {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.all-games:hover {
+  color: var(--text);
+}
+
+.lobby-card > .all-games {
+  animation: none;
+}

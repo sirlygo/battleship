@@ -4,265 +4,131 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#08142b" />
-    <title>Battleship</title>
+    <title>Game Room</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600&display=swap"
     />
-    <link rel="stylesheet" href="style.css" />
-    <script src="/socket.io/socket.io.js"></script>
+    <link rel="stylesheet" href="/shared/ui.css" />
+    <link rel="stylesheet" href="/hub.css" />
   </head>
-  <body>
-    <canvas id="scene" aria-hidden="true"></canvas>
-    <div class="vignette" aria-hidden="true"></div>
-    <div id="screenFlash" class="screen-flash" aria-hidden="true"></div>
-
-    <!-- Title screen -->
-    <section id="lobby" class="lobby">
-      <div class="lobby-card glass">
-        <button id="lobbySettingsBtn" class="icon-btn small lobby-settings" type="button" aria-label="Settings" title="Settings">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></svg>
-        </button>
-        <div class="brand">
-          <span class="kicker">Naval Command</span>
-          <h1>Battleship</h1>
-          <p>Hunt down the enemy fleet before they find yours.</p>
-        </div>
-
-        <label class="field">
-          <span>Your callsign</span>
-          <input id="nameInput" maxlength="16" placeholder="Captain" autocomplete="nickname" />
-        </label>
-
-        <button id="hostBtn" class="btn btn-primary btn-lg" type="button">
-          Host a game
-          <small>Get a room code to share</small>
-        </button>
-
-        <div class="divider"><span>or join a friend</span></div>
-
-        <p id="inviteNote" class="invite-note" hidden></p>
-        <form id="joinForm" class="join-row" autocomplete="off">
-          <input
-            id="codeInput"
-            class="code-input"
-            maxlength="5"
-            placeholder="CODE"
-            spellcheck="false"
-            autocapitalize="characters"
-            aria-label="Room code"
-          />
-          <button class="btn btn-secondary" type="submit">Join</button>
-        </form>
-        <p id="lobbyError" class="error" role="alert"></p>
-
-        <details class="howto">
-          <summary>How to play</summary>
-          <ol>
-            <li>One player hosts and shares the 5-letter room code (or the invite link).</li>
-            <li>The other player enters the code to join.</li>
-            <li>Both deploy five ships on a 10×10 grid. Click to drop, <kbd>R</kbd> or right-click to rotate, or hit Randomize.</li>
-            <li>Take turns firing into enemy waters, one shot each. The host can allow a bonus shot after a hit, or pick Salvo mode: one shot per ship you have left.</li>
-            <li>Sink all five enemy ships to win. Then run it back with a rematch.</li>
-            <li>Anyone who joins a full room watches as a spectator.</li>
-          </ol>
-        </details>
-      </div>
-    </section>
-
-    <!-- In-room HUD -->
-    <section id="hud" class="hud" hidden>
-      <header class="topbar">
-        <div class="topbar-left">
-        <button id="roomChip" class="chip" type="button" title="Copy room code">
-          <span class="chip-label">Room</span>
-          <strong id="roomCodeLabel"></strong>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 9h10v10H9zM5 15V5h10" /></svg>
-        </button>
-        <span id="watchers" class="watchers" hidden>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>
-          <span id="watchersCount">0</span>
-        </span>
-        </div>
-
-        <div class="scoreboard">
-          <div class="side side-you">
-            <span class="side-name" id="myName"></span>
-            <div class="pips" id="myPips"></div>
-          </div>
-          <span class="vs">vs</span>
-          <div class="side side-enemy">
-            <span class="side-name" id="enemyName"></span>
-            <div class="pips" id="enemyPips"></div>
-          </div>
-        </div>
-
-        <div class="top-actions">
-          <button id="muteBtn" class="icon-btn" type="button" aria-label="Toggle sound">
-            <svg class="ico-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" /><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" /></svg>
-            <svg class="ico-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" /><path d="M17 9l5 6M22 9l-5 6" /></svg>
-          </button>
-          <button id="settingsBtn" class="icon-btn" type="button" aria-label="Settings" title="Settings">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></svg>
-          </button>
-          <button id="chatBtn" class="icon-btn" type="button" aria-label="Chat">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" /></svg>
-            <span class="badge" id="chatBadge" hidden>0</span>
-          </button>
-          <button id="leaveBtn" class="icon-btn" type="button" aria-label="Leave room" title="Leave room">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10" /></svg>
-          </button>
-        </div>
-      </header>
-
-      <div id="banner" class="banner" data-kind="neutral">
-        <div id="bannerTitle" class="banner-title"></div>
-        <div id="bannerSub" class="banner-sub"></div>
-      </div>
-      <div id="alert" class="alert" hidden></div>
-
-      <!-- Waiting for opponent -->
-      <div id="panelWaiting" class="panel glass panel-waiting" hidden>
-        <p class="kicker">Room code</p>
-        <div id="waitingCode" class="big-code"></div>
-        <div class="row">
-          <button id="copyCodeBtn" class="btn btn-secondary" type="button">Copy code</button>
-          <button id="copyLinkBtn" class="btn btn-primary" type="button">Share invite link</button>
-        </div>
-        <p class="share-info">Friends open <strong id="shareUrl"></strong> and enter the code</p>
-        <p id="shareWarning" class="share-warning" hidden></p>
-        <div class="waiting-line"><span class="spinner"></span>Waiting for a challenger to join…</div>
-        <div class="segmented" role="group" aria-label="Game mode">
-          <button type="button" data-mode="classic">Classic<small>1 shot per turn</small></button>
-          <button type="button" data-mode="salvo">Salvo<small>1 shot per ship left</small></button>
-        </div>
-        <label id="bonusToggleWrap" class="toggle">
-          <input id="bonusToggle" type="checkbox" checked />
-          <span class="toggle-track"><span class="toggle-thumb"></span></span>
-          <span>Bonus shot after a hit</span>
-        </label>
-        <p id="rulesText" class="muted small"></p>
-      </div>
-
-      <!-- Fleet placement -->
-      <div id="panelPlacement" class="panel glass panel-placement" hidden>
-        <div id="dock" class="dock"></div>
-        <div id="placementActions" class="row actions">
-          <button id="rotateBtn" class="btn btn-secondary" type="button">Rotate</button>
-          <button id="randomBtn" class="btn btn-secondary" type="button">Randomize</button>
-          <button id="clearBtn" class="btn btn-ghost" type="button">Clear</button>
-          <button id="readyBtn" class="btn btn-primary" type="button" disabled>Ready</button>
-        </div>
-        <div id="readyWait" class="ready-wait" hidden>
-          <span class="spinner"></span>
-          <span id="readyWaitText"></span>
-          <button id="editFleetBtn" class="btn btn-ghost" type="button">Reposition</button>
-        </div>
-        <p id="placementRules" class="muted small center"></p>
-      </div>
-
-      <!-- Battle -->
-      <div id="panelBattle" class="panel glass panel-battle" hidden>
-        <div class="stat"><span>Shots</span><b id="statShots">0</b></div>
-        <div class="stat"><span>Hits</span><b id="statHits">0</b></div>
-        <div class="stat"><span>Accuracy</span><b id="statAcc">—</b></div>
-        <button id="viewBtn" class="btn btn-secondary" type="button">View my fleet</button>
-        <button id="fireBtn" class="btn btn-fire" type="button" hidden>Fire</button>
-      </div>
-
-      <!-- Spectating -->
-      <div id="panelSpectate" class="panel glass panel-spectate" hidden>
-        <span class="spectate-badge">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>
-          Spectating
-        </span>
-        <span id="spectateText" class="spectate-text"></span>
-        <button id="spectateViewBtn" class="btn btn-secondary" type="button">Switch view</button>
-      </div>
-
-      <!-- Chat -->
-      <aside id="chat" class="chat glass" hidden>
-        <div class="chat-head">
-          <span>Comms</span>
-          <button id="chatClose" class="icon-btn small" type="button" aria-label="Close chat">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
-          </button>
-        </div>
-        <div id="chatLog" class="chat-log" aria-live="polite"></div>
-        <form id="chatForm" class="chat-form" autocomplete="off">
-          <input id="chatInput" maxlength="200" placeholder="Message your opponent…" />
-          <button class="btn btn-primary" type="submit">Send</button>
-        </form>
-      </aside>
-
-      <div id="bigText" class="big-text" aria-live="assertive"></div>
-      <div id="toasts" class="toasts" aria-live="polite"></div>
-
-      <!-- Game over -->
-      <div id="gameOver" class="modal" hidden>
-        <div class="modal-card glass">
-          <p id="goKicker" class="kicker"></p>
-          <h2 id="goTitle"></h2>
-          <p id="goReason" class="muted"></p>
-          <div id="goStats" class="go-stats"></div>
-          <div class="row">
-            <button id="rematchBtn" class="btn btn-primary btn-lg" type="button">Rematch</button>
-          </div>
-          <p id="rematchNote" class="rematch-note"></p>
-          <div class="row">
-            <button id="goViewBtn" class="btn btn-ghost" type="button">Inspect boards</button>
-            <button id="goLeaveBtn" class="btn btn-ghost" type="button">Leave room</button>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Settings -->
-    <div id="settings" class="modal settings-modal" hidden>
-      <div class="modal-card glass settings-card" role="dialog" aria-labelledby="settingsTitle">
-        <div class="settings-head">
-          <h2 id="settingsTitle">Settings</h2>
-          <button id="settingsClose" class="icon-btn small" type="button" aria-label="Close settings">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
-          </button>
-        </div>
-
-        <section class="settings-section">
-          <h3>Audio</h3>
-          <label class="slider-row"><span>Effects</span><input id="volEffects" type="range" min="0" max="100" step="1" /><output></output></label>
-          <label class="slider-row"><span>Music</span><input id="volMusic" type="range" min="0" max="100" step="1" /><output></output></label>
-          <label class="slider-row"><span>Ocean</span><input id="volAmbience" type="range" min="0" max="100" step="1" /><output></output></label>
-        </section>
-
-        <section class="settings-section">
-          <h3>Graphics quality</h3>
-          <div class="segmented" role="group" aria-label="Graphics quality">
-            <button type="button" data-quality="low">Low<small>Best for older phones</small></button>
-            <button type="button" data-quality="medium">Medium<small>Balanced</small></button>
-            <button type="button" data-quality="high">High<small>All effects</small></button>
-          </div>
-        </section>
-
-        <section class="settings-section">
-          <h3>Camera</h3>
-          <div class="segmented" role="group" aria-label="Camera view">
-            <button type="button" data-camera="3d">3D<small>Angled view</small></button>
-            <button type="button" data-camera="top">Top-down<small>Classic 2D look</small></button>
-          </div>
-          <label class="toggle">
-            <input id="autoFollowToggle" type="checkbox" />
-            <span class="toggle-track"><span class="toggle-thumb"></span></span>
-            <span>Auto-follow the action</span>
-          </label>
-          <p class="muted small">When off, the camera stays on both boards unless you switch views (<kbd>V</kbd>).</p>
-        </section>
-      </div>
+  <body class="hub">
+    <div class="hub-bg" aria-hidden="true">
+      <span class="orb orb-a"></span>
+      <span class="orb orb-b"></span>
+      <span class="orb orb-c"></span>
     </div>
 
-    <div id="netStatus" class="net" hidden><span class="spinner"></span>Connection lost — reconnecting…</div>
+    <main class="hub-main">
+      <header class="hub-header">
+        <p class="kicker">Play with friends · no sign-up</p>
+        <h1>Game Room</h1>
+        <p class="muted">Pick a game, host a room, and share the code.</p>
+      </header>
 
-    <script type="module" src="js/main.js"></script>
+      <section class="hub-bar glass">
+        <label class="field hub-name">
+          <span>Your name</span>
+          <input id="nameInput" maxlength="16" placeholder="Captain" autocomplete="nickname" />
+        </label>
+        <form id="joinForm" class="hub-join" autocomplete="off">
+          <label class="field">
+            <span>Have a code?</span>
+            <div class="join-row">
+              <input id="codeInput" class="code-input" maxlength="5" placeholder="CODE" spellcheck="false"
+                autocapitalize="characters" aria-label="Room code" />
+              <button class="btn btn-primary" type="submit">Join</button>
+            </div>
+          </label>
+        </form>
+      </section>
+      <p id="hubError" class="error hub-error" role="alert"></p>
+
+      <section class="games" aria-label="Games">
+        <article class="game-card" data-game="battleship">
+          <div class="game-art art-battleship" aria-hidden="true">
+            <svg viewBox="0 0 200 110">
+              <path class="wave" d="M0 86 Q25 78 50 86 T100 86 T150 86 T200 86 V110 H0Z" />
+              <path class="hull" d="M38 74 H168 L156 88 H52 Z" />
+              <rect class="deck" x="70" y="60" width="44" height="14" rx="2" />
+              <rect class="deck" x="84" y="46" width="18" height="14" rx="2" />
+              <rect class="gun" x="120" y="66" width="30" height="4" rx="2" />
+              <rect class="gun" x="44" y="66" width="24" height="4" rx="2" />
+              <line class="mast" x1="93" y1="46" x2="93" y2="26" />
+            </svg>
+          </div>
+          <div class="game-body">
+            <h2>Battleship</h2>
+            <p>Hide your fleet, then hunt theirs. 3D ocean, salvo mode and spectators.</p>
+            <div class="game-meta"><span>2 players</span><span>~15 min</span></div>
+            <a class="btn btn-primary host-btn" href="/battleship/?create=1">Host Battleship</a>
+          </div>
+        </article>
+
+        <article class="game-card" data-game="checkers">
+          <div class="game-art art-checkers" aria-hidden="true">
+            <div class="mini-board">
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
+            <span class="disc disc-red"></span>
+            <span class="disc disc-black"></span>
+            <span class="disc disc-red king"></span>
+          </div>
+          <div class="game-body">
+            <h2>Checkers</h2>
+            <p>Classic draughts with forced captures, multi-jumps and kings.</p>
+            <div class="game-meta"><span>2 players</span><span>~10 min</span></div>
+            <a class="btn btn-primary host-btn" href="/checkers/?create=1">Host Checkers</a>
+          </div>
+        </article>
+
+        <article class="game-card" data-game="chess">
+          <div class="game-art art-chess" aria-hidden="true"><span>♞</span></div>
+          <div class="game-body">
+            <h2>Chess</h2>
+            <p>A 3D wooden board with full rules — castling, en passant, promotion — and optional clocks.</p>
+            <div class="game-meta"><span>2 players</span><span>5–30 min</span></div>
+            <a class="btn btn-primary host-btn" href="/chess/?create=1">Host Chess</a>
+          </div>
+        </article>
+
+        <article class="game-card soon">
+          <div class="game-art art-mystery" aria-hidden="true">
+            <svg viewBox="0 0 100 100"><circle cx="42" cy="42" r="22" /><line x1="58" y1="58" x2="82" y2="82" /></svg>
+          </div>
+          <div class="game-body">
+            <h2>Clue</h2>
+            <p>Who did it, with what, and where? Deduce the answer before anyone else.</p>
+            <div class="game-meta"><span>3–6 players</span><span class="soon-tag">Coming soon</span></div>
+          </div>
+        </article>
+
+        <article class="game-card soon">
+          <div class="game-art art-conquest" aria-hidden="true">
+            <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="34" /><path d="M16 50 H84 M50 16 C34 30 34 70 50 84 M50 16 C66 30 66 70 50 84" /></svg>
+          </div>
+          <div class="game-body">
+            <h2>Risk</h2>
+            <p>Deploy armies, roll for battles, and conquer the world.</p>
+            <div class="game-meta"><span>2–6 players</span><span class="soon-tag">Coming soon</span></div>
+          </div>
+        </article>
+
+        <article class="game-card soon">
+          <div class="game-art art-life" aria-hidden="true">
+            <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="34" /><path d="M50 16 V84 M16 50 H84 M26 26 L74 74 M74 26 L26 74" /><circle class="hub-dot" cx="50" cy="50" r="6" /></svg>
+          </div>
+          <div class="game-body">
+            <h2>The Game of Life</h2>
+            <p>Spin the wheel, pick a career, and race to retirement.</p>
+            <div class="game-meta"><span>2–6 players</span><span class="soon-tag">Coming soon</span></div>
+          </div>
+        </article>
+      </section>
+    </main>
+
+    <script type="module" src="/hub.js"></script>
   </body>
 </html>

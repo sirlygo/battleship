@@ -1,8 +1,35 @@
-# Battleship
+# Game Room
 
-Real-time, two-player Battleship in the browser. It has a 3D ocean scene built with Three.js and uses Socket.IO for multiplayer. One player hosts a room and gets a 5-character room code. The other player types in that code, or opens the invite link, to join.
+Real-time board games to play with friends in the browser: no accounts, just share a room code. Pick a game on the home page, host a room, and send the 5-character code or invite link. Anyone who joins a full room watches as a spectator.
 
-## Features
+| Game | Players | Status |
+|---|---|---|
+| **Battleship**: 3D ocean, Classic and Salvo modes | 2 | Playable |
+| **Checkers**: forced captures, multi-jumps, kings, draw offers | 2 | Playable |
+| **Chess**: 3D or 2D board, full rules, drag-and-drop, optional clocks | 2 | Playable |
+| Clue | 3–6 | Coming soon |
+| Risk | 2–6 | Coming soon |
+| The Game of Life | 2–6 | Coming soon |
+
+## Checkers
+
+- Standard American rules: black moves first, men move diagonally forward, and kings move both ways. A man that reaches the far row is crowned, and that ends its move.
+- Captures are mandatory by default; the host can make them optional. Multi-jumps must be completed.
+- Tap a piece, then a highlighted square. Red rings mark jumps, and you can tap the final square of a multi-jump directly.
+- Pieces glide and capture with animation. The move list uses standard square numbers (1–32).
+- You win by capturing every enemy piece or leaving them with no legal move. You can offer a draw or resign. After 40 moves each without a capture or a new king, the game is a draw.
+- Colours swap every rematch. The server checks every move with the same rules file the browser uses.
+
+## Chess
+
+- All the rules, enforced by [chess.js](https://github.com/jhlywa/chess.js): castling, en passant, promotion (with a piece picker), check, checkmate, stalemate, insufficient material, threefold repetition and the 50-move rule.
+- **3D board** (default): a wooden board with turned pieces, soft shadows and reflections, built with Three.js. Pieces glide into place, knights hop, captured pieces pop off the board, and the camera turns to your side. Quality adapts to the device: phones use lighter shadows. Switch to the flat **2D** board in Settings.
+- Tap a piece and then a square, or drag and drop. It works the same on both boards. Legal moves, the last move and check are highlighted, and moves animate, including the rook when you castle.
+- Before the game the host can add a clock: Off, 3+2, 5 min, 10 min or 15+10. The server keeps time, and running out loses (or draws if the opponent can't checkmate).
+- Captured pieces and the point lead are shown next to each player, with a move list in standard notation.
+- You can offer a draw or resign, and colours swap every rematch.
+
+## Battleship
 
 - **Room codes and invite links.** Host a game and share a code like `K7QX2`, or share a link that fills the code in for your friend.
 - **Classic rules.** Each player has a 10×10 grid and five ships (Carrier 5, Battleship 4, Cruiser 3, Submarine 3, Destroyer 2).
@@ -70,7 +97,7 @@ The repo includes a `render.yaml`, so it can be hosted on [Render](https://rende
 
 On Render's free plan the server sleeps after 15 minutes without visitors. The first visit after that takes about 30–60 seconds to wake it. Rooms live in memory, so they reset when the server sleeps or redeploys.
 
-## How to play
+## How to play Battleship
 
 1. **Host** a game and share the room code or invite link.
 2. Your friend enters the code and presses **Join**.
@@ -82,13 +109,23 @@ On Render's free plan the server sleeps after 15 minutes without visitors. The f
 
 ```
 .
-├── public
-│   ├── index.html      # UI: lobby, HUD, panels, chat, game-over modal
-│   ├── style.css       # Styling
-│   └── js
-│       ├── main.js     # Client: networking, placement, turn flow, UI
-│       ├── scene.js    # Three.js scene: ocean, boards, ships, effects, camera
-│       └── audio.js    # Synthesized Web Audio sound effects
-├── server.js           # Express + Socket.IO game server (rooms, rules, validation)
-└── package.json
+├── server.js                 # Express + Socket.IO entry point, share/room-lookup APIs
+├── server
+│   ├── rooms.js              # Game-agnostic rooms: codes, seats, spectators, reconnects, chat, rematch
+│   └── games
+│       ├── battleship.js     # Battleship rules
+│       └── checkers.js       # Checkers rules
+└── public
+    ├── index.html, hub.*     # Home page: pick a game, join by code
+    ├── shared
+    │   ├── ui.css            # Shared look: buttons, panels, chat, modals
+    │   ├── audio.js          # Synthesized sound effects and music
+    │   ├── room-client.js    # Browser-side rooms, invites, toasts
+    │   └── checkers-rules.js # Checkers rules used by both server and browser
+    ├── battleship/           # Battleship page (Three.js scene)
+    └── checkers/             # Checkers page
 ```
+
+### Adding a game
+
+Create `server/games/<id>.js` exporting `id`, `title`, `minPlayers`, `maxPlayers`, `defaultOptions`, `canChangeOptions`, `applyOptions`, `start`, `view`, `onLeave` and an `actions` map. Register it in `server.js`, then add a page under `public/<id>/` that uses `shared/room-client.js`. Rooms, spectators, chat, reconnects and rematches work automatically.
