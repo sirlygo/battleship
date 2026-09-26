@@ -1,0 +1,401 @@
+/* Ludo page. Shared controls (buttons, chat, modals…) come from /shared/ui.css. */
+
+body.ludo {
+  background:
+    radial-gradient(ellipse at 15% 10%, rgba(224, 65, 59, 0.14), transparent 45%),
+    radial-gradient(ellipse at 85% 10%, rgba(47, 179, 90, 0.14), transparent 45%),
+    radial-gradient(ellipse at 85% 95%, rgba(245, 185, 32, 0.12), transparent 45%),
+    radial-gradient(ellipse at 15% 95%, rgba(47, 127, 224, 0.14), transparent 45%),
+    linear-gradient(180deg, #121826 0%, #080b13 100%);
+}
+
+.ludo .lobby {
+  background: transparent;
+}
+
+.ludo .brand h1 {
+  background: linear-gradient(90deg, #ff6a5a 0%, #5fe08a 35%, #ffd166 65%, #5aa8ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* ------------------------------------------------------------------ Layout */
+
+.ld-layout {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 12px 16px 18px;
+}
+
+.ld-main {
+  flex: 1;
+  min-width: 0;
+  max-width: calc((100dvh - 150px) * 1.15);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ld-side {
+  width: 320px;
+  flex: none;
+}
+
+.ld-board-wrap {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 35%, #2a2f3d 0%, #0d1018 100%);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 220, 160, 0.1);
+}
+
+.ld-3d,
+.ld-2d {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1.15 / 1;
+  touch-action: manipulation;
+}
+
+.ld-3d[hidden],
+.ld-2d[hidden] {
+  display: none;
+}
+
+.ld-2d {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ld-2d canvas {
+  height: 94%;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+}
+
+.ld-tokens2d {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ld-tok {
+  position: absolute;
+  width: 4.6%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.5), inset 0 -3px 0 rgba(0, 0, 0, 0.25);
+  transition: left 0.16s ease, top 0.16s ease;
+  pointer-events: auto;
+}
+
+.ld-tok.movable {
+  cursor: pointer;
+  animation: ldBob 0.8s ease-in-out infinite alternate;
+  box-shadow: 0 0 0 3px #fff, 0 0 18px 4px rgba(255, 255, 255, 0.8);
+}
+
+@keyframes ldBob {
+  to {
+    transform: translate(-50%, -65%);
+  }
+}
+
+/* ------------------------------------------------------------------ Players */
+
+.ld-players {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ld-player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 130px;
+  padding: 5px 10px;
+  border-radius: 10px;
+  border-left: 4px solid var(--pc);
+  background: rgba(0, 0, 0, 0.35);
+  font-size: 13px;
+  transition: background 0.3s, box-shadow 0.3s, opacity 0.3s;
+}
+
+.ld-player b {
+  max-width: 110px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ld-player .pips {
+  margin-left: auto;
+  display: flex;
+  gap: 3px;
+}
+
+.ld-player .pips i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1.5px solid var(--pc);
+}
+
+.ld-player .pips i.home {
+  background: var(--pc);
+}
+
+.ld-player .pips i.out {
+  background: color-mix(in srgb, var(--pc) 40%, transparent);
+}
+
+.ld-player.turn {
+  background: color-mix(in srgb, var(--pc) 24%, rgba(0, 0, 0, 0.4));
+  box-shadow: 0 0 0 1px var(--pc), 0 0 18px color-mix(in srgb, var(--pc) 45%, transparent);
+}
+
+.ld-player.gone {
+  opacity: 0.35;
+}
+
+.ludo .tb-status {
+  border-left: 4px solid var(--pc, transparent);
+  padding-left: 10px;
+}
+
+/* ------------------------------------------------------------------ Die */
+
+.ld-dice-box {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.ld-dice-box[hidden] {
+  display: none;
+}
+
+.ld-die {
+  width: 84px;
+  height: 84px;
+  flex: none;
+  border: none;
+  border-radius: 18px;
+  background: linear-gradient(145deg, #ffffff, #e6e2d6);
+  box-shadow: inset 0 -6px 0 rgba(0, 0, 0, 0.12), 0 10px 20px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: transform 0.15s;
+}
+
+.ld-die:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.ld-die.ready {
+  animation: ldReady 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes ldReady {
+  to {
+    transform: scale(1.06) rotate(-4deg);
+    box-shadow: inset 0 -6px 0 rgba(0, 0, 0, 0.12), 0 0 0 3px var(--pc, #ffd166), 0 0 26px var(--pc, #ffd166);
+  }
+}
+
+.ld-die.rolling {
+  animation: ldRoll 0.5s linear;
+}
+
+@keyframes ldRoll {
+  50% {
+    transform: rotate(180deg) scale(0.85);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ld-die-face {
+  position: relative;
+  width: 60px;
+  height: 60px;
+}
+
+.ld-die-face i {
+  position: absolute;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #1c1c22;
+  transform: translate(-50%, -50%);
+}
+
+.ld-die-face[data-n='1'] i {
+  background: #d6342c;
+  width: 17px;
+  height: 17px;
+}
+
+.ld-roll-note {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.ld-roll-note b {
+  color: var(--text);
+}
+
+.ld-lobby-players {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+}
+
+.ld-lobby-players li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25);
+  font-weight: 600;
+}
+
+.ld-lobby-players li.empty {
+  color: var(--muted);
+  font-weight: 400;
+  font-style: italic;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.ld-lobby-players .host {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--gold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.ld-rules {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
+.ld-rule-label {
+  margin: 6px 0 0 !important;
+  font: 600 11px var(--display);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ld-h {
+  margin: 0 0 8px;
+  font-family: var(--display);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--friendly);
+}
+
+.ld-log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 260px;
+  overflow-y: auto;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.ld-log li {
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.ld-log li i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-right: 5px;
+}
+
+.ld-results {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 6px 0 12px;
+}
+
+.ld-results div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25);
+  font-weight: 600;
+}
+
+.ld-results div.win {
+  background: rgba(255, 209, 102, 0.18);
+  color: var(--gold);
+}
+
+/* ------------------------------------------------------------------ Small screens */
+
+@media (max-width: 980px) {
+  .ludo .tb-room {
+    overflow-y: auto;
+  }
+
+  .ld-layout {
+    flex: none;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    padding: 8px 8px 24px;
+  }
+
+  .ld-main {
+    max-width: none;
+  }
+
+  .ld-side {
+    width: 100%;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .ld-3d,
+  .ld-2d {
+    aspect-ratio: 1 / 1.05;
+  }
+}

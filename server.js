@@ -14,6 +14,7 @@ const games = {
   life: require('./server/games/life'),
   four: require('./server/games/four'),
   clash: require('./server/games/clash'),
+  ludo: require('./server/games/ludo'),
 };
 
 const app = express();
