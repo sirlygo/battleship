@@ -366,7 +366,7 @@ class RoomManager {
       reply(callback, { ok: true, code, game: room.game, spectator: false });
       this.sendChatHistory(socket, room, token);
       this.systemChat(room, `${player.name} joined.`);
-      if (this.occupiedSeats(room).length >= room.module.maxPlayers) {
+      if (!room.module.manualStart && this.occupiedSeats(room).length >= room.module.maxPlayers) {
         if (room.status === 'over') room.round += 1;
         this.startGame(room);
       }
@@ -403,6 +403,24 @@ class RoomManager {
     };
     socket.on('room:options', setOptions);
     socket.on('room:rules', setOptions);
+
+    // Games for 3+ players start when the host says so (once enough have joined).
+    socket.on('room:start', (_payload, callback) => {
+      const { room, seat } = this.memberOf(socket);
+      if (!room) return reply(callback, { error: 'Not in a room.' });
+      if (seat !== this.hostSeat(room)) return reply(callback, { error: 'Only the host can start the game.' });
+      if (room.status === 'active') return reply(callback, { error: 'The game is already running.' });
+      const count = this.occupiedSeats(room).length;
+      if (count < room.module.minPlayers) {
+        return reply(callback, { error: `Need at least ${room.module.minPlayers} players to start.` });
+      }
+      if (room.status === 'over') room.round += 1;
+      this.startGame(room);
+      this.systemChat(room, `The game begins with ${count} players!`);
+      this.touch(room);
+      this.broadcast(room);
+      reply(callback, { ok: true });
+    });
 
     socket.on('rematch', (_payload, callback) => {
       const { room, seat, player } = this.memberOf(socket);

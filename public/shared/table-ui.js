@@ -37,8 +37,18 @@ export function bigText(title, sub = '', kind = 'info') {
  * @param {(snap, prev) => void} opts.onState
  * @param {() => void} [opts.onExit]
  * @param {(snap) => boolean} [opts.isPlaying]  true when leaving would forfeit
+ * @param {string} [opts.leaveWarning]  confirm text shown when leaving mid-game
+ * @param {() => void} [opts.onRematch]  replaces the default rematch vote
  */
-export function setupTable({ game, title, onState, onExit, isPlaying = () => false }) {
+export function setupTable({
+  game,
+  title,
+  onState,
+  onExit,
+  isPlaying = () => false,
+  leaveWarning = 'Leave the game? Your opponent wins by forfeit.',
+  onRematch,
+}) {
   const el = {
     lobby: $('lobby'),
     room: $('room'),
@@ -251,7 +261,7 @@ export function setupTable({ game, title, onState, onExit, isPlaying = () => fal
     toast(ok ? 'Invite link copied.' : link);
   });
   el.leaveBtn.addEventListener('click', () => {
-    if (!lastSnap || !isPlaying(lastSnap) || window.confirm('Leave the game? Your opponent wins by forfeit.')) client.leave();
+    if (!lastSnap || !isPlaying(lastSnap) || window.confirm(leaveWarning)) client.leave();
   });
   el.goLeaveBtn.addEventListener('click', () => client.leave());
   el.goViewBtn.addEventListener('click', () => {
@@ -259,6 +269,7 @@ export function setupTable({ game, title, onState, onExit, isPlaying = () => fal
   });
   el.rematchBtn.addEventListener('click', async () => {
     sound.click();
+    if (onRematch) return onRematch();
     const res = await client.send('rematch');
     if (res.error) toast(res.error, 'error');
   });

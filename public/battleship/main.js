@@ -430,6 +430,10 @@ function enterRoom(code) {
   el.lobby.hidden = true;
   el.hud.hidden = false;
   el.lobbyError.textContent = '';
+  // A state update can arrive in the same packet batch as the join reply; replay it.
+  const early = app.earlySnap;
+  app.earlySnap = null;
+  if (early && early.code === code) onState(early);
 }
 
 function exitRoom(message) {
@@ -1617,7 +1621,10 @@ function bindSocket() {
   });
 
   socket.on('state', (snap) => {
-    if (!app.code) return;
+    if (!app.code) {
+      app.earlySnap = snap;
+      return;
+    }
     onState(snap);
   });
 

@@ -7,7 +7,7 @@ Real-time board games to play with friends in the browser: no accounts, just sha
 | **Battleship**: 3D ocean, Classic and Salvo modes | 2 | Playable |
 | **Checkers**: forced captures, multi-jumps, kings, draw offers | 2 | Playable |
 | **Chess**: 3D or 2D board, full rules, drag-and-drop, optional clocks | 2 | Playable |
-| Clue | 3–6 | Coming soon |
+| **Clue**: 3D or 2D mansion board, secret passages, private card showing, auto-filling notes | 2–6 | Playable |
 | Risk | 2–6 | Coming soon |
 | The Game of Life | 2–6 | Coming soon |
 
@@ -19,6 +19,15 @@ Real-time board games to play with friends in the browser: no accounts, just sha
 - Pieces glide and capture with animation. The move list uses standard square numbers (1–32).
 - You win by capturing every enemy piece or leaving them with no legal move. You can offer a draw or resign. After 40 moves each without a capture or a new king, the game is a draw.
 - Colours swap every rematch. The server checks every move with the same rules file the browser uses.
+
+## Clue
+
+- The host starts the game once 2–6 players have joined. Everyone gets a suspect (Miss Scarlet goes first), and the remaining cards are dealt after one suspect, weapon and room go into the case file.
+- **3D board** (default): a walled mansion with glossy pawns, little brass and steel weapon models, a sealed case file in the cellar and a staircase for each secret passage. Pawns hop square by square, and weapons fly into the room when they're named in a suggestion. Switch to the flat **2D** board in Settings.
+- On your turn, roll and move. Glowing squares and rooms show where you can go, and the corner rooms have secret passages. Other pawns block hallway squares.
+- In a room you can make a suggestion. The suspect and weapon move into that room, and the first player to your left holding one of those cards must show you one in secret. If they only hold one match it's shown automatically.
+- Your detective notes cross off your own cards, cards shown to you, and cards of players who left. The host can turn this auto-fill off in the lobby for classic, fully manual notes. Tap any line to mark it ✕, ? or ✓ yourself. The case log records every suggestion and who passed.
+- Accuse at any time on your turn. Right and you win; wrong and you're out, but you still show cards. The server holds the hidden cards and sends each player only what they're allowed to see.
 
 ## Chess
 
