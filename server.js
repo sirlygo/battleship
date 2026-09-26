@@ -13,6 +13,7 @@ const games = {
   risk: require('./server/games/risk'),
   life: require('./server/games/life'),
   four: require('./server/games/four'),
+  clash: require('./server/games/clash'),
 };
 
 const app = express();
