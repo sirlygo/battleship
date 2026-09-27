@@ -18,7 +18,8 @@ function normalizeCode(raw) {
 
 function sanitizeName(raw, fallback) {
   if (typeof raw !== 'string') return fallback;
-  const cleaned = raw.replace(/\s+/g, ' ').trim().slice(0, MAX_NAME_LENGTH);
+  // Names show up in every game's page, so drop anything that could be read as HTML.
+  const cleaned = raw.replace(/[<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, MAX_NAME_LENGTH);
   return cleaned || fallback;
 }
 
@@ -305,7 +306,20 @@ class RoomManager {
   // ---- socket wiring ------------------------------------------------------
 
   bindSocket(socket) {
-    socket.on('room:create', (payload = {}, callback) => {
+    // Every handler gets a plain object payload, and a bad message can never
+    // take the server down for everyone else.
+    const on = (event, handler) => {
+      socket.on(event, (payload, callback) => {
+        const body = payload && typeof payload === 'object' && !Array.isArray(payload) ? payload : {};
+        try {
+          handler(body, callback);
+        } catch (error) {
+          console.error(`Error handling "${event}":`, error);
+          reply(callback, { error: 'Something went wrong. Please try again.' });
+        }
+      });
+    };
+    on('room:create', (payload = {}, callback) => {
       const token = sanitizeToken(payload.token);
       const gameId = payload.game || 'battleship';
       if (!token) return reply(callback, { error: 'Missing session token. Refresh the page.' });
@@ -319,7 +333,7 @@ class RoomManager {
       this.broadcast(room);
     });
 
-    socket.on('room:join', (payload = {}, callback) => {
+    on('room:join', (payload = {}, callback) => {
       const code = normalizeCode(payload.code);
       const token = sanitizeToken(payload.token);
       const room = this.rooms.get(code);
@@ -374,7 +388,7 @@ class RoomManager {
       this.broadcast(room);
     });
 
-    socket.on('room:resume', (payload = {}, callback) => {
+    on('room:resume', (payload = {}, callback) => {
       const room = this.rooms.get(normalizeCode(payload.code));
       const token = sanitizeToken(payload.token);
       const resumed = room && token ? this.resume(socket, room, token) : null;
@@ -384,7 +398,7 @@ class RoomManager {
       this.broadcast(room);
     });
 
-    socket.on('room:leave', (_payload, callback) => {
+    on('room:leave', (_payload, callback) => {
       this.leave(socket);
       reply(callback, { ok: true });
     });
@@ -401,11 +415,11 @@ class RoomManager {
       this.broadcast(room);
       reply(callback, { ok: true });
     };
-    socket.on('room:options', setOptions);
-    socket.on('room:rules', setOptions);
+    on('room:options', setOptions);
+    on('room:rules', setOptions);
 
     // Games for 3+ players start when the host says so (once enough have joined).
-    socket.on('room:start', (_payload, callback) => {
+    on('room:start', (_payload, callback) => {
       const { room, seat } = this.memberOf(socket);
       if (!room) return reply(callback, { error: 'Not in a room.' });
       if (seat !== this.hostSeat(room)) return reply(callback, { error: 'Only the host can start the game.' });
@@ -422,7 +436,7 @@ class RoomManager {
       reply(callback, { ok: true });
     });
 
-    socket.on('rematch', (_payload, callback) => {
+    on('rematch', (_payload, callback) => {
       const { room, seat, player } = this.memberOf(socket);
       if (!player) return reply(callback, { error: 'Only players can start a rematch.' });
       if (room.status !== 'over') return reply(callback, { error: 'The game is still running.' });
@@ -447,7 +461,7 @@ class RoomManager {
       reply(callback, { ok: true });
     });
 
-    socket.on('chat', (payload = {}, callback) => {
+    on('chat', (payload = {}, callback) => {
       const { room, player, spectator } = this.memberOf(socket);
       const member = player || spectator;
       if (!member) return reply(callback, { error: 'Not in a room.' });
@@ -464,7 +478,7 @@ class RoomManager {
     // Game-specific actions, routed to whichever game the socket's room is playing.
     const actionNames = new Set(Object.values(this.games).flatMap((g) => Object.keys(g.actions)));
     actionNames.forEach((name) => {
-      socket.on(name, (payload = {}, callback) => {
+      on(name, (payload, callback) => {
         const { room, seat, player } = this.memberOf(socket);
         if (!room) return reply(callback, { error: 'Not in a room.' });
         const action = room.module.actions[name];
