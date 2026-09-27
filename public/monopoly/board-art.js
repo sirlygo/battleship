@@ -2,6 +2,38 @@
 // Board units: corners are 1.6 wide, other spaces 1 wide, so a side is 12.2 units.
 
 const B = window.TycoonBoard;
+let theme = 'classic';
+export function setArtTheme(name) {
+  theme = name === 'pokemon' ? 'pokemon' : 'classic';
+}
+
+// A Poké Ball icon (top colour changes for the other balls).
+export function drawBall(ctx, x, y, r, top = '#e0413b', band = '#16211b') {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.beginPath();
+  ctx.arc(0, 0, r, Math.PI, 0);
+  ctx.fillStyle = top;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI);
+  ctx.fillStyle = '#fbfaf5';
+  ctx.fill();
+  ctx.lineWidth = r * 0.16;
+  ctx.strokeStyle = band;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.moveTo(-r, 0);
+  ctx.lineTo(r, 0);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.3, 0, Math.PI * 2);
+  ctx.fillStyle = '#fbfaf5';
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+const BALL_TOPS = { 5: '#e0413b', 15: '#2f7fe0', 25: '#1c1c22', 35: '#7a3fb0' };
 export const CORNER = 1.6;
 export const SIDE = CORNER * 2 + 9;
 
@@ -131,16 +163,24 @@ function drawSpace(ctx, id, u) {
       ctx.fillText('VISITING', 0, h / 2 - u * 0.2);
     } else if (id === 20) {
       ctx.font = font(u * 0.22, 800);
-      ctx.fillText('FREE', 0, -u * 0.36);
-      ctx.fillText('PARKING', 0, u * 0.36);
+      const [a, b] = B.themeOf(theme).corners.free;
+      ctx.fillText(a, 0, -u * 0.36);
+      ctx.fillText(b, 0, u * 0.36);
       ctx.font = font(u * 0.5, 400);
-      ctx.fillText('🚗', 0, 0);
+      ctx.fillText(theme === 'pokemon' ? '🌿' : '🚗', 0, 0);
     } else {
       ctx.font = font(u * 0.2, 800);
-      ctx.fillText('GO TO', 0, -u * 0.38);
-      ctx.fillText('JAIL', 0, u * 0.4);
-      ctx.font = font(u * 0.46, 400);
-      ctx.fillText('👮', 0, 0);
+      const [a, b] = B.themeOf(theme).corners.gotojail;
+      ctx.fillText(a, 0, -u * 0.38);
+      ctx.fillText(b, 0, u * 0.4);
+      if (theme === 'pokemon') {
+        ctx.fillStyle = '#d6231e';
+        ctx.font = font(u * 0.46, 900);
+        ctx.fillText('R', 0, 0);
+      } else {
+        ctx.font = font(u * 0.46, 400);
+        ctx.fillText('👮', 0, 0);
+      }
     }
     ctx.restore();
     return;
@@ -164,16 +204,19 @@ function drawSpace(ctx, id, u) {
   wrapText(ctx, s.name.toUpperCase(), w * 0.9).forEach((line, i) => ctx.fillText(line, 0, top + i * u * 0.15));
   if (s.type === 'card') {
     ctx.font = font(u * 0.44, 400);
-    ctx.fillText(s.deck === 'lucky' ? '❓' : '🎁', 0, h * 0.06);
+    ctx.fillText(theme === 'pokemon' ? (s.deck === 'lucky' ? '🎴' : '🏅') : s.deck === 'lucky' ? '❓' : '🎁', 0, h * 0.06);
   } else if (s.type === 'tax') {
     ctx.font = font(u * 0.38, 400);
-    ctx.fillText(s.amount === 200 ? '💰' : '💎', 0, h * 0.04);
+    ctx.fillText(theme === 'pokemon' ? (s.amount === 200 ? '🧪' : '🍬') : s.amount === 200 ? '💰' : '💎', 0, h * 0.04);
   } else if (s.type === 'station') {
-    ctx.font = font(u * 0.42, 400);
-    ctx.fillText('🚆', 0, h * 0.06);
+    if (theme === 'pokemon') drawBall(ctx, 0, h * 0.08, u * 0.2, BALL_TOPS[id]);
+    else {
+      ctx.font = font(u * 0.42, 400);
+      ctx.fillText('🚆', 0, h * 0.06);
+    }
   } else if (s.type === 'utility') {
     ctx.font = font(u * 0.42, 400);
-    ctx.fillText(s.icon, 0, h * 0.06);
+    ctx.fillText(theme === 'pokemon' ? (id === 12 ? '🏥' : '🛒') : s.icon, 0, h * 0.06);
   }
   const price = s.price ? `$${s.price}` : s.amount ? `Pay $${s.amount}` : '';
   if (price) {
@@ -189,8 +232,8 @@ export function drawBoard(ctx, size) {
   ctx.fillRect(0, 0, size, size);
   // Centre.
   const g = ctx.createRadialGradient(size / 2, size / 2, size * 0.05, size / 2, size / 2, size * 0.45);
-  g.addColorStop(0, '#dff0de');
-  g.addColorStop(1, '#b9d9bb');
+  g.addColorStop(0, theme === 'pokemon' ? '#fff7d1' : '#dff0de');
+  g.addColorStop(1, theme === 'pokemon' ? '#ffd86b' : '#b9d9bb');
   ctx.fillStyle = g;
   ctx.fillRect(CORNER * u, CORNER * u, 9 * u, 9 * u);
   ctx.save();
@@ -210,7 +253,13 @@ export function drawBoard(ctx, size) {
   ctx.font = `900 ${Math.round(u * 1.1)}px "Chakra Petch", "Arial Black", sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('MONOPOLY', 0, u * 0.06);
+  const th = B.themeOf(theme);
+  if (th.subtitle) {
+    ctx.fillText(th.title, 0, -u * 0.1);
+    ctx.fillStyle = '#ffd23f';
+    ctx.font = `800 ${Math.round(u * 0.34)}px "Chakra Petch", sans-serif`;
+    ctx.fillText(th.subtitle, 0, u * 0.5);
+  } else ctx.fillText(th.title, 0, u * 0.06);
   // Card piles.
   const pile = (x, y, label, color, icon) => {
     ctx.save();
@@ -231,8 +280,13 @@ export function drawBoard(ctx, size) {
     ctx.fillText(icon, 0, -u * 0.1);
     ctx.restore();
   };
-  pile(-u * 2.2, -u * 2.4, 'CHANCE', '#f08a2e', '❓');
-  pile(u * 2.2, u * 2.4, 'COMMUNITY CHEST', '#3b82e0', '🎁');
+  const decks = B.themeOf(theme).decks;
+  pile(-u * 2.2, -u * 2.4, decks.lucky, '#f08a2e', theme === 'pokemon' ? '🎴' : '❓');
+  pile(u * 2.2, u * 2.4, decks.town, '#3b82e0', theme === 'pokemon' ? '🏅' : '🎁');
+  if (theme === 'pokemon') {
+    drawBall(ctx, -u * 2.6, u * 2.3, u * 0.7);
+    drawBall(ctx, u * 2.6, -u * 2.3, u * 0.55, '#2f7fe0');
+  }
   ctx.restore();
   for (let id = 0; id < 40; id += 1) drawSpace(ctx, id, u);
   ctx.strokeStyle = '#16211b';

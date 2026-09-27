@@ -12,6 +12,7 @@ const LOG_LIMIT = 60;
 const OPTION_TEXT = {
   cash: { 1500: 'Everyone starts with $1,500.', 2500: 'Rich start — everyone gets $2,500.' },
   length: { classic: 'Play until one tycoon is left standing.', short: 'Short game — after 20 rounds the richest player wins.' },
+  theme: { classic: 'Edition: Classic Monopoly.', pokemon: 'Edition: Pokémon Monopoly! Catch Pokémon instead of streets.' },
   auction: { on: 'Auctions: property you pass on goes up for auction.', off: 'No auctions: property you pass on stays with the bank.' },
   jackpot: { off: 'Free Parking is just a rest.', on: 'Jackpot! Taxes and fees pile up on Free Parking for whoever lands there.' },
 };
@@ -56,6 +57,7 @@ function event(state, data) {
   if (state.events.length > 30) state.events.splice(0, state.events.length - 30);
 }
 
+const nm = (state, id) => B.spaceName(id, state.options.theme);
 const ownerOf = (state, id) => state.props[id]?.owner ?? null;
 
 function ownsGroup(state, seat, group) {
@@ -123,7 +125,7 @@ function liquidate(ctx, seat) {
       state.props[id].houses -= 1;
       p.money += half;
     }
-    log(state, `sells a building on ${B.SPACES[id].name}`, seat);
+    log(state, `sells a building on ${nm(state, id)}`, seat);
     event(state, { type: 'build', seat, space: id, houses: state.props[id].houses });
   }
   while (p.money < 0) {
@@ -133,7 +135,7 @@ function liquidate(ctx, seat) {
     const id = free[0];
     state.props[id].mortgaged = true;
     p.money += B.SPACES[id].price / 2;
-    log(state, `mortgages ${B.SPACES[id].name}`, seat);
+    log(state, `mortgages ${nm(state, id)}`, seat);
     event(state, { type: 'mortgage', seat, space: id, mortgaged: true });
   }
 }
@@ -212,7 +214,7 @@ function validPicks(room) {
   const picks = {};
   const used = new Set();
   Object.entries(room.meta.tokens || {}).forEach(([seat, token]) => {
-    if (room.players[seat] && B.TOKENS.includes(token) && !used.has(token)) {
+    if (room.players[seat] && B.themeOf(room.options.theme).tokens.includes(token) && !used.has(token)) {
       picks[seat] = token;
       used.add(token);
     }
@@ -244,7 +246,7 @@ function startAuction(ctx, space) {
   if (!bidders.length) return false;
   state.auction = { space: space.id, high: 0, bidder: null, out: [], bidders, deadline: Date.now() + AUCTION_MS };
   state.phase = 'auction';
-  log(state, `puts ${space.name} up for auction`, state.turn);
+  log(state, `puts ${nm(state, space.id)} up for auction`, state.turn);
   event(state, { type: 'auction', space: space.id });
   armAuctionTimer(ctx);
   return true;
@@ -273,10 +275,10 @@ function finishAuction(ctx) {
   if (a.bidder !== null && state.players[a.bidder] && !state.players[a.bidder].bankrupt) {
     state.players[a.bidder].money -= a.high;
     state.props[space.id].owner = a.bidder;
-    log(state, `wins the auction for ${space.name} at ${money(a.high)}`, a.bidder);
+    log(state, `wins the auction for ${nm(state, space.id)} at ${money(a.high)}`, a.bidder);
     event(state, { type: 'buy', seat: a.bidder, space: space.id, price: a.high, auction: true });
   } else {
-    log(state, `Nobody bid on ${space.name}.`);
+    log(state, `Nobody bid on ${nm(state, space.id)}.`);
     event(state, { type: 'unsold', space: space.id });
   }
   state.phase = null;
@@ -327,8 +329,9 @@ function drawCard(ctx, seat, deck, dice) {
   const index = d.pile.shift();
   const card = B.CARDS[deck][index];
   const p = state.players[seat];
-  event(state, { type: 'card', seat, deck, text: card.text });
-  log(state, `draws: “${card.text}”`, seat);
+  const text = B.cardText(deck, index, state.options.theme);
+  event(state, { type: 'card', seat, deck, text });
+  log(state, `draws: “${text}”`, seat);
   const e = card.do;
   if (!e.jailCard) d.pile.push(index);
   if (e.money > 0) gain(state, seat, e.money, 'card');
@@ -390,12 +393,12 @@ function land(ctx, seat, dice, { rentTimes = 1, diceTimes = null } = {}) {
       if (prop.owner === seat || prop.mortgaged) return;
       let rent = diceTimes ? dice * diceTimes : rentFor(state, space, dice);
       rent *= rentTimes;
-      log(state, `pays ${money(rent)} rent to ${state.names[prop.owner]} for ${space.name}`, seat);
+      log(state, `pays ${money(rent)} rent to ${state.names[prop.owner]} for ${nm(state, space.id)}`, seat);
       pay(ctx, seat, prop.owner, rent, 'rent');
       return;
     }
     case 'tax':
-      log(state, `pays ${money(space.amount)} ${space.name}`, seat);
+      log(state, `pays ${money(space.amount)} ${nm(state, space.id)}`, seat);
       pay(ctx, seat, null, space.amount, 'tax', { toPot: true });
       return;
     case 'card':
@@ -554,7 +557,7 @@ module.exports = {
   manualStart: true,
 
   defaultOptions() {
-    return { cash: 1500, length: 'classic', jackpot: 'off', auction: 'on' };
+    return { cash: 1500, length: 'classic', jackpot: 'off', auction: 'on', theme: 'classic' };
   },
 
   canChangeOptions(ctx) {
@@ -571,6 +574,12 @@ module.exports = {
     if (payload.length in OPTION_TEXT.length && payload.length !== options.length) {
       options.length = payload.length;
       ctx.system(OPTION_TEXT.length[payload.length]);
+    }
+    if (payload.theme in OPTION_TEXT.theme && payload.theme !== options.theme) {
+      options.theme = payload.theme;
+      // Each edition has its own tokens, so everyone picks again.
+      ctx.room.meta.tokens = {};
+      ctx.system(OPTION_TEXT.theme[payload.theme]);
     }
     if (payload.auction in OPTION_TEXT.auction && payload.auction !== options.auction) {
       options.auction = payload.auction;
@@ -589,7 +598,7 @@ module.exports = {
     const names = {};
     // Everyone keeps the token they picked in the lobby; the rest get what's left.
     const picks = validPicks(room);
-    const left = B.TOKENS.filter((t) => !Object.values(picks).includes(t));
+    const left = B.themeOf(room.options.theme).tokens.filter((t) => !Object.values(picks).includes(t));
     order.forEach((seat, i) => {
       names[seat] = ctx.name(seat);
       const token = picks[seat] || left.shift();
@@ -664,7 +673,7 @@ module.exports = {
     'ty:token'(ctx, seat, payload) {
       const { room } = ctx;
       if (room.status === 'active') return { error: 'Tokens are chosen before the game starts.' };
-      if (!B.TOKENS.includes(payload.token)) return { error: 'Unknown token.' };
+      if (!B.themeOf(room.options.theme).tokens.includes(payload.token)) return { error: 'Unknown token.' };
       const picks = validPicks(room);
       const taken = Object.entries(picks).find(([s, t]) => t === payload.token && Number(s) !== seat);
       if (taken) return { error: `${ctx.name(Number(taken[0]))} already picked that token.` };
@@ -721,7 +730,7 @@ module.exports = {
       if (p.money < space.price) return { error: `You need ${money(space.price)}.` };
       p.money -= space.price;
       state.props[space.id].owner = seat;
-      log(state, `buys ${space.name} for ${money(space.price)}`, seat);
+      log(state, `buys ${nm(state, space.id)} for ${money(space.price)}`, seat);
       event(state, { type: 'buy', seat, space: space.id });
       state.phase = null;
       afterLanding(state);
@@ -734,7 +743,7 @@ module.exports = {
       const state = ctx.room.state;
       if (state.phase !== 'buy') return { error: 'There is nothing to pass on.' };
       const space = B.SPACES[state.players[seat].pos];
-      log(state, `passes on ${space.name}`, seat);
+      log(state, `passes on ${nm(state, space.id)}`, seat);
       state.phase = null;
       if (state.options.auction !== 'off' && startAuction(ctx, space)) return { ok: true };
       afterLanding(state);
@@ -806,7 +815,7 @@ module.exports = {
       if (prop.houses === 4 && stock.hotels <= 0) return { error: 'The bank has run out of hotels!' };
       state.players[seat].money -= cost;
       prop.houses += 1;
-      log(state, `builds ${prop.houses === 5 ? 'a hotel' : 'a house'} on ${space.name}`, seat);
+      log(state, `builds ${prop.houses === 5 ? 'a hotel' : 'a house'} on ${nm(state, space.id)}`, seat);
       event(state, { type: 'build', seat, space: space.id, houses: prop.houses });
       return { ok: true };
     },
@@ -825,7 +834,7 @@ module.exports = {
       if (prop.houses === 5 && bankStock(state).houses < 4) return { error: 'The bank needs four houses to swap for your hotel — sell houses elsewhere first.' };
       prop.houses -= 1;
       state.players[seat].money += B.GROUPS[space.group].house / 2;
-      log(state, `sells a building on ${space.name}`, seat);
+      log(state, `sells a building on ${nm(state, space.id)}`, seat);
       event(state, { type: 'build', seat, space: space.id, houses: prop.houses });
       return { ok: true };
     },
@@ -843,12 +852,12 @@ module.exports = {
         if (p.money < cost) return { error: `Paying it off costs ${money(cost)}.` };
         p.money -= cost;
         prop.mortgaged = false;
-        log(state, `pays off the mortgage on ${space.name}`, seat);
+        log(state, `pays off the mortgage on ${nm(state, space.id)}`, seat);
       } else {
         if (space.group && groupHasBuildings(state, space.group)) return { error: 'Sell the buildings in this set first.' };
         prop.mortgaged = true;
         p.money += space.price / 2;
-        log(state, `mortgages ${space.name} for ${money(space.price / 2)}`, seat);
+        log(state, `mortgages ${nm(state, space.id)} for ${money(space.price / 2)}`, seat);
       }
       event(state, { type: 'mortgage', seat, space: space.id, mortgaged: prop.mortgaged });
       return { ok: true };

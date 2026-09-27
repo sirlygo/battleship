@@ -1,13 +1,21 @@
 import { store } from '../shared/room-client.js';
 import { setupTable, bigText, toast, sound } from '../shared/table-ui.js';
 import { TycoonBoard3D } from './board3d.js';
-import { drawBoard, SIDE, spaceRect, tokenSpot } from './board-art.js';
+import { drawBoard, drawBall, setArtTheme, SIDE, spaceRect, tokenSpot } from './board-art.js';
 
 const B = window.TycoonBoard;
 const $ = (id) => document.getElementById(id);
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const TOKEN_EMOJI = { car: '🏎️', hat: '🎩', dog: '🐕', ship: '🚢', boot: '👢', thimble: '🧵' };
-const DECK = { lucky: { title: 'CHANCE', color: '#f08a2e' }, town: { title: 'COMMUNITY CHEST', color: '#3b82e0' } };
+const DECK = { lucky: { color: '#f08a2e' }, town: { color: '#3b82e0' } };
+const BALL_TOP = { pokeball: '#e0413b', greatball: '#2f7fe0', ultraball: '#1c1c22', masterball: '#7a3fb0', premierball: '#fbfaf5', luxuryball: '#1c1c22' };
+let theme = 'classic';
+const themeInfo = () => B.themeOf(theme);
+// Emoji for the classic tokens, a little drawn ball for the Pokémon ones.
+function tokenIcon(t) {
+  if (TOKEN_EMOJI[t]) return TOKEN_EMOJI[t];
+  return `<i class="ball" style="--top:${BALL_TOP[t] || '#e0413b'}"></i>`;
+}
 const money = (n) => `$${Math.round(n).toLocaleString('en-US')}`;
 
 const el = {
@@ -246,7 +254,8 @@ function draw2d() {
       ctx.font = `${Math.round(u * 0.24)}px sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(TOKEN_EMOJI[p.token], spot.x * u, spot.y * u + 1);
+      if (TOKEN_EMOJI[p.token]) ctx.fillText(TOKEN_EMOJI[p.token], spot.x * u, spot.y * u + 1);
+      else drawBall(ctx, spot.x * u, spot.y * u, u * 0.13, BALL_TOP[p.token]);
     });
   });
 }
@@ -294,7 +303,7 @@ function renderPlayers() {
     const before = view.lastMoney.get(p.seat);
     if (before !== undefined && before !== p.money) cash.classList.add(p.money > before ? 'flash-up' : 'flash-down');
     view.lastMoney.set(p.seat, p.money);
-    chip.innerHTML = `<span class="tok">${TOKEN_EMOJI[p.token]}</span><b>${escapeHtml(p.seat === mySeat() ? `${p.name} (you)` : p.name)}</b>${p.jail ? '<span title="In jail">🔒</span>' : ''}${p.jailCards ? `<span title="Get out of jail free">🎟️${p.jailCards > 1 ? p.jailCards : ''}</span>` : ''}`;
+    chip.innerHTML = `<span class="tok">${tokenIcon(p.token)}</span><b>${escapeHtml(p.seat === mySeat() ? `${p.name} (you)` : p.name)}</b>${p.jail ? '<span title="In jail">🔒</span>' : ''}${p.jailCards ? `<span title="Get out of jail free">🎟️${p.jailCards > 1 ? p.jailCards : ''}</span>` : ''}`;
     chip.appendChild(cash);
     // Little squares for every property they own, in board order.
     const owned = Object.entries(s.props || {}).filter(([, pr]) => pr.owner === p.seat);
@@ -339,7 +348,7 @@ function renderLobby() {
   });
   const picks = s.tokenPicks || {};
   el.tokenPick.innerHTML = '';
-  B.TOKENS.forEach((t) => {
+  themeInfo().tokens.forEach((t) => {
     const owner = Object.keys(picks).find((seat) => picks[seat] === t);
     const b = document.createElement('button');
     b.type = 'button';
@@ -347,7 +356,7 @@ function renderLobby() {
     const mine = owner !== undefined && Number(owner) === s.seat;
     b.className = `ty-token${mine ? ' active' : ''}`;
     b.disabled = s.spectator || (owner !== undefined && !mine);
-    b.innerHTML = `<span>${TOKEN_EMOJI[t]}</span><small>${owner !== undefined && !mine ? escapeHtml(s.players[owner]?.name || '') : B.TOKEN_NAMES[t]}</small>`;
+    b.innerHTML = `<span>${tokenIcon(t)}</span><small>${owner !== undefined && !mine ? escapeHtml(s.players[owner]?.name || '') : themeInfo().tokenNames[t]}</small>`;
     el.tokenPick.appendChild(b);
   });
   document.querySelectorAll('#tycoonRules [data-option]').forEach((group) => {
@@ -568,7 +577,7 @@ function renderGameOver() {
     .forEach((p) => {
       const row = document.createElement('div');
       if (p.seat === w) row.className = 'win';
-      row.innerHTML = `<span><span style="color:${p.color}">${TOKEN_EMOJI[p.token]}</span> ${escapeHtml(p.name)}${p.seat === mySeat() ? ' (you)' : ''}</span><span>${p.bankrupt ? 'bankrupt' : `worth ${money(p.worth)}`} · ${s.wins?.[p.name] || 0} wins</span>`;
+      row.innerHTML = `<span><span style="color:${p.color}">${tokenIcon(p.token)}</span> ${escapeHtml(p.name)}${p.seat === mySeat() ? ' (you)' : ''}</span><span>${p.bankrupt ? 'bankrupt' : `worth ${money(p.worth)}`} · ${s.wins?.[p.name] || 0} wins</span>`;
       el.goResults.appendChild(row);
     });
   renderRematch();
@@ -637,7 +646,7 @@ function renderAll() {
 // ---------------------------------------------------------------------------
 
 function showCard(e) {
-  const d = DECK[e.deck];
+  const d = { ...DECK[e.deck], title: themeInfo().decks[e.deck] };
   el.cardFace.innerHTML = `<h3 style="background:${d.color}">${d.title}</h3><div>${escapeHtml(e.text)}</div><div class="who">${escapeHtml(nameOf(e.seat))} drew this card · tap to close</div>`;
   el.cardPop.hidden = false;
   sound.rotate();
@@ -861,9 +870,22 @@ async function sendTrade() {
 // State updates
 // ---------------------------------------------------------------------------
 
+function useTheme(next) {
+  next = next === 'pokemon' ? 'pokemon' : 'classic';
+  if (next === theme && view.themeApplied) return;
+  theme = next;
+  view.themeApplied = true;
+  B.applyTheme(theme);
+  setArtTheme(theme);
+  boardImage = null;
+  board3d?.setTheme(theme);
+  document.body.classList.toggle('pokemon', theme === 'pokemon');
+}
+
 function onState(snap, prev) {
   view.snap = snap;
   view.snapAt = performance.now();
+  useTheme(snap.options?.theme);
   const newRound = !prev || prev.round !== snap.round || (prev.phase !== 'playing' && snap.phase === 'playing');
   if (newRound && snap.events) {
     view.queue = [];
@@ -875,7 +897,7 @@ function onState(snap, prev) {
     renderDiceChip(null);
     if (snap.phase === 'playing' && prev && prev.phase !== 'playing') {
       const me = seatInfo(snap.seat);
-      bigText('LET’S DO BUSINESS!', me ? `You play the ${B.TOKEN_NAMES[me.token]}` : 'Enjoy the game', 'info');
+      bigText('LET’S DO BUSINESS!', me ? `You play the ${themeInfo().tokenNames[me.token]}` : 'Enjoy the game', 'info');
       sound.joined();
     }
   }
@@ -934,6 +956,7 @@ function make3d() {
     const forced = new URLSearchParams(location.search).get('quality');
     const quality = ['low', 'medium', 'high'].includes(forced) ? forced : coarse ? 'medium' : 'high';
     board3d = new TycoonBoard3D(el.canvas3d, { quality });
+    board3d.setTheme(theme);
     board3d.follow = prefs.follow;
     board3d.onHover = (id, x, y) => showTip(id, x, y);
     board3d.onSpace = (id, x, y) => {
@@ -1049,6 +1072,7 @@ window.addEventListener('keydown', (event) => {
 });
 document.fonts?.ready.then(() => {
   boardImage = null;
+  setArtTheme(theme);
   board3d?.refreshTexture();
   draw2d();
 });

@@ -5,6 +5,8 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { drawBoard, SIDE, spaceRect, tokenSpot } from './board-art.js';
 
+let deckTheme = 'classic';
+
 const B = window.TycoonBoard;
 const H = SIDE / 2;
 const toWorld = (p) => new THREE.Vector3(p.x - H, 0, p.y - H);
@@ -130,6 +132,37 @@ function tokenModel(kind, color) {
       add(new THREE.BoxGeometry(0.06, 0.04, 0.1), shade, -0.08, 0.07, 0);
       add(new THREE.BoxGeometry(0.11, 0.025, 0.11), shade, -0.07, 0.31, 0);
       for (let i = 0; i < 3; i += 1) add(new THREE.BoxGeometry(0.012, 0.012, 0.07), shade, -0.015, 0.16 + i * 0.045, 0);
+      break;
+    }
+    case 'pokeball':
+    case 'greatball':
+    case 'ultraball':
+    case 'masterball':
+    case 'premierball':
+    case 'luxuryball': {
+      const look = {
+        pokeball: [0xe0413b, 0xfbfaf5, 0x1c1c22],
+        greatball: [0x2f7fe0, 0xfbfaf5, 0x1c1c22],
+        ultraball: [0x1c1c22, 0xfbfaf5, 0x1c1c22],
+        masterball: [0x7a3fb0, 0xfbfaf5, 0x1c1c22],
+        premierball: [0xfbfaf5, 0xfbfaf5, 0xe0413b],
+        luxuryball: [0x1c1c22, 0x1c1c22, 0xd6342c],
+      }[kind];
+      const gloss = (c) => new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.2, clearcoat: 1, clearcoatRoughness: 0.1 });
+      const r = 0.15;
+      const y = 0.2;
+      add(new THREE.SphereGeometry(r, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), gloss(look[0]), 0, y, 0);
+      add(new THREE.SphereGeometry(r, 32, 16, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), gloss(look[1]), 0, y, 0);
+      add(new THREE.TorusGeometry(r, 0.014, 8, 40), gloss(look[2]), 0, y, 0, Math.PI / 2);
+      add(new THREE.CylinderGeometry(0.045, 0.045, 0.03, 20), gloss(look[2]), r - 0.005, y, 0, 0, 0, Math.PI / 2);
+      add(new THREE.CylinderGeometry(0.03, 0.03, 0.034, 20), gloss(0xfbfaf5), r + 0.002, y, 0, 0, 0, Math.PI / 2);
+      if (kind === 'ultraball') {
+        // Yellow "H" stripes.
+        [-0.05, 0.05].forEach((z) => add(new THREE.BoxGeometry(0.1, 0.02, 0.02), gloss(0xf5c518), 0, y + 0.11, z));
+      }
+      if (kind === 'greatball') [-0.07, 0.07].forEach((z) => add(new THREE.BoxGeometry(0.06, 0.03, 0.03), gloss(0xe0413b), 0.02, y + 0.1, z));
+      if (kind === 'masterball') add(new THREE.BoxGeometry(0.05, 0.02, 0.04), gloss(0xfbfaf5), 0.06, y + 0.12, 0);
+      if (kind === 'luxuryball') add(new THREE.TorusGeometry(r * 0.8, 0.01, 8, 40), gloss(0xf5c518), 0, y + 0.08, 0, Math.PI / 2);
       break;
     }
     case 'thimble':
@@ -273,17 +306,20 @@ export class TycoonBoard3D {
       ctx.fillStyle = '#fff';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.font = deck === 'lucky' ? '900 150px "Chakra Petch", sans-serif' : '900 54px "Chakra Petch", sans-serif';
-      if (deck === 'lucky') ctx.fillText('?', 256, 176);
+      const bigMark = deck === 'lucky' && deckTheme === 'classic';
+      ctx.font = bigMark ? '900 150px "Chakra Petch", sans-serif' : '900 54px "Chakra Petch", sans-serif';
+      const label = B.themeOf(deckTheme).decks[deck].split(' ');
+      if (deck === 'lucky' && deckTheme === 'classic') ctx.fillText('?', 256, 176);
       else {
-        ctx.fillText('COMMUNITY', 256, 130);
-        ctx.fillText('CHEST', 256, 200);
+        ctx.fillText(label[0], 256, 130);
+        ctx.fillText(label.slice(1).join(' '), 256, 200);
       }
       const tex = new THREE.CanvasTexture(canvas);
       tex.colorSpace = THREE.SRGBColorSpace;
       return new THREE.MeshStandardMaterial({ map: tex, roughness: 0.5 });
     };
     this.cardFace = new THREE.MeshStandardMaterial({ color: 0xfbfaf5, roughness: 0.6 });
+    Object.values(this.decks || {}).forEach((d) => this.scene.remove(d.stack));
     this.decks = {};
     [['lucky', -3.25, -0.14], ['town', 3.25, 0.14]].forEach(([deck, x, z]) => {
       const edge = new THREE.MeshStandardMaterial({ color: 0xf2efe6, roughness: 0.7 });
@@ -328,6 +364,18 @@ export class TycoonBoard3D {
     }).then(() => this.fx.remove(card));
   }
 
+  // Switch between the classic and Pokémon editions.
+  setTheme(theme) {
+    if (this.theme === theme) return;
+    this.theme = theme;
+    deckTheme = theme;
+    this.refreshTexture();
+    this.buildDecks();
+    // Tokens differ between editions: rebuild them.
+    this.tokens.forEach((g) => this.scene.remove(g));
+    this.tokens.clear();
+  }
+
   refreshTexture() {
     this.boardMat.map?.dispose();
     this.boardMat.map = boardTexture();
@@ -359,8 +407,13 @@ export class TycoonBoard3D {
       }
     });
     alive.forEach((s) => {
+      if (this.tokens.has(s.seat) && this.tokens.get(s.seat).userData.kind !== s.token) {
+        this.scene.remove(this.tokens.get(s.seat));
+        this.tokens.delete(s.seat);
+      }
       if (!this.tokens.has(s.seat)) {
         const g = tokenModel(s.token, s.color);
+        g.userData.kind = s.token;
         g.userData.seat = s.seat;
         this.scene.add(g);
         this.tokens.set(s.seat, g);
