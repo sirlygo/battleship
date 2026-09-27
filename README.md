@@ -39,10 +39,11 @@ Real-time board games to play with friends in the browser: no accounts, just sha
 ## Monopoly
 
 - The classic property-trading board game for 2–6 players, with the classic street names. Roll two dice, buy streets, stations and utilities, charge rent, and bankrupt everyone else.
-- Owning a whole colour set doubles its rent; then build up to four houses and a hotel (evenly across the set). **Chance** and **Community Chest** cards can send you anywhere. Doubles roll again; three doubles in a row, or landing on *Go to Jail*, locks you up. Get out by paying $50, using a Get Out of Jail Free card or rolling doubles.
+- Pick your token in the lobby: race car, top hat, Scottie dog, battleship, boot or thimble. Pass on a property and it goes up for **auction** (quick-fire bids with a countdown; the host can turn auctions off).
+- Owning a whole colour set doubles its rent; then build up to four houses and a hotel (evenly across the set). The bank only has 32 houses and 12 hotels, so a housing shortage is a real tactic. **Chance** and **Community Chest** cards can send you anywhere. Doubles roll again; three doubles in a row, or landing on *Go to Jail*, locks you up. Get out by paying $50, using a Get Out of Jail Free card or rolling doubles.
 - **Trades**: offer any mix of property (without buildings) and cash to another player, who can accept or decline. Mortgage property for half its price, or sell buildings back for half. If you can't pay a debt, the bank sells your buildings and mortgages property for you; if that's still not enough you're bankrupt, and your property goes to whoever you owed.
-- **3D board** (default): metal tokens (race car, rocket, top hat, sailboat, diamond, UFO), houses and hotels that pop up, owner markers along each space, dice that tumble across the middle and coins that fly between players. Hover or tap any space for its rent card. Switch to the flat **2D** board in Settings.
-- **Host options**: *Classic* (last one standing) or *Short* (after 20 rounds the richest player wins), $1,500 or $2,500 starting cash, and an optional *Jackpot* where taxes and fees pile up on Free Parking.
+- **3D board** (default): classic pewter tokens, Chance and Community Chest piles whose cards lift and flip when drawn, houses and hotels that pop up, owner markers along each space, dice that tumble across the middle and coins that fly between players. Hover or tap any space for its rent card. Switch to the flat **2D** board in Settings.
+- **Host options**: *Classic* (last one standing) or *Short* (after 20 rounds the richest player wins), $1,500 or $2,500 starting cash, auctions on or off, and an optional *Jackpot* where taxes and fees pile up on Free Parking.
 
 ## Checkers
 

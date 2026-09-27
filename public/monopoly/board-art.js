@@ -196,10 +196,16 @@ export function drawBoard(ctx, size) {
   ctx.save();
   ctx.translate(size / 2, size / 2);
   ctx.rotate(-Math.PI / 4);
-  ctx.fillStyle = '#1f7a3f';
+  // The famous red banner.
+  ctx.fillStyle = '#d6231e';
   ctx.beginPath();
-  ctx.roundRect(-u * 3.4, -u * 0.8, u * 6.8, u * 1.6, u * 0.3);
+  ctx.roundRect(-u * 3.5, -u * 0.8, u * 7, u * 1.6, u * 0.12);
   ctx.fill();
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = u * 0.06;
+  ctx.beginPath();
+  ctx.roundRect(-u * 3.38, -u * 0.68, u * 6.76, u * 1.36, u * 0.08);
+  ctx.stroke();
   ctx.fillStyle = '#fff';
   ctx.font = `900 ${Math.round(u * 1.1)}px "Chakra Petch", "Arial Black", sans-serif`;
   ctx.textAlign = 'center';

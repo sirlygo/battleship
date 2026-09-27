@@ -54,9 +54,10 @@ const UP_ROT = {
 
 function tokenModel(kind, color) {
   const g = new THREE.Group();
-  const metal = new THREE.MeshStandardMaterial({ color: 0xd9dde3, metalness: 0.9, roughness: 0.25 });
+  // Classic pewter tokens on a base in the player's colour.
+  const metal = new THREE.MeshStandardMaterial({ color: 0xc3c7cd, metalness: 0.9, roughness: 0.3 });
+  const shade = new THREE.MeshStandardMaterial({ color: 0x6e737a, metalness: 0.85, roughness: 0.45 });
   const paint = new THREE.MeshPhysicalMaterial({ color, metalness: 0.4, roughness: 0.25, clearcoat: 1 });
-  const dark = new THREE.MeshStandardMaterial({ color: 0x1c1f24, roughness: 0.6 });
   const add = (geo, mat, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) => {
     const m = new THREE.Mesh(geo, mat);
     m.position.set(x, y, z);
@@ -65,57 +66,87 @@ function tokenModel(kind, color) {
     g.add(m);
     return m;
   };
-  // Coloured base disc so every token shows its player.
   add(new THREE.CylinderGeometry(0.2, 0.22, 0.05, 28), paint, 0, 0.025, 0);
   switch (kind) {
-    case 'car':
-      add(new THREE.BoxGeometry(0.42, 0.1, 0.2), paint, 0, 0.12, 0);
-      add(new THREE.BoxGeometry(0.2, 0.08, 0.16), metal, -0.03, 0.21, 0);
-      [[0.13, 0.1], [-0.13, 0.1], [0.13, -0.1], [-0.13, -0.1]].forEach(([x, z]) => add(new THREE.CylinderGeometry(0.055, 0.055, 0.05, 16), dark, x, 0.09, z, Math.PI / 2));
-      add(new THREE.BoxGeometry(0.04, 0.03, 0.22), metal, -0.22, 0.2, 0);
+    case 'car': {
+      // Vintage race car with a long bonnet and spoked wheels.
+      add(new THREE.CylinderGeometry(0.055, 0.075, 0.34, 18), metal, 0, 0.14, 0, 0, 0, -Math.PI / 2);
+      add(new THREE.SphereGeometry(0.056, 16, 10), metal, 0.17, 0.14, 0);
+      add(new THREE.BoxGeometry(0.08, 0.05, 0.1), shade, -0.05, 0.19, 0);
+      add(new THREE.TorusGeometry(0.03, 0.007, 6, 16), shade, 0.0, 0.22, 0, 0, Math.PI / 2, -0.4);
+      [[0.12, 0.085], [-0.12, 0.085], [0.12, -0.085], [-0.12, -0.085]].forEach(([x, z]) => {
+        add(new THREE.CylinderGeometry(0.06, 0.06, 0.035, 18), shade, x, 0.105, z, Math.PI / 2);
+        add(new THREE.CylinderGeometry(0.03, 0.03, 0.04, 10), metal, x, 0.105, z, Math.PI / 2);
+      });
       break;
-    case 'rocket':
-      add(new THREE.CylinderGeometry(0.08, 0.09, 0.3, 20), metal, 0, 0.23, 0);
-      add(new THREE.ConeGeometry(0.08, 0.14, 20), paint, 0, 0.45, 0);
-      for (let i = 0; i < 3; i += 1) {
-        const fin = add(new THREE.BoxGeometry(0.02, 0.1, 0.1), paint, 0, 0.12, 0);
-        fin.rotation.y = (i * Math.PI * 2) / 3;
-        fin.translateZ(0.09);
-      }
-      add(new THREE.SphereGeometry(0.035, 12, 8), new THREE.MeshStandardMaterial({ color: 0x9fe9ff, emissive: 0x3fb7ff, emissiveIntensity: 0.6 }), 0.075, 0.3, 0);
-      break;
+    }
     case 'hat':
-      add(new THREE.CylinderGeometry(0.19, 0.19, 0.025, 28), dark, 0, 0.065, 0);
-      add(new THREE.CylinderGeometry(0.12, 0.125, 0.28, 28), dark, 0, 0.21, 0);
-      add(new THREE.CylinderGeometry(0.127, 0.127, 0.05, 28), paint, 0, 0.11, 0);
+      add(new THREE.CylinderGeometry(0.19, 0.19, 0.022, 32), metal, 0, 0.062, 0);
+      add(new THREE.CylinderGeometry(0.125, 0.115, 0.28, 32), metal, 0, 0.21, 0);
+      add(new THREE.CylinderGeometry(0.119, 0.119, 0.05, 32), shade, 0, 0.1, 0);
+      add(new THREE.CylinderGeometry(0.127, 0.127, 0.012, 32), metal, 0, 0.352, 0);
       break;
-    case 'boat': {
-      const hull = add(new THREE.CylinderGeometry(0.2, 0.12, 0.1, 4, 1), paint, 0, 0.1, 0, 0, Math.PI / 4, 0);
-      hull.scale.set(1.2, 1, 0.55);
-      add(new THREE.CylinderGeometry(0.012, 0.012, 0.36, 8), metal, 0, 0.3, 0);
-      const sail = new THREE.BufferGeometry();
-      sail.setAttribute('position', new THREE.Float32BufferAttribute([0.01, 0.16, 0, 0.01, 0.46, 0, 0.17, 0.18, 0], 3));
-      sail.computeVertexNormals();
-      add(sail, new THREE.MeshStandardMaterial({ color: 0xfbfaf5, side: THREE.DoubleSide }));
-      break;
-    }
-    case 'gem': {
-      const top = add(new THREE.ConeGeometry(0.16, 0.12, 8), new THREE.MeshPhysicalMaterial({ color, metalness: 0.1, roughness: 0.05, transmission: 0.6, thickness: 0.3, clearcoat: 1 }), 0, 0.37, 0, Math.PI);
-      top.scale.y = 1;
-      add(new THREE.ConeGeometry(0.16, 0.28, 8), new THREE.MeshPhysicalMaterial({ color, metalness: 0.1, roughness: 0.05, transmission: 0.6, thickness: 0.3, clearcoat: 1 }), 0, 0.2, 0, Math.PI);
-      add(new THREE.CylinderGeometry(0.1, 0.16, 0.06, 8), metal, 0, 0.46, 0);
+    case 'dog': {
+      // Scottie dog, standing sideways.
+      add(new THREE.BoxGeometry(0.26, 0.12, 0.1), metal, -0.01, 0.18, 0);
+      add(new THREE.BoxGeometry(0.11, 0.11, 0.09), metal, 0.14, 0.26, 0);
+      add(new THREE.BoxGeometry(0.08, 0.05, 0.07), metal, 0.22, 0.24, 0);
+      add(new THREE.BoxGeometry(0.06, 0.05, 0.06), shade, 0.21, 0.2, 0);
+      add(new THREE.ConeGeometry(0.025, 0.06, 8), metal, 0.12, 0.34, 0.025);
+      add(new THREE.ConeGeometry(0.025, 0.06, 8), metal, 0.12, 0.34, -0.025);
+      add(new THREE.ConeGeometry(0.02, 0.08, 8), metal, -0.13, 0.27, 0, 0, 0, 0.35);
+      [[0.09, 0.035], [-0.09, 0.035], [0.09, -0.035], [-0.09, -0.035]].forEach(([x, z]) => add(new THREE.BoxGeometry(0.04, 0.1, 0.035), metal, x, 0.1, z));
+      add(new THREE.BoxGeometry(0.22, 0.03, 0.1), shade, 0, 0.125, 0);
       break;
     }
-    case 'ufo':
+    case 'ship': {
+      // Battleship: pointed hull, bridge, funnel and gun turrets.
+      const hull = new THREE.Shape();
+      hull.moveTo(-0.2, -0.06);
+      hull.lineTo(0.12, -0.06);
+      hull.lineTo(0.24, 0);
+      hull.lineTo(0.12, 0.06);
+      hull.lineTo(-0.2, 0.06);
+      hull.lineTo(-0.22, 0);
+      hull.closePath();
+      const hg = new THREE.ExtrudeGeometry(hull, { depth: 0.08, bevelEnabled: true, bevelThickness: 0.01, bevelSize: 0.01, bevelSegments: 1 });
+      add(hg, metal, 0, 0.13, 0, Math.PI / 2);
+      add(new THREE.BoxGeometry(0.12, 0.07, 0.08), metal, -0.02, 0.18, 0);
+      add(new THREE.BoxGeometry(0.06, 0.06, 0.06), shade, -0.02, 0.24, 0);
+      add(new THREE.CylinderGeometry(0.025, 0.03, 0.09, 12), shade, -0.1, 0.21, 0);
+      [0.1, -0.16].forEach((x) => {
+        add(new THREE.CylinderGeometry(0.035, 0.04, 0.03, 14), metal, x, 0.155, 0);
+        add(new THREE.CylinderGeometry(0.008, 0.008, 0.09, 6), shade, x + Math.sign(x) * 0.05, 0.16, 0, 0, 0, Math.PI / 2);
+      });
+      add(new THREE.CylinderGeometry(0.004, 0.004, 0.14, 6), shade, 0.02, 0.3, 0);
+      break;
+    }
+    case 'boot': {
+      add(new THREE.BoxGeometry(0.1, 0.22, 0.1), metal, -0.07, 0.2, 0);
+      add(new THREE.BoxGeometry(0.2, 0.08, 0.1), metal, 0.02, 0.09, 0);
+      const toe = add(new THREE.SphereGeometry(0.06, 16, 10), metal, 0.12, 0.09, 0);
+      toe.scale.set(1.2, 0.75, 0.85);
+      add(new THREE.BoxGeometry(0.26, 0.025, 0.11), shade, 0.02, 0.058, 0);
+      add(new THREE.BoxGeometry(0.06, 0.04, 0.1), shade, -0.08, 0.07, 0);
+      add(new THREE.BoxGeometry(0.11, 0.025, 0.11), shade, -0.07, 0.31, 0);
+      for (let i = 0; i < 3; i += 1) add(new THREE.BoxGeometry(0.012, 0.012, 0.07), shade, -0.015, 0.16 + i * 0.045, 0);
+      break;
+    }
+    case 'thimble':
     default: {
-      const saucer = add(new THREE.SphereGeometry(0.2, 28, 12), metal, 0, 0.2, 0);
-      saucer.scale.y = 0.28;
-      add(new THREE.SphereGeometry(0.09, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshPhysicalMaterial({ color: 0x9fe9ff, transmission: 0.5, roughness: 0.05 }), 0, 0.23, 0);
-      for (let i = 0; i < 8; i += 1) {
-        const a = (i / 8) * Math.PI * 2;
-        add(new THREE.SphereGeometry(0.02, 8, 6), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.8 }), Math.cos(a) * 0.17, 0.2, Math.sin(a) * 0.17);
+      const pts = [[0, 0.33], [0.05, 0.33], [0.085, 0.31], [0.1, 0.27], [0.105, 0.2], [0.11, 0.12], [0.125, 0.07], [0.125, 0.05], [0, 0.05]].map(([x, y]) => new THREE.Vector2(x, y));
+      add(new THREE.LatheGeometry(pts.reverse(), 32), metal);
+      add(new THREE.TorusGeometry(0.122, 0.01, 8, 32), shade, 0, 0.085, 0, Math.PI / 2);
+      // Dimples.
+      const dot = new THREE.SphereGeometry(0.009, 6, 4);
+      for (let row = 0; row < 4; row += 1) {
+        for (let i = 0; i < 14; i += 1) {
+          const a = (i / 14) * Math.PI * 2 + row * 0.2;
+          const y = 0.13 + row * 0.045;
+          const r = 0.108 - row * 0.004;
+          add(dot, shade, Math.cos(a) * r, y, Math.sin(a) * r);
+        }
       }
-      add(new THREE.CylinderGeometry(0.03, 0.06, 0.12, 12), paint, 0, 0.1, 0);
     }
   }
   return g;
@@ -181,11 +212,12 @@ export class TycoonBoard3D {
 
     this.buildBoard();
     this.buildDice();
+    this.fx = new THREE.Group();
+    this.buildDecks();
     this.markers = new THREE.Group();
     scene.add(this.markers);
     this.houses = new THREE.Group();
     scene.add(this.houses);
-    this.fx = new THREE.Group();
     scene.add(this.fx);
     this.houseCount = {};
 
@@ -224,6 +256,76 @@ export class TycoonBoard3D {
     table.position.y = -0.41;
     table.receiveShadow = true;
     this.scene.add(table);
+  }
+
+  // Chance and Community Chest piles sit in the middle of the board.
+  buildDecks() {
+    const back = (deck) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 332;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = deck === 'lucky' ? '#f08a2e' : '#3b82e0';
+      ctx.fillRect(0, 0, 512, 332);
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+      ctx.lineWidth = 10;
+      ctx.strokeRect(18, 18, 476, 296);
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = deck === 'lucky' ? '900 150px "Chakra Petch", sans-serif' : '900 54px "Chakra Petch", sans-serif';
+      if (deck === 'lucky') ctx.fillText('?', 256, 176);
+      else {
+        ctx.fillText('COMMUNITY', 256, 130);
+        ctx.fillText('CHEST', 256, 200);
+      }
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      return new THREE.MeshStandardMaterial({ map: tex, roughness: 0.5 });
+    };
+    this.cardFace = new THREE.MeshStandardMaterial({ color: 0xfbfaf5, roughness: 0.6 });
+    this.decks = {};
+    [['lucky', -3.25, -0.14], ['town', 3.25, 0.14]].forEach(([deck, x, z]) => {
+      const edge = new THREE.MeshStandardMaterial({ color: 0xf2efe6, roughness: 0.7 });
+      const top = back(deck);
+      const stack = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.14, 1.23), [edge, edge, top, edge, edge, edge]);
+      stack.position.set(x, 0.07, z);
+      stack.rotation.y = Math.PI / 4;
+      stack.castShadow = true;
+      stack.receiveShadow = true;
+      this.scene.add(stack);
+      this.decks[deck] = { stack, top };
+    });
+  }
+
+  // A card lifts off the pile and flips towards the camera.
+  async liftCard(deck) {
+    const d = this.decks?.[deck];
+    if (!d) return;
+    const card = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.01, 1.23), [this.cardFace, this.cardFace, d.top, this.cardFace, this.cardFace, this.cardFace]);
+    card.position.copy(d.stack.position).setY(0.15);
+    card.rotation.y = Math.PI / 4;
+    card.castShadow = true;
+    this.fx.add(card);
+    const start = card.position.clone();
+    const end = new THREE.Vector3(start.x * 0.4, 2.2, start.z * 0.4 + 1.5);
+    await this.tween(520, (t) => {
+      const e = easeInOut(t);
+      card.position.lerpVectors(start, end, e);
+      card.rotation.set(-e * 1.1, Math.PI / 4 * (1 - e), 0);
+    });
+    this.lifted = card;
+  }
+
+  dropCard() {
+    const card = this.lifted;
+    if (!card) return;
+    this.lifted = null;
+    const start = card.position.clone();
+    this.tween(350, (t) => {
+      card.position.y = start.y + t * 1.5;
+      card.scale.setScalar(1 - t);
+    }).then(() => this.fx.remove(card));
   }
 
   refreshTexture() {

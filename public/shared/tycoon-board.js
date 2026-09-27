@@ -109,9 +109,13 @@
     ],
   };
 
-  const TOKENS = ['car', 'rocket', 'hat', 'boat', 'gem', 'ufo'];
-  const TOKEN_NAMES = { car: 'Race car', rocket: 'Rocket', hat: 'Top hat', boat: 'Sailboat', gem: 'Diamond', ufo: 'UFO' };
+  // The classic pewter tokens.
+  const TOKENS = ['car', 'hat', 'dog', 'ship', 'boot', 'thimble'];
+  const TOKEN_NAMES = { car: 'Race car', hat: 'Top hat', dog: 'Scottie dog', ship: 'Battleship', boot: 'Boot', thimble: 'Thimble' };
+  // The bank only has so many buildings.
+  const BANK_HOUSES = 32;
+  const BANK_HOTELS = 12;
   const PLAYER_COLORS = ['#e0413b', '#2f7fe0', '#2fb35a', '#f5b920', '#9b59d0', '#2fb7a8'];
 
-  return { GROUPS, SPACES, JAIL, BUYABLE, STATION_RENT, CARDS, TOKENS, TOKEN_NAMES, PLAYER_COLORS, groupSpaces };
+  return { GROUPS, SPACES, JAIL, BUYABLE, STATION_RENT, CARDS, TOKENS, TOKEN_NAMES, PLAYER_COLORS, BANK_HOUSES, BANK_HOTELS, groupSpaces };
 });
