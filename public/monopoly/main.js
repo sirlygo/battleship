@@ -1,20 +1,48 @@
 import { store } from '../shared/room-client.js';
 import { setupTable, bigText, toast, sound } from '../shared/table-ui.js';
 import { TycoonBoard3D } from './board3d.js';
-import { drawBoard, drawBall, setArtTheme, SIDE, spaceRect, tokenSpot } from './board-art.js';
+import { drawBoard, setArtTheme, SIDE, spaceRect, tokenSpot } from './board-art.js';
 
 const B = window.TycoonBoard;
 const $ = (id) => document.getElementById(id);
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const TOKEN_EMOJI = { car: '🏎️', hat: '🎩', dog: '🐕', ship: '🚢', boot: '👢', thimble: '🧵' };
 const DECK = { lucky: { color: '#f08a2e' }, town: { color: '#3b82e0' } };
-const BALL_TOP = { pokeball: '#e0413b', greatball: '#2f7fe0', ultraball: '#1c1c22', masterball: '#7a3fb0', premierball: '#fbfaf5', luxuryball: '#1c1c22' };
+// Trainer portraits: hair (or hat) colour over their shirt colour.
+const TRAINER_LOOK = {
+  ash: ['#d6231e', '#2f5fb0'],
+  misty: ['#f08a2e', '#f5d02e'],
+  brock: ['#3a2412', '#f08a2e'],
+  gary: ['#9a6a3a', '#7a3fb0'],
+  may: ['#e0413b', '#e0413b'],
+  dawn: ['#fbfaf5', '#1c1c22'],
+};
 let theme = 'classic';
 const themeInfo = () => B.themeOf(theme);
-// Emoji for the classic tokens, a little drawn ball for the Pokémon ones.
+// Emoji for the classic tokens, a little portrait for the Pokémon trainers.
 function tokenIcon(t) {
   if (TOKEN_EMOJI[t]) return TOKEN_EMOJI[t];
-  return `<i class="ball" style="--top:${BALL_TOP[t] || '#e0413b'}"></i>`;
+  const [hair, shirt] = TRAINER_LOOK[t] || ['#333', '#888'];
+  return `<i class="trainer" style="--hair:${hair};--shirt:${shirt}"></i>`;
+}
+
+function drawTrainer(ctx, x, y, r, t) {
+  const [hair, shirt] = TRAINER_LOOK[t] || ['#333', '#888'];
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.fillStyle = shirt;
+  ctx.fillRect(x - r, y + r * 0.2, r * 2, r);
+  ctx.fillStyle = '#f2c9a0';
+  ctx.beginPath();
+  ctx.arc(x, y - r * 0.1, r * 0.45, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = hair;
+  ctx.beginPath();
+  ctx.arc(x, y - r * 0.2, r * 0.5, Math.PI, 0);
+  ctx.fill();
+  ctx.restore();
 }
 const money = (n) => `$${Math.round(n).toLocaleString('en-US')}`;
 
@@ -245,17 +273,17 @@ function draw2d() {
       const p = seatInfo(seat);
       const spot = tokenSpot(pos, i, seats.length, key.endsWith('j'));
       ctx.beginPath();
-      ctx.arc(spot.x * u, spot.y * u, u * 0.2, 0, Math.PI * 2);
+      ctx.arc(spot.x * u, spot.y * u, u * 0.27, 0, Math.PI * 2);
       ctx.fillStyle = p.color;
       ctx.fill();
-      ctx.lineWidth = seat === s.turn ? 4 : 2;
+      ctx.lineWidth = seat === s.turn ? 5 : 3;
       ctx.strokeStyle = '#fff';
       ctx.stroke();
-      ctx.font = `${Math.round(u * 0.24)}px sans-serif`;
+      ctx.font = `${Math.round(u * 0.32)}px sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       if (TOKEN_EMOJI[p.token]) ctx.fillText(TOKEN_EMOJI[p.token], spot.x * u, spot.y * u + 1);
-      else drawBall(ctx, spot.x * u, spot.y * u, u * 0.13, BALL_TOP[p.token]);
+      else drawTrainer(ctx, spot.x * u, spot.y * u, u * 0.18, p.token);
     });
   });
 }

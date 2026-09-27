@@ -68,7 +68,7 @@ export function tokenSpot(id, slot = 0, count = 1, jailed = false) {
   const cy = r.y + r.h / 2;
   const n = Math.max(count, 1);
   const a = (slot / n) * Math.PI * 2 + 0.4;
-  const spread = n > 1 ? (r.corner ? 0.34 : 0.22) : 0;
+  const spread = n > 1 ? (r.corner ? 0.4 : 0.26) : 0;
   let ox = Math.cos(a) * spread;
   let oy = Math.sin(a) * spread;
   // Streets: stand below the colour band.

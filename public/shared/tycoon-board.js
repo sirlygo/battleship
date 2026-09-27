@@ -183,8 +183,9 @@
       subtitle: 'POKÉMON EDITION',
       decks: { lucky: 'TRAINER CARD', town: 'GYM CARD' },
       corners: { free: ['SAFARI', 'ZONE'], gotojail: ['TEAM', 'ROCKET!'] },
-      tokens: ['pokeball', 'greatball', 'ultraball', 'masterball', 'premierball', 'luxuryball'],
-      tokenNames: { pokeball: 'Poké Ball', greatball: 'Great Ball', ultraball: 'Ultra Ball', masterball: 'Master Ball', premierball: 'Premier Ball', luxuryball: 'Luxury Ball' },
+      // You're catching Pokémon, so you play as a trainer.
+      tokens: ['ash', 'misty', 'brock', 'gary', 'may', 'dawn'],
+      tokenNames: { ash: 'Ash', misty: 'Misty', brock: 'Brock', gary: 'Gary', may: 'May', dawn: 'Dawn' },
     },
   };
   const themeOf = (name) => THEMES[name] || THEMES.classic;

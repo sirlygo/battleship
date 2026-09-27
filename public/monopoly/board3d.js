@@ -54,6 +54,81 @@ const UP_ROT = {
 // Token models (all about 0.45 tall, facing +x)
 // ---------------------------------------------------------------------------
 
+
+// Pokémon trainers, about 0.6 tall, facing +x. Built from simple shapes with
+// each trainer's signature hair, hat and outfit colours.
+const TRAINERS = {
+  ash: { skin: 0xf2c9a0, hair: 0x1c1c22, shirt: 0x2f5fb0, trim: 0xfbfaf5, pants: 0x2a4a7a, hat: 'cap', hatColor: 0xd6231e },
+  misty: { skin: 0xf2c9a0, hair: 0xf08a2e, shirt: 0xf5d02e, trim: 0xd6231e, pants: 0x2f7fe0, hat: 'ponytail' },
+  brock: { skin: 0xc88a5a, hair: 0x3a2412, shirt: 0xf08a2e, trim: 0x2f7a3f, pants: 0x9a8a6a, hat: 'spiky' },
+  gary: { skin: 0xf2c9a0, hair: 0x9a6a3a, shirt: 0x7a3fb0, trim: 0x1c1c22, pants: 0x3a3a4a, hat: 'spiky' },
+  may: { skin: 0xf2c9a0, hair: 0x7a4a2a, shirt: 0xe0413b, trim: 0x1c1c22, pants: 0x2a2a2a, hat: 'bandana', hatColor: 0xe0413b },
+  dawn: { skin: 0xf2c9a0, hair: 0x1f2f6a, shirt: 0x1c1c22, trim: 0xe05aa8, pants: 0xe05aa8, hat: 'beanie', hatColor: 0xfbfaf5 },
+};
+
+function buildTrainer(g, kind, add) {
+  const t = TRAINERS[kind];
+  const mat = (c, rough = 0.55) => new THREE.MeshStandardMaterial({ color: c, roughness: rough });
+  const skin = mat(t.skin, 0.6);
+  const hair = mat(t.hair, 0.7);
+  const shirt = mat(t.shirt);
+  const trim = mat(t.trim);
+  const pants = mat(t.pants);
+  const dark = mat(0x1c1c22, 0.4);
+  // Legs and shoes.
+  [-0.04, 0.04].forEach((z) => {
+    add(new THREE.CylinderGeometry(0.032, 0.03, 0.17, 12), pants, 0, 0.14, z);
+    add(new THREE.BoxGeometry(0.08, 0.035, 0.05), dark, 0.015, 0.065, z);
+  });
+  // Body with a jacket trim down the front.
+  add(new THREE.CylinderGeometry(0.075, 0.085, 0.18, 16), shirt, 0, 0.31, 0);
+  add(new THREE.BoxGeometry(0.02, 0.17, 0.05), trim, 0.078, 0.31, 0);
+  add(new THREE.CylinderGeometry(0.088, 0.088, 0.03, 16), trim, 0, 0.225, 0);
+  // Arms waving a little.
+  [-1, 1].forEach((side) => {
+    add(new THREE.CylinderGeometry(0.022, 0.02, 0.15, 10), shirt, 0, 0.3, side * 0.1, side * 0.25, 0, 0);
+    add(new THREE.SphereGeometry(0.024, 10, 8), skin, 0, 0.23, side * 0.118);
+  });
+  // Head and face.
+  add(new THREE.SphereGeometry(0.075, 20, 14), skin, 0, 0.47, 0);
+  [-0.026, 0.026].forEach((z) => add(new THREE.SphereGeometry(0.011, 8, 6), dark, 0.068, 0.475, z));
+  // Hair and hats.
+  const cap = (color, r = 0.08) => add(new THREE.SphereGeometry(r, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), mat(color), 0, 0.48, 0);
+  switch (t.hat) {
+    case 'cap':
+      cap(t.hatColor, 0.081);
+      add(new THREE.BoxGeometry(0.035, 0.035, 0.07), mat(0xfbfaf5), 0.06, 0.52, 0);
+      add(new THREE.CylinderGeometry(0.06, 0.06, 0.012, 16, 1, false, -Math.PI / 2, Math.PI), mat(t.hatColor), 0.05, 0.49, 0, 0, Math.PI / 2, 0);
+      [-0.06, 0.06].forEach((z) => add(new THREE.ConeGeometry(0.018, 0.05, 6), hair, -0.05, 0.45, z, 0, 0, 1.4));
+      break;
+    case 'ponytail':
+      cap(t.hair, 0.082);
+      add(new THREE.SphereGeometry(0.03, 10, 8), hair, -0.02, 0.5, 0.08);
+      add(new THREE.ConeGeometry(0.03, 0.1, 10), hair, -0.02, 0.45, 0.1, 0.4, 0, Math.PI);
+      break;
+    case 'spiky':
+      cap(t.hair, 0.082);
+      for (let i = 0; i < 7; i += 1) {
+        const a = (i / 7) * Math.PI - Math.PI / 2;
+        add(new THREE.ConeGeometry(0.025, 0.08, 6), hair, -0.03 - Math.cos(a) * 0.02, 0.53, Math.sin(a) * 0.06, Math.sin(a) * 0.6, 0, 0.9);
+      }
+      break;
+    case 'bandana':
+      cap(t.hair, 0.08);
+      cap(t.hatColor, 0.083);
+      [-0.05, 0.05].forEach((z) => add(new THREE.ConeGeometry(0.02, 0.08, 6), hair, 0.0, 0.42, z * 1.4, 0, 0, Math.PI));
+      add(new THREE.BoxGeometry(0.02, 0.04, 0.05), mat(t.hatColor), -0.08, 0.5, 0);
+      break;
+    case 'beanie':
+    default:
+      // Long hair down the back and a white beanie.
+      add(new THREE.BoxGeometry(0.05, 0.16, 0.13), hair, -0.05, 0.42, 0);
+      cap(t.hair, 0.08);
+      add(new THREE.SphereGeometry(0.083, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2.6), mat(t.hatColor), 0, 0.5, 0);
+      add(new THREE.SphereGeometry(0.018, 10, 8), mat(0xe05aa8), 0.06, 0.55, 0);
+  }
+}
+
 function tokenModel(kind, color) {
   const g = new THREE.Group();
   // Classic pewter tokens on a base in the player's colour.
@@ -69,6 +144,15 @@ function tokenModel(kind, color) {
     return m;
   };
   add(new THREE.CylinderGeometry(0.2, 0.22, 0.05, 28), paint, 0, 0.025, 0);
+  // A glowing ring in the player's colour makes every piece easy to spot.
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(0.23, 0.31, 40).rotateX(-Math.PI / 2),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.75, depthWrite: false })
+  );
+  ring.position.y = 0.006;
+  g.add(ring);
+  g.userData.ring = ring;
+  g.userData.faceCamera = kind in TRAINERS;
   switch (kind) {
     case 'car': {
       // Vintage race car with a long bonnet and spoked wheels.
@@ -134,35 +218,13 @@ function tokenModel(kind, color) {
       for (let i = 0; i < 3; i += 1) add(new THREE.BoxGeometry(0.012, 0.012, 0.07), shade, -0.015, 0.16 + i * 0.045, 0);
       break;
     }
-    case 'pokeball':
-    case 'greatball':
-    case 'ultraball':
-    case 'masterball':
-    case 'premierball':
-    case 'luxuryball': {
-      const look = {
-        pokeball: [0xe0413b, 0xfbfaf5, 0x1c1c22],
-        greatball: [0x2f7fe0, 0xfbfaf5, 0x1c1c22],
-        ultraball: [0x1c1c22, 0xfbfaf5, 0x1c1c22],
-        masterball: [0x7a3fb0, 0xfbfaf5, 0x1c1c22],
-        premierball: [0xfbfaf5, 0xfbfaf5, 0xe0413b],
-        luxuryball: [0x1c1c22, 0x1c1c22, 0xd6342c],
-      }[kind];
-      const gloss = (c) => new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.2, clearcoat: 1, clearcoatRoughness: 0.1 });
-      const r = 0.15;
-      const y = 0.2;
-      add(new THREE.SphereGeometry(r, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), gloss(look[0]), 0, y, 0);
-      add(new THREE.SphereGeometry(r, 32, 16, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), gloss(look[1]), 0, y, 0);
-      add(new THREE.TorusGeometry(r, 0.014, 8, 40), gloss(look[2]), 0, y, 0, Math.PI / 2);
-      add(new THREE.CylinderGeometry(0.045, 0.045, 0.03, 20), gloss(look[2]), r - 0.005, y, 0, 0, 0, Math.PI / 2);
-      add(new THREE.CylinderGeometry(0.03, 0.03, 0.034, 20), gloss(0xfbfaf5), r + 0.002, y, 0, 0, 0, Math.PI / 2);
-      if (kind === 'ultraball') {
-        // Yellow "H" stripes.
-        [-0.05, 0.05].forEach((z) => add(new THREE.BoxGeometry(0.1, 0.02, 0.02), gloss(0xf5c518), 0, y + 0.11, z));
-      }
-      if (kind === 'greatball') [-0.07, 0.07].forEach((z) => add(new THREE.BoxGeometry(0.06, 0.03, 0.03), gloss(0xe0413b), 0.02, y + 0.1, z));
-      if (kind === 'masterball') add(new THREE.BoxGeometry(0.05, 0.02, 0.04), gloss(0xfbfaf5), 0.06, y + 0.12, 0);
-      if (kind === 'luxuryball') add(new THREE.TorusGeometry(r * 0.8, 0.01, 8, 40), gloss(0xf5c518), 0, y + 0.08, 0, Math.PI / 2);
+    case 'ash':
+    case 'misty':
+    case 'brock':
+    case 'gary':
+    case 'may':
+    case 'dawn': {
+      buildTrainer(g, kind, add);
       break;
     }
     case 'thimble':
@@ -182,6 +244,14 @@ function tokenModel(kind, color) {
       }
     }
   }
+  // Make the figure itself larger than its base so it reads from above.
+  const figure = new THREE.Group();
+  g.children.slice().forEach((c) => {
+    if (c === ring || c === g.children[0]) return;
+    figure.add(c);
+  });
+  figure.scale.setScalar(kind in TRAINERS ? 1.55 : 1.25);
+  g.add(figure);
   return g;
 }
 
@@ -442,7 +512,9 @@ export class TycoonBoard3D {
         const spot = toWorld(tokenSpot(pos, i, seats.length, jailed));
         g.userData.home = spot;
         g.position.set(spot.x, g.position.y, spot.z);
-        g.rotation.y = [0, -Math.PI / 2, Math.PI, Math.PI / 2][spaceRect(pos).side] + Math.PI / 2;
+        g.rotation.y = g.userData.faceCamera ? -Math.PI / 2 : [0, -Math.PI / 2, Math.PI, Math.PI / 2][spaceRect(pos).side] + Math.PI / 2;
+        // Big pieces, a touch smaller when several share a space.
+        g.scale.setScalar(seats.length >= 3 ? 1.15 : seats.length === 2 ? 1.3 : 1.5);
       });
     });
   }
@@ -454,7 +526,8 @@ export class TycoonBoard3D {
     for (const id of path) {
       const start = g.position.clone();
       const end = toWorld(tokenSpot(id, 0, 1));
-      const face = [0, -Math.PI / 2, Math.PI, Math.PI / 2][spaceRect(id).side] + Math.PI / 2;
+      const face = g.userData.faceCamera ? -Math.PI / 2 : [0, -Math.PI / 2, Math.PI, Math.PI / 2][spaceRect(id).side] + Math.PI / 2;
+      g.scale.setScalar(1.5);
       this.focusGoal.copy(end);
       await this.tween(fast ? 90 : 150, (t) => {
         g.position.lerpVectors(start, end, easeInOut(t));
@@ -718,7 +791,13 @@ export class TycoonBoard3D {
     // The active token bobs gently.
     this.tokens.forEach((g, seat) => {
       if (g.userData.moving) return;
-      const goal = seat === this.activeSeat ? 0.06 + Math.sin(now / 300) * 0.04 : 0;
+      const active = seat === this.activeSeat;
+      const ring = g.userData.ring;
+      if (ring) {
+        ring.material.opacity = active ? 0.65 + Math.sin(now / 200) * 0.3 : 0.55;
+        ring.scale.setScalar(active ? 1.05 + Math.sin(now / 200) * 0.08 : 1);
+      }
+      const goal = active ? 0.06 + Math.sin(now / 300) * 0.04 : 0;
       g.position.y += (goal - g.position.y) * Math.min(1, dt * 8);
     });
     this.focus.lerp(this.focusGoal, Math.min(1, dt * 2));
