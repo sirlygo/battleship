@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { drawBoard, SIDE, spaceRect, tokenSpot } from './board-art.js';
+import { coinCanvas } from './token-art.js';
 
 let deckTheme = 'classic';
 
@@ -55,203 +56,76 @@ const UP_ROT = {
 // ---------------------------------------------------------------------------
 
 
-// Pokémon trainers, about 0.6 tall, facing +x. Built from simple shapes with
-// each trainer's signature hair, hat and outfit colours.
-const TRAINERS = {
-  ash: { skin: 0xf2c9a0, hair: 0x1c1c22, shirt: 0x2f5fb0, trim: 0xfbfaf5, pants: 0x2a4a7a, hat: 'cap', hatColor: 0xd6231e },
-  misty: { skin: 0xf2c9a0, hair: 0xf08a2e, shirt: 0xf5d02e, trim: 0xd6231e, pants: 0x2f7fe0, hat: 'ponytail' },
-  brock: { skin: 0xc88a5a, hair: 0x3a2412, shirt: 0xf08a2e, trim: 0x2f7a3f, pants: 0x9a8a6a, hat: 'spiky' },
-  gary: { skin: 0xf2c9a0, hair: 0x9a6a3a, shirt: 0x7a3fb0, trim: 0x1c1c22, pants: 0x3a3a4a, hat: 'spiky' },
-  may: { skin: 0xf2c9a0, hair: 0x7a4a2a, shirt: 0xe0413b, trim: 0x1c1c22, pants: 0x2a2a2a, hat: 'bandana', hatColor: 0xe0413b },
-  dawn: { skin: 0xf2c9a0, hair: 0x1f2f6a, shirt: 0x1c1c22, trim: 0xe05aa8, pants: 0xe05aa8, hat: 'beanie', hatColor: 0xfbfaf5 },
-};
-
-function buildTrainer(g, kind, add) {
-  const t = TRAINERS[kind];
-  const mat = (c, rough = 0.55) => new THREE.MeshStandardMaterial({ color: c, roughness: rough });
-  const skin = mat(t.skin, 0.6);
-  const hair = mat(t.hair, 0.7);
-  const shirt = mat(t.shirt);
-  const trim = mat(t.trim);
-  const pants = mat(t.pants);
-  const dark = mat(0x1c1c22, 0.4);
-  // Legs and shoes.
-  [-0.04, 0.04].forEach((z) => {
-    add(new THREE.CylinderGeometry(0.032, 0.03, 0.17, 12), pants, 0, 0.14, z);
-    add(new THREE.BoxGeometry(0.08, 0.035, 0.05), dark, 0.015, 0.065, z);
-  });
-  // Body with a jacket trim down the front.
-  add(new THREE.CylinderGeometry(0.075, 0.085, 0.18, 16), shirt, 0, 0.31, 0);
-  add(new THREE.BoxGeometry(0.02, 0.17, 0.05), trim, 0.078, 0.31, 0);
-  add(new THREE.CylinderGeometry(0.088, 0.088, 0.03, 16), trim, 0, 0.225, 0);
-  // Arms waving a little.
-  [-1, 1].forEach((side) => {
-    add(new THREE.CylinderGeometry(0.022, 0.02, 0.15, 10), shirt, 0, 0.3, side * 0.1, side * 0.25, 0, 0);
-    add(new THREE.SphereGeometry(0.024, 10, 8), skin, 0, 0.23, side * 0.118);
-  });
-  // Head and face.
-  add(new THREE.SphereGeometry(0.075, 20, 14), skin, 0, 0.47, 0);
-  [-0.026, 0.026].forEach((z) => add(new THREE.SphereGeometry(0.011, 8, 6), dark, 0.068, 0.475, z));
-  // Hair and hats.
-  const cap = (color, r = 0.08) => add(new THREE.SphereGeometry(r, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), mat(color), 0, 0.48, 0);
-  switch (t.hat) {
-    case 'cap':
-      cap(t.hatColor, 0.081);
-      add(new THREE.BoxGeometry(0.035, 0.035, 0.07), mat(0xfbfaf5), 0.06, 0.52, 0);
-      add(new THREE.CylinderGeometry(0.06, 0.06, 0.012, 16, 1, false, -Math.PI / 2, Math.PI), mat(t.hatColor), 0.05, 0.49, 0, 0, Math.PI / 2, 0);
-      [-0.06, 0.06].forEach((z) => add(new THREE.ConeGeometry(0.018, 0.05, 6), hair, -0.05, 0.45, z, 0, 0, 1.4));
-      break;
-    case 'ponytail':
-      cap(t.hair, 0.082);
-      add(new THREE.SphereGeometry(0.03, 10, 8), hair, -0.02, 0.5, 0.08);
-      add(new THREE.ConeGeometry(0.03, 0.1, 10), hair, -0.02, 0.45, 0.1, 0.4, 0, Math.PI);
-      break;
-    case 'spiky':
-      cap(t.hair, 0.082);
-      for (let i = 0; i < 7; i += 1) {
-        const a = (i / 7) * Math.PI - Math.PI / 2;
-        add(new THREE.ConeGeometry(0.025, 0.08, 6), hair, -0.03 - Math.cos(a) * 0.02, 0.53, Math.sin(a) * 0.06, Math.sin(a) * 0.6, 0, 0.9);
-      }
-      break;
-    case 'bandana':
-      cap(t.hair, 0.08);
-      cap(t.hatColor, 0.083);
-      [-0.05, 0.05].forEach((z) => add(new THREE.ConeGeometry(0.02, 0.08, 6), hair, 0.0, 0.42, z * 1.4, 0, 0, Math.PI));
-      add(new THREE.BoxGeometry(0.02, 0.04, 0.05), mat(t.hatColor), -0.08, 0.5, 0);
-      break;
-    case 'beanie':
-    default:
-      // Long hair down the back and a white beanie.
-      add(new THREE.BoxGeometry(0.05, 0.16, 0.13), hair, -0.05, 0.42, 0);
-      cap(t.hair, 0.08);
-      add(new THREE.SphereGeometry(0.083, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2.6), mat(t.hatColor), 0, 0.5, 0);
-      add(new THREE.SphereGeometry(0.018, 10, 8), mat(0xe05aa8), 0.06, 0.55, 0);
+// Player pieces are coin standees: a big picture coin on a small stand in the
+// player's colour, turned to face the camera every frame.
+const COIN_R = 0.34;
+const coinTextures = new Map();
+function coinTexture(kind, color) {
+  const key = `${kind}|${color}`;
+  if (!coinTextures.has(key)) {
+    const tex = new THREE.CanvasTexture(coinCanvas(kind, color, 512));
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 8;
+    coinTextures.set(key, tex);
   }
+  return coinTextures.get(key);
 }
 
 function tokenModel(kind, color) {
   const g = new THREE.Group();
-  // Classic pewter tokens on a base in the player's colour.
-  const metal = new THREE.MeshStandardMaterial({ color: 0xc3c7cd, metalness: 0.9, roughness: 0.3 });
-  const shade = new THREE.MeshStandardMaterial({ color: 0x6e737a, metalness: 0.85, roughness: 0.45 });
-  const paint = new THREE.MeshPhysicalMaterial({ color, metalness: 0.4, roughness: 0.25, clearcoat: 1 });
-  const add = (geo, mat, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) => {
-    const m = new THREE.Mesh(geo, mat);
-    m.position.set(x, y, z);
-    m.rotation.set(rx, ry, rz);
-    m.castShadow = true;
-    g.add(m);
-    return m;
-  };
-  add(new THREE.CylinderGeometry(0.2, 0.22, 0.05, 28), paint, 0, 0.025, 0);
-  // A glowing ring in the player's colour makes every piece easy to spot.
+  const paint = new THREE.MeshPhysicalMaterial({ color, metalness: 0.5, roughness: 0.25, clearcoat: 1 });
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.23, 0.05, 32), paint);
+  base.position.y = 0.025;
+  base.castShadow = true;
+  g.add(base);
+  // Glowing ring in the player's colour.
   const ring = new THREE.Mesh(
-    new THREE.RingGeometry(0.23, 0.31, 40).rotateX(-Math.PI / 2),
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.75, depthWrite: false })
+    new THREE.RingGeometry(0.24, 0.32, 40).rotateX(-Math.PI / 2),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.7, depthWrite: false })
   );
   ring.position.y = 0.006;
   g.add(ring);
   g.userData.ring = ring;
-  g.userData.faceCamera = kind in TRAINERS;
-  switch (kind) {
-    case 'car': {
-      // Vintage race car with a long bonnet and spoked wheels.
-      add(new THREE.CylinderGeometry(0.055, 0.075, 0.34, 18), metal, 0, 0.14, 0, 0, 0, -Math.PI / 2);
-      add(new THREE.SphereGeometry(0.056, 16, 10), metal, 0.17, 0.14, 0);
-      add(new THREE.BoxGeometry(0.08, 0.05, 0.1), shade, -0.05, 0.19, 0);
-      add(new THREE.TorusGeometry(0.03, 0.007, 6, 16), shade, 0.0, 0.22, 0, 0, Math.PI / 2, -0.4);
-      [[0.12, 0.085], [-0.12, 0.085], [0.12, -0.085], [-0.12, -0.085]].forEach(([x, z]) => {
-        add(new THREE.CylinderGeometry(0.06, 0.06, 0.035, 18), shade, x, 0.105, z, Math.PI / 2);
-        add(new THREE.CylinderGeometry(0.03, 0.03, 0.04, 10), metal, x, 0.105, z, Math.PI / 2);
-      });
-      break;
-    }
-    case 'hat':
-      add(new THREE.CylinderGeometry(0.19, 0.19, 0.022, 32), metal, 0, 0.062, 0);
-      add(new THREE.CylinderGeometry(0.125, 0.115, 0.28, 32), metal, 0, 0.21, 0);
-      add(new THREE.CylinderGeometry(0.119, 0.119, 0.05, 32), shade, 0, 0.1, 0);
-      add(new THREE.CylinderGeometry(0.127, 0.127, 0.012, 32), metal, 0, 0.352, 0);
-      break;
-    case 'dog': {
-      // Scottie dog, standing sideways.
-      add(new THREE.BoxGeometry(0.26, 0.12, 0.1), metal, -0.01, 0.18, 0);
-      add(new THREE.BoxGeometry(0.11, 0.11, 0.09), metal, 0.14, 0.26, 0);
-      add(new THREE.BoxGeometry(0.08, 0.05, 0.07), metal, 0.22, 0.24, 0);
-      add(new THREE.BoxGeometry(0.06, 0.05, 0.06), shade, 0.21, 0.2, 0);
-      add(new THREE.ConeGeometry(0.025, 0.06, 8), metal, 0.12, 0.34, 0.025);
-      add(new THREE.ConeGeometry(0.025, 0.06, 8), metal, 0.12, 0.34, -0.025);
-      add(new THREE.ConeGeometry(0.02, 0.08, 8), metal, -0.13, 0.27, 0, 0, 0, 0.35);
-      [[0.09, 0.035], [-0.09, 0.035], [0.09, -0.035], [-0.09, -0.035]].forEach(([x, z]) => add(new THREE.BoxGeometry(0.04, 0.1, 0.035), metal, x, 0.1, z));
-      add(new THREE.BoxGeometry(0.22, 0.03, 0.1), shade, 0, 0.125, 0);
-      break;
-    }
-    case 'ship': {
-      // Battleship: pointed hull, bridge, funnel and gun turrets.
-      const hull = new THREE.Shape();
-      hull.moveTo(-0.2, -0.06);
-      hull.lineTo(0.12, -0.06);
-      hull.lineTo(0.24, 0);
-      hull.lineTo(0.12, 0.06);
-      hull.lineTo(-0.2, 0.06);
-      hull.lineTo(-0.22, 0);
-      hull.closePath();
-      const hg = new THREE.ExtrudeGeometry(hull, { depth: 0.08, bevelEnabled: true, bevelThickness: 0.01, bevelSize: 0.01, bevelSegments: 1 });
-      add(hg, metal, 0, 0.13, 0, Math.PI / 2);
-      add(new THREE.BoxGeometry(0.12, 0.07, 0.08), metal, -0.02, 0.18, 0);
-      add(new THREE.BoxGeometry(0.06, 0.06, 0.06), shade, -0.02, 0.24, 0);
-      add(new THREE.CylinderGeometry(0.025, 0.03, 0.09, 12), shade, -0.1, 0.21, 0);
-      [0.1, -0.16].forEach((x) => {
-        add(new THREE.CylinderGeometry(0.035, 0.04, 0.03, 14), metal, x, 0.155, 0);
-        add(new THREE.CylinderGeometry(0.008, 0.008, 0.09, 6), shade, x + Math.sign(x) * 0.05, 0.16, 0, 0, 0, Math.PI / 2);
-      });
-      add(new THREE.CylinderGeometry(0.004, 0.004, 0.14, 6), shade, 0.02, 0.3, 0);
-      break;
-    }
-    case 'boot': {
-      add(new THREE.BoxGeometry(0.1, 0.22, 0.1), metal, -0.07, 0.2, 0);
-      add(new THREE.BoxGeometry(0.2, 0.08, 0.1), metal, 0.02, 0.09, 0);
-      const toe = add(new THREE.SphereGeometry(0.06, 16, 10), metal, 0.12, 0.09, 0);
-      toe.scale.set(1.2, 0.75, 0.85);
-      add(new THREE.BoxGeometry(0.26, 0.025, 0.11), shade, 0.02, 0.058, 0);
-      add(new THREE.BoxGeometry(0.06, 0.04, 0.1), shade, -0.08, 0.07, 0);
-      add(new THREE.BoxGeometry(0.11, 0.025, 0.11), shade, -0.07, 0.31, 0);
-      for (let i = 0; i < 3; i += 1) add(new THREE.BoxGeometry(0.012, 0.012, 0.07), shade, -0.015, 0.16 + i * 0.045, 0);
-      break;
-    }
-    case 'ash':
-    case 'misty':
-    case 'brock':
-    case 'gary':
-    case 'may':
-    case 'dawn': {
-      buildTrainer(g, kind, add);
-      break;
-    }
-    case 'thimble':
-    default: {
-      const pts = [[0, 0.33], [0.05, 0.33], [0.085, 0.31], [0.1, 0.27], [0.105, 0.2], [0.11, 0.12], [0.125, 0.07], [0.125, 0.05], [0, 0.05]].map(([x, y]) => new THREE.Vector2(x, y));
-      add(new THREE.LatheGeometry(pts.reverse(), 32), metal);
-      add(new THREE.TorusGeometry(0.122, 0.01, 8, 32), shade, 0, 0.085, 0, Math.PI / 2);
-      // Dimples.
-      const dot = new THREE.SphereGeometry(0.009, 6, 4);
-      for (let row = 0; row < 4; row += 1) {
-        for (let i = 0; i < 14; i += 1) {
-          const a = (i / 14) * Math.PI * 2 + row * 0.2;
-          const y = 0.13 + row * 0.045;
-          const r = 0.108 - row * 0.004;
-          add(dot, shade, Math.cos(a) * r, y, Math.sin(a) * r);
-        }
-      }
-    }
+  // A chunky 3D coin: ridged metal edge in the player's colour, raised rims,
+  // and the picture set into both faces.
+  const T = 0.1;
+  const metal = new THREE.MeshPhysicalMaterial({ color, metalness: 0.85, roughness: 0.22, clearcoat: 0.6 });
+  const edgeGeo = new THREE.CylinderGeometry(COIN_R, COIN_R, T, 120, 1, true);
+  const pos = edgeGeo.attributes.position;
+  for (let i = 0; i < pos.count; i += 1) {
+    const x = pos.getX(i);
+    const z = pos.getZ(i);
+    const k = 1 + Math.sin(Math.atan2(z, x) * 60) * 0.012;
+    pos.setX(i, x * k);
+    pos.setZ(i, z * k);
   }
-  // Make the figure itself larger than its base so it reads from above.
-  const figure = new THREE.Group();
-  g.children.slice().forEach((c) => {
-    if (c === ring || c === g.children[0]) return;
-    figure.add(c);
+  edgeGeo.computeVertexNormals();
+  const edge = new THREE.Mesh(edgeGeo, metal);
+  edge.rotation.x = Math.PI / 2;
+  // The picture is unlit so it keeps its true colours under the table lights.
+  const tex = coinTexture(kind, color);
+  const faceMat = new THREE.MeshBasicMaterial({ map: tex, toneMapped: false });
+  const coin = new THREE.Group();
+  coin.add(edge);
+  [1, -1].forEach((side) => {
+    const faceDisc = new THREE.Mesh(new THREE.CircleGeometry(COIN_R * 0.96, 64), faceMat);
+    faceDisc.position.z = side * (T / 2 - 0.004);
+    if (side < 0) faceDisc.rotation.y = Math.PI;
+    coin.add(faceDisc);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(COIN_R * 0.965, 0.02, 12, 72), metal);
+    rim.position.z = side * (T / 2);
+    coin.add(rim);
   });
-  figure.scale.setScalar(kind in TRAINERS ? 1.55 : 1.25);
-  g.add(figure);
+  coin.traverse((m) => {
+    m.castShadow = true;
+  });
+  coin.position.y = 0.05 + COIN_R + 0.04;
+  const post = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.07, 0.13), paint);
+  post.position.y = 0.075;
+  const holder = new THREE.Group();
+  holder.add(coin, post);
+  g.add(holder);
+  g.userData.billboard = holder;
   return g;
 }
 
@@ -512,9 +386,9 @@ export class TycoonBoard3D {
         const spot = toWorld(tokenSpot(pos, i, seats.length, jailed));
         g.userData.home = spot;
         g.position.set(spot.x, g.position.y, spot.z);
-        g.rotation.y = g.userData.faceCamera ? -Math.PI / 2 : [0, -Math.PI / 2, Math.PI, Math.PI / 2][spaceRect(pos).side] + Math.PI / 2;
+        
         // Big pieces, a touch smaller when several share a space.
-        g.scale.setScalar(seats.length >= 3 ? 1.15 : seats.length === 2 ? 1.3 : 1.5);
+        g.scale.setScalar(seats.length >= 3 ? 1.25 : seats.length === 2 ? 1.45 : 1.7);
       });
     });
   }
@@ -526,13 +400,11 @@ export class TycoonBoard3D {
     for (const id of path) {
       const start = g.position.clone();
       const end = toWorld(tokenSpot(id, 0, 1));
-      const face = g.userData.faceCamera ? -Math.PI / 2 : [0, -Math.PI / 2, Math.PI, Math.PI / 2][spaceRect(id).side] + Math.PI / 2;
-      g.scale.setScalar(1.5);
+            g.scale.setScalar(1.7);
       this.focusGoal.copy(end);
       await this.tween(fast ? 90 : 150, (t) => {
         g.position.lerpVectors(start, end, easeInOut(t));
         g.position.y = Math.sin(t * Math.PI) * 0.35;
-        g.rotation.y += (face - g.rotation.y) * t;
       });
       this.positions.set(seat, id);
       this.onStep?.(id);
@@ -551,6 +423,7 @@ export class TycoonBoard3D {
       g.position.lerpVectors(start, end, easeInOut(t));
       g.position.y = Math.sin(t * Math.PI) * 2.5;
       g.rotation.y += 0.25;
+      if (t >= 1) g.rotation.y = 0;
     });
     this.positions.set(seat, 10);
     this.jailed.add(seat);
@@ -790,6 +663,17 @@ export class TycoonBoard3D {
     }
     // The active token bobs gently.
     this.tokens.forEach((g, seat) => {
+      // Coins always turn to face the camera.
+      const bb = g.userData.billboard;
+      if (bb) {
+        const dx = this.camera.position.x - g.position.x;
+        const dz = this.camera.position.z - g.position.z;
+        const dy = this.camera.position.y - g.position.y;
+        bb.rotation.order = 'YXZ';
+        bb.rotation.y = Math.atan2(dx, dz) - g.rotation.y;
+        // Lean back towards the camera so the picture reads as a full circle.
+        bb.rotation.x = -Math.atan2(dy, Math.hypot(dx, dz)) * 0.8;
+      }
       if (g.userData.moving) return;
       const active = seat === this.activeSeat;
       const ring = g.userData.ring;
