@@ -823,3 +823,8 @@ body.tycoon {
 .ty-player .deeds i.m {
   opacity: 0.35;
 }
+
+/* Keep cards in the side panel full height (the panel scrolls instead). */
+.ty-side > * {
+  flex: none;
+}
