@@ -630,3 +630,253 @@ body.tycoon {
     grid-template-columns: 1fr;
   }
 }
+
+/* ------------------------------------------------------------------ Tokens, auctions, bank */
+
+.ty-token-pick {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.ty-token {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--text);
+  cursor: pointer;
+  transition: transform 0.12s, border-color 0.2s, background 0.2s;
+}
+
+.ty-token span {
+  font-size: 24px;
+}
+
+.ty-token small {
+  font-size: 11px;
+  color: var(--muted);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ty-token:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.ty-token.active {
+  border-color: #7dffb0;
+  background: rgba(125, 255, 176, 0.14);
+  box-shadow: 0 0 16px rgba(125, 255, 176, 0.3);
+}
+
+.ty-token:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.ty-auction {
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fbfaf5;
+  color: #16211b;
+  animation: rise 0.3s ease both;
+}
+
+.ty-auction[hidden] {
+  display: none;
+}
+
+.ty-auction .band,
+.ty-buy .band,
+.ty-tip .band {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.ty-auction .band {
+  padding: 8px;
+  font: 800 16px var(--display);
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.ty-auction .band small,
+.ty-tip .band small {
+  font-size: 10px;
+  letter-spacing: 0.25em;
+  opacity: 0.85;
+}
+
+.ty-auction-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 12px;
+}
+
+.ty-bid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.ty-bid span {
+  font: 900 30px var(--display);
+  color: #1f7a3f;
+}
+
+.ty-bid small {
+  font-size: 12px;
+  color: #5a6a62;
+}
+
+.ty-timer {
+  height: 6px;
+  border-radius: 3px;
+  background: #e2e6e0;
+  overflow: hidden;
+}
+
+.ty-timer i {
+  display: block;
+  height: 100%;
+  background: #2fb35a;
+  transition: width 0.2s linear;
+}
+
+.ty-timer i.hurry {
+  background: #e0413b;
+}
+
+.ty-bid-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ty-bid-buttons .btn {
+  flex: 1;
+  padding: 8px 6px;
+  font-size: 13px;
+}
+
+.ty-auction .btn-secondary {
+  background: #1f7a3f;
+  color: #fff;
+}
+
+.ty-auction .btn-ghost {
+  color: #5a6a62;
+}
+
+.ty-auction .muted {
+  color: #5a6a62;
+  margin: 0;
+}
+
+.ty-bank-chip {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  display: flex;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(8, 12, 10, 0.75);
+  font: 600 13px var(--display);
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.ty-bank-chip b {
+  color: var(--text);
+}
+
+.ty-player {
+  flex-wrap: wrap;
+}
+
+.ty-player .deeds {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding-left: 26px;
+}
+
+.ty-player .deeds i {
+  width: 9px;
+  height: 12px;
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3);
+}
+
+.ty-player .deeds i.m {
+  opacity: 0.35;
+}
+
+/* Keep cards in the side panel full height (the panel scrolls instead). */
+.ty-side > * {
+  flex: none;
+}
+
+/* ------------------------------------------------------------------ Pokémon edition */
+
+.ball {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  border-radius: 50%;
+  vertical-align: -0.12em;
+  background:
+    radial-gradient(circle at 50% 50%, #fbfaf5 0 14%, #16211b 15% 24%, transparent 25%),
+    linear-gradient(180deg, var(--top) 0 46%, #16211b 46% 54%, #fbfaf5 54% 100%);
+  box-shadow: inset 0 0 0 0.07em #16211b, 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+body.tycoon.pokemon {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 210, 63, 0.18), transparent 60%),
+    radial-gradient(ellipse at 50% 120%, rgba(224, 65, 59, 0.14), transparent 60%),
+    linear-gradient(180deg, #1a1622 0%, #0b0910 100%);
+}
+
+.trainer {
+  display: inline-block;
+  width: 1.1em;
+  height: 1.1em;
+  border-radius: 50%;
+  vertical-align: -0.18em;
+  background:
+    radial-gradient(ellipse 48% 38% at 50% 30%, var(--hair) 0 98%, transparent 100%),
+    radial-gradient(circle at 50% 44%, #f2c9a0 0 30%, transparent 31%),
+    linear-gradient(180deg, transparent 0 58%, var(--shirt) 58%);
+  background-color: rgba(255, 255, 255, 0.15);
+  box-shadow: inset 0 0 0 0.06em rgba(0, 0, 0, 0.35), 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.coin-icon {
+  width: 1.5em;
+  height: 1.5em;
+  vertical-align: middle;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
+}
+
+.ty-token .coin-icon {
+  width: 44px;
+  height: 44px;
+}
+
+.ty-player .tok .coin-icon {
+  width: 26px;
+  height: 26px;
+}

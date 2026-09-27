@@ -109,9 +109,96 @@
     ],
   };
 
-  const TOKENS = ['car', 'rocket', 'hat', 'boat', 'gem', 'ufo'];
-  const TOKEN_NAMES = { car: 'Race car', rocket: 'Rocket', hat: 'Top hat', boat: 'Sailboat', gem: 'Diamond', ufo: 'UFO' };
+  // The classic pewter tokens.
+  const TOKENS = ['car', 'hat', 'dog', 'ship', 'boot', 'thimble'];
+  const TOKEN_NAMES = { car: 'Race car', hat: 'Top hat', dog: 'Scottie dog', ship: 'Battleship', boot: 'Boot', thimble: 'Thimble' };
+  // The bank only has so many buildings.
+  const BANK_HOUSES = 32;
+  const BANK_HOTELS = 12;
   const PLAYER_COLORS = ['#e0413b', '#2f7fe0', '#2fb35a', '#f5b920', '#9b59d0', '#2fb7a8'];
 
-  return { GROUPS, SPACES, JAIL, BUYABLE, STATION_RENT, CARDS, TOKENS, TOKEN_NAMES, PLAYER_COLORS, groupSpaces };
+
+  // ---- Editions --------------------------------------------------------------
+  // The Pokémon edition keeps every rule and price but renames the board,
+  // the card decks and the tokens.
+  const POKEMON_NAMES = {
+    0: 'GO', 1: 'Caterpie', 2: 'Gym Card', 3: 'Weedle', 4: 'Potion Tax', 5: 'Poké Ball',
+    6: 'Pidgey', 7: 'Trainer Card', 8: 'Rattata', 9: 'Spearow', 10: 'Jail',
+    11: 'Clefairy', 12: 'Pokémon Center', 13: 'Jigglypuff', 14: 'Meowth', 15: 'Great Ball',
+    16: 'Charmander', 17: 'Gym Card', 18: 'Vulpix', 19: 'Growlithe', 20: 'Safari Zone',
+    21: 'Machop', 22: 'Trainer Card', 23: 'Geodude', 24: 'Onix', 25: 'Ultra Ball',
+    26: 'Pikachu', 27: 'Jolteon', 28: 'Poké Mart', 29: 'Raichu', 30: 'Team Rocket!',
+    31: 'Bulbasaur', 32: 'Oddish', 33: 'Gym Card', 34: 'Scyther', 35: 'Master Ball',
+    36: 'Trainer Card', 37: 'Mew', 38: 'Rare Candy Tax', 39: 'Mewtwo',
+  };
+  const POKEMON_CARDS = {
+    lucky: [
+      'Fly back to GO. Collect $200.',
+      'Advance to Onix. If you pass GO, collect $200.',
+      'Advance to the nearest Poké Ball space. If it is owned, pay the owner double rent.',
+      'A legendary encounter! Advance to Mewtwo.',
+      'Advance to Clefairy. If you pass GO, collect $200.',
+      'Advance to the nearest Pokémon Center or Poké Mart. If it is owned, pay 10× your dice roll.',
+      'You won a Pokémon battle! Collect $150.',
+      'You found a Nugget. Collect $50.',
+      'Your Pokémon fainted — pay $15 for a Potion.',
+      'Your Pokémon ran away! Go back 3 spaces.',
+      'Team Rocket caught you! Go directly to Jail. Do not pass GO.',
+      'Escape Rope — Get Out of Jail Free. Keep this card until you need it.',
+      'You became Pokémon League champion. Pay each player $50 for the party.',
+      'Your Pokémon wrecked the town: pay $25 per house and $100 per hotel.',
+      'Catch a ride with a Poké Ball — advance to the Poké Ball space. If you pass GO, collect $200.',
+      'You won the Pokémon lottery at the Game Corner! Collect $100.',
+    ],
+    town: [
+      'Professor Oak sends you back to GO. Collect $200.',
+      'You earned a Gym Badge. Collect $200.',
+      'Nurse Joy healed your team. Pay $50.',
+      'You sold a rare Pokémon card. Collect $50.',
+      'Escape Rope — Get Out of Jail Free. Keep this card until you need it.',
+      'Officer Jenny stops you. Go directly to Jail.',
+      "It's your Pokémon's hatch day! Collect $10 from every player.",
+      'You found a Rare Candy. Collect $100.',
+      'Bike Voucher refund. Collect $20.',
+      'Your Pokémon needs a check-up at the Pokémon Center. Pay $100.',
+      'Poké Ball restock at the Poké Mart. Pay $50.',
+      'You helped a trainer find their Pikachu. Collect $25.',
+      'Gym repairs: pay $40 per house and $115 per hotel.',
+      'Second place at the Pokémon Contest. Collect $10.',
+      'Bill from the Pokémon storage system leaves you $100.',
+      'Your team won the Pokémon Tournament! Collect $100.',
+    ],
+  };
+  const THEMES = {
+    classic: {
+      title: 'MONOPOLY',
+      subtitle: '',
+      decks: { lucky: 'CHANCE', town: 'COMMUNITY CHEST' },
+      corners: { free: ['FREE', 'PARKING'], gotojail: ['GO TO', 'JAIL'] },
+      tokens: TOKENS,
+      tokenNames: TOKEN_NAMES,
+    },
+    pokemon: {
+      title: 'MONOPOLY',
+      subtitle: 'POKÉMON EDITION',
+      decks: { lucky: 'TRAINER CARD', town: 'GYM CARD' },
+      corners: { free: ['SAFARI', 'ZONE'], gotojail: ['TEAM', 'ROCKET!'] },
+      // You're catching Pokémon, so you play as a trainer.
+      tokens: ['ash', 'misty', 'brock', 'gary', 'may', 'dawn'],
+      tokenNames: { ash: 'Ash', misty: 'Misty', brock: 'Brock', gary: 'Gary', may: 'May', dawn: 'Dawn' },
+    },
+  };
+  const themeOf = (name) => THEMES[name] || THEMES.classic;
+  const spaceName = (id, theme) => (theme === 'pokemon' ? POKEMON_NAMES[id] : SPACES[id].name);
+  const cardText = (deck, index, theme) => (theme === 'pokemon' ? POKEMON_CARDS[deck][index] : CARDS[deck][index].text);
+
+  // In the browser there is one game per page, so the page can switch edition in place.
+  const CLASSIC_NAMES = SPACES.map((sp) => sp.name);
+  function applyTheme(theme) {
+    SPACES.forEach((sp, id) => {
+      sp.name = theme === 'pokemon' ? POKEMON_NAMES[id] : CLASSIC_NAMES[id];
+    });
+  }
+
+  return { THEMES, themeOf, spaceName, cardText, applyTheme, GROUPS, SPACES, JAIL, BUYABLE, STATION_RENT, CARDS, TOKENS, TOKEN_NAMES, PLAYER_COLORS, BANK_HOUSES, BANK_HOTELS, groupSpaces };
 });

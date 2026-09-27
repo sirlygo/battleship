@@ -1,13 +1,19 @@
 import { store } from '../shared/room-client.js';
 import { setupTable, bigText, toast, sound } from '../shared/table-ui.js';
 import { TycoonBoard3D } from './board3d.js';
-import { drawBoard, SIDE, spaceRect, tokenSpot } from './board-art.js';
+import { coinCanvas, coinUrl } from './token-art.js';
+import { drawBoard, setArtTheme, SIDE, spaceRect, tokenSpot } from './board-art.js';
 
 const B = window.TycoonBoard;
 const $ = (id) => document.getElementById(id);
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const TOKEN_EMOJI = { car: '🏎️', rocket: '🚀', hat: '🎩', boat: '⛵', gem: '💎', ufo: '🛸' };
-const DECK = { lucky: { title: 'CHANCE', color: '#f08a2e' }, town: { title: 'COMMUNITY CHEST', color: '#3b82e0' } };
+const DECK = { lucky: { color: '#f08a2e' }, town: { color: '#3b82e0' } };
+let theme = 'classic';
+const themeInfo = () => B.themeOf(theme);
+// The same coin art as the board pieces.
+function tokenIcon(t, color = '#f5c518') {
+  return `<img class="coin-icon" src="${coinUrl(t, color)}" alt="" />`;
+}
 const money = (n) => `$${Math.round(n).toLocaleString('en-US')}`;
 
 const el = {
@@ -37,6 +43,9 @@ const el = {
   tradeBtn: $('tradeBtn'),
   giveUpBtn: $('giveUpBtn'),
   offerBox: $('offerBox'),
+  auctionBox: $('auctionBox'),
+  tokenPick: $('tokenPick'),
+  bankChip: $('bankChip'),
   myBox: $('myBox'),
   myWorth: $('myWorth'),
   myProps: $('myProps'),
@@ -156,7 +165,8 @@ function spaceInfoHtml(id) {
     const o = seatInfo(prop.owner);
     owner = `<div class="owner" style="color:${o?.color}">Owned by ${escapeHtml(nameOf(prop.owner))}${prop.mortgaged ? ' · mortgaged' : ''}</div>`;
   } else if (space.price) owner = '<div class="owner">For sale</div>';
-  return `<div class="band" style="background:${spaceColor(space)}">${escapeHtml(space.name)}</div><div class="rows">${rows}</div>${owner}`;
+  const label = space.type === 'street' ? 'TITLE DEED' : space.price ? 'DEED' : '';
+  return `<div class="band" style="background:${spaceColor(space)}">${label ? `<small>${label}</small>` : ''}${escapeHtml(space.name)}</div><div class="rows">${rows}</div>${owner}`;
 }
 
 function showTip(id, x, y) {
@@ -232,17 +242,12 @@ function draw2d() {
     seats.forEach((seat, i) => {
       const p = seatInfo(seat);
       const spot = tokenSpot(pos, i, seats.length, key.endsWith('j'));
-      ctx.beginPath();
-      ctx.arc(spot.x * u, spot.y * u, u * 0.2, 0, Math.PI * 2);
-      ctx.fillStyle = p.color;
-      ctx.fill();
-      ctx.lineWidth = seat === s.turn ? 4 : 2;
-      ctx.strokeStyle = '#fff';
-      ctx.stroke();
-      ctx.font = `${Math.round(u * 0.24)}px sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(TOKEN_EMOJI[p.token], spot.x * u, spot.y * u + 1);
+      const d = u * (seat === s.turn ? 0.66 : 0.58);
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.5)';
+      ctx.shadowBlur = 6;
+      ctx.drawImage(coinCanvas(p.token, p.color, 128), spot.x * u - d / 2, spot.y * u - d / 2, d, d);
+      ctx.restore();
     });
   });
 }
@@ -290,8 +295,22 @@ function renderPlayers() {
     const before = view.lastMoney.get(p.seat);
     if (before !== undefined && before !== p.money) cash.classList.add(p.money > before ? 'flash-up' : 'flash-down');
     view.lastMoney.set(p.seat, p.money);
-    chip.innerHTML = `<span class="tok">${TOKEN_EMOJI[p.token]}</span><b>${escapeHtml(p.seat === mySeat() ? `${p.name} (you)` : p.name)}</b>${p.jail ? '<span title="In jail">🔒</span>' : ''}${p.jailCards ? `<span title="Get out of jail free">🎟️${p.jailCards > 1 ? p.jailCards : ''}</span>` : ''}`;
+    chip.innerHTML = `<span class="tok">${tokenIcon(p.token, p.color)}</span><b>${escapeHtml(p.seat === mySeat() ? `${p.name} (you)` : p.name)}</b>${p.jail ? '<span title="In jail">🔒</span>' : ''}${p.jailCards ? `<span title="Get out of jail free">🎟️${p.jailCards > 1 ? p.jailCards : ''}</span>` : ''}`;
     chip.appendChild(cash);
+    // Little squares for every property they own, in board order.
+    const owned = Object.entries(s.props || {}).filter(([, pr]) => pr.owner === p.seat);
+    if (owned.length) {
+      const deeds = document.createElement('span');
+      deeds.className = 'deeds';
+      owned.forEach(([id, pr]) => {
+        const i = document.createElement('i');
+        i.style.background = spaceColor(B.SPACES[id]);
+        if (pr.mortgaged) i.className = 'm';
+        i.title = B.SPACES[id].name;
+        deeds.appendChild(i);
+      });
+      chip.appendChild(deeds);
+    }
     el.playerStrip.appendChild(chip);
   });
 }
@@ -318,6 +337,19 @@ function renderLobby() {
       li.textContent = 'Open seat';
     }
     el.lobbyPlayers.appendChild(li);
+  });
+  const picks = s.tokenPicks || {};
+  el.tokenPick.innerHTML = '';
+  themeInfo().tokens.forEach((t) => {
+    const owner = Object.keys(picks).find((seat) => picks[seat] === t);
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.dataset.token = t;
+    const mine = owner !== undefined && Number(owner) === s.seat;
+    b.className = `ty-token${mine ? ' active' : ''}`;
+    b.disabled = s.spectator || (owner !== undefined && !mine);
+    b.innerHTML = `<span>${tokenIcon(t)}</span><small>${owner !== undefined && !mine ? escapeHtml(s.players[owner]?.name || '') : themeInfo().tokenNames[t]}</small>`;
+    el.tokenPick.appendChild(b);
   });
   document.querySelectorAll('#tycoonRules [data-option]').forEach((group) => {
     group.querySelectorAll('button').forEach((b) => {
@@ -357,6 +389,7 @@ function renderStatus() {
       jail: 'You are in Jail: pay $50, use a card, or try for doubles.',
       buy: `Buy ${B.SPACES[turn.pos].name}?`,
       end: 'Build, mortgage or trade — then end your turn.',
+      auction: 'Auction in progress!',
     }[s.turnPhase];
   } else {
     title = `${possessive(s.turn)} turn`;
@@ -367,7 +400,9 @@ function renderStatus() {
   el.statusSub.textContent = sub;
   el.status.classList.toggle('mine', isMyTurn() && !view.animating);
   el.potChip.hidden = !(s.phase === 'playing' && s.options?.jackpot === 'on');
-  el.potChip.textContent = `☕ Jackpot ${money(s.pot || 0)}`;
+  el.potChip.textContent = `🚗 Jackpot ${money(s.pot || 0)}`;
+  el.bankChip.hidden = s.phase !== 'playing' || !s.bank;
+  if (s.bank) el.bankChip.innerHTML = `Bank <b>🏠 ${s.bank.houses}</b> <b>🏨 ${s.bank.hotels}</b>`;
 }
 
 function renderActions() {
@@ -399,6 +434,38 @@ function renderActions() {
   el.endBtn.hidden = !(isMyTurn() && phase === 'end');
   el.endBtn.disabled = !my;
   el.tradeBtn.disabled = Boolean(s.offer) || view.pending;
+}
+
+function renderAuction() {
+  const s = view.snap;
+  const a = s.phase === 'playing' ? s.auction : null;
+  el.auctionBox.hidden = !a;
+  clearInterval(view.auctionTimer);
+  if (!a) return;
+  const space = B.SPACES[a.space];
+  const me = mySeat();
+  const inIt = me !== null && a.bidders.includes(me) && !a.out.includes(me);
+  const myCash = seatInfo(me)?.money || 0;
+  const leader = a.bidder === null ? 'No bids yet' : `${escapeHtml(nameOf(a.bidder))} ${a.bidder === me ? 'lead' : 'leads'}`;
+  const steps = [1, 10, 50, 100];
+  const buttons = inIt
+    ? steps.map((n) => {
+        const amt = (a.high || 0) + n;
+        return `<button class="btn btn-secondary" type="button" data-bid="${amt}" ${amt > myCash || a.bidder === me ? 'disabled' : ''}>+$${n}</button>`;
+      }).join('') + `<button class="btn btn-ghost" type="button" data-fold="1" ${a.bidder === me ? 'disabled' : ''}>Drop out</button>`
+    : `<p class="muted small">${a.out.includes(me) ? 'You dropped out.' : 'Watching the auction.'}</p>`;
+  el.auctionBox.innerHTML = `<div class="band" style="background:${spaceColor(space)}"><small>AUCTION</small>${escapeHtml(space.name)}</div>
+    <div class="ty-auction-body"><div class="ty-bid"><span>${money(a.high)}</span><small>${leader} · list price ${money(space.price)}</small></div>
+    <div class="ty-timer"><i></i></div><div class="ty-bid-buttons">${buttons}</div>
+    <p class="muted small">Still in: ${a.bidders.filter((b) => !a.out.includes(b)).map((b) => escapeHtml(nameOf(b))).join(', ')}</p></div>`;
+  const bar = el.auctionBox.querySelector('.ty-timer i');
+  const tick = () => {
+    const left = Math.max(0, a.left - (performance.now() - view.snapAt));
+    bar.style.width = `${Math.min(100, (left / 12000) * 100)}%`;
+    bar.classList.toggle('hurry', left < 4000);
+  };
+  tick();
+  view.auctionTimer = setInterval(tick, 200);
 }
 
 function renderOffer() {
@@ -502,7 +569,7 @@ function renderGameOver() {
     .forEach((p) => {
       const row = document.createElement('div');
       if (p.seat === w) row.className = 'win';
-      row.innerHTML = `<span><span style="color:${p.color}">${TOKEN_EMOJI[p.token]}</span> ${escapeHtml(p.name)}${p.seat === mySeat() ? ' (you)' : ''}</span><span>${p.bankrupt ? 'bankrupt' : `worth ${money(p.worth)}`} · ${s.wins?.[p.name] || 0} wins</span>`;
+      row.innerHTML = `<span>${tokenIcon(p.token, p.color)} ${escapeHtml(p.name)}${p.seat === mySeat() ? ' (you)' : ''}</span><span>${p.bankrupt ? 'bankrupt' : `worth ${money(p.worth)}`} · ${s.wins?.[p.name] || 0} wins</span>`;
       el.goResults.appendChild(row);
     });
   renderRematch();
@@ -559,6 +626,7 @@ function renderAll() {
   renderLobby();
   renderStatus();
   renderActions();
+  renderAuction();
   renderOffer();
   renderMine();
   renderLog();
@@ -570,7 +638,7 @@ function renderAll() {
 // ---------------------------------------------------------------------------
 
 function showCard(e) {
-  const d = DECK[e.deck];
+  const d = { ...DECK[e.deck], title: themeInfo().decks[e.deck] };
   el.cardFace.innerHTML = `<h3 style="background:${d.color}">${d.title}</h3><div>${escapeHtml(e.text)}</div><div class="who">${escapeHtml(nameOf(e.seat))} drew this card · tap to close</div>`;
   el.cardPop.hidden = false;
   sound.rotate();
@@ -636,17 +704,30 @@ async function playEvent(e) {
       }
       break;
     }
+    case 'auction':
+      sound.check();
+      bigText('AUCTION!', `${B.SPACES[e.space].name} is up for grabs`, 'info');
+      await wait(300);
+      break;
+    case 'bid':
+      sound.click();
+      break;
+    case 'unsold':
+      toast(`Nobody bid on ${B.SPACES[e.space].name}.`);
+      break;
     case 'buy': {
       const space = B.SPACES[e.space];
       sound.crown();
-      bigText('SOLD!', `${space.name} → ${nameOf(e.seat)}`, 'info');
+      bigText(e.auction ? `SOLD! ${money(e.price)}` : 'SOLD!', `${space.name} → ${nameOf(e.seat)}`, 'info');
       if (three) board3d.burst(e.space, spaceColor(space));
       renderBoard();
       await wait(350);
       break;
     }
     case 'card':
+      if (three) await board3d.liftCard(e.deck);
       await showCard(e);
+      board3d?.dropCard();
       break;
     case 'jail':
       sound.error();
@@ -781,8 +862,22 @@ async function sendTrade() {
 // State updates
 // ---------------------------------------------------------------------------
 
+function useTheme(next) {
+  next = next === 'pokemon' ? 'pokemon' : 'classic';
+  if (next === theme && view.themeApplied) return;
+  theme = next;
+  view.themeApplied = true;
+  B.applyTheme(theme);
+  setArtTheme(theme);
+  boardImage = null;
+  board3d?.setTheme(theme);
+  document.body.classList.toggle('pokemon', theme === 'pokemon');
+}
+
 function onState(snap, prev) {
   view.snap = snap;
+  view.snapAt = performance.now();
+  useTheme(snap.options?.theme);
   const newRound = !prev || prev.round !== snap.round || (prev.phase !== 'playing' && snap.phase === 'playing');
   if (newRound && snap.events) {
     view.queue = [];
@@ -794,7 +889,7 @@ function onState(snap, prev) {
     renderDiceChip(null);
     if (snap.phase === 'playing' && prev && prev.phase !== 'playing') {
       const me = seatInfo(snap.seat);
-      bigText('LET’S DO BUSINESS!', me ? `You play the ${B.TOKEN_NAMES[me.token]}` : 'Enjoy the game', 'info');
+      bigText('LET’S DO BUSINESS!', me ? `You play the ${themeInfo().tokenNames[me.token]}` : 'Enjoy the game', 'info');
       sound.joined();
     }
   }
@@ -814,6 +909,7 @@ function onState(snap, prev) {
     renderLobby();
     renderLog();
     renderOffer();
+    renderAuction();
   }
 }
 
@@ -852,6 +948,7 @@ function make3d() {
     const forced = new URLSearchParams(location.search).get('quality');
     const quality = ['low', 'medium', 'high'].includes(forced) ? forced : coarse ? 'medium' : 'high';
     board3d = new TycoonBoard3D(el.canvas3d, { quality });
+    board3d.setTheme(theme);
     board3d.follow = prefs.follow;
     board3d.onHover = (id, x, y) => showTip(id, x, y);
     board3d.onSpace = (id, x, y) => {
@@ -891,6 +988,19 @@ el.giveUpBtn.addEventListener('click', () => {
 el.tradeWith.addEventListener('change', fillTradeLists);
 el.tradeSend.addEventListener('click', sendTrade);
 el.tradeCancel.addEventListener('click', () => (el.tradeModal.hidden = true));
+el.auctionBox.addEventListener('click', (event) => {
+  const b = event.target.closest('button');
+  if (!b || b.disabled) return;
+  if (b.dataset.fold) send('ty:fold');
+  else send('ty:bid', { amount: Number(b.dataset.bid) });
+});
+el.tokenPick.addEventListener('click', async (event) => {
+  const b = event.target.closest('button[data-token]');
+  if (!b || b.disabled) return;
+  sound.click();
+  const res = await client.send('ty:token', { token: b.dataset.token });
+  if (res.error) toast(res.error, 'error');
+});
 el.offerBox.addEventListener('click', (event) => {
   const b = event.target.closest('button');
   if (!b) return;
@@ -954,6 +1064,7 @@ window.addEventListener('keydown', (event) => {
 });
 document.fonts?.ready.then(() => {
   boardImage = null;
+  setArtTheme(theme);
   board3d?.refreshTexture();
   draw2d();
 });

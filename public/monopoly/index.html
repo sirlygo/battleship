@@ -49,7 +49,7 @@
           <summary>How to play</summary>
           <ol>
             <li>Roll two dice and move. Collect $200 every time you pass <strong>GO</strong>. Doubles roll again — three in a row sends you to Jail.</li>
-            <li>Land on an unowned street, station or utility to buy it. Land on someone else's and pay rent.</li>
+            <li>Land on an unowned property to buy it — or pass and it goes up for auction. Land on someone else's and pay rent.</li>
             <li>Own a whole colour set to double its rent, then build houses (up to four) and a hotel for huge rents.</li>
             <li><strong>Chance</strong> and <strong>Community Chest</strong> cards can help or hurt. Trade with other players to finish your sets.</li>
             <li>Short on cash? Mortgage property or sell buildings. Run out completely and you're bankrupt. Last player standing wins.</li>
@@ -97,6 +97,7 @@
             <div id="tip" class="ty-tip" hidden></div>
             <div id="diceChip" class="ty-dice-chip" hidden></div>
             <div id="potChip" class="ty-pot-chip" hidden></div>
+            <div id="bankChip" class="ty-bank-chip" hidden></div>
           </div>
         </div>
 
@@ -116,7 +117,14 @@
               <button id="copyLinkBtn" class="btn btn-primary" type="button">Share invite link</button>
             </div>
             <ul id="lobbyPlayers" class="ty-lobby-players"></ul>
+            <p class="ty-rule-label ty-token-label">Pick your token</p>
+            <div id="tokenPick" class="ty-token-pick"></div>
             <div id="tycoonRules" class="ty-rules">
+              <p class="ty-rule-label">Edition</p>
+              <div class="segmented" data-option="theme">
+                <button type="button" data-value="classic">Classic<small>Boardwalk and friends</small></button>
+                <button type="button" data-value="pokemon">Pokémon<small>Catch 'em all</small></button>
+              </div>
               <p class="ty-rule-label">Game length</p>
               <div class="segmented" data-option="length">
                 <button type="button" data-value="classic">Classic<small>Last one standing</small></button>
@@ -126,6 +134,11 @@
               <div class="segmented" data-option="cash">
                 <button type="button" data-value="1500">$1,500<small>Standard</small></button>
                 <button type="button" data-value="2500">$2,500<small>Rich start</small></button>
+              </div>
+              <p class="ty-rule-label">Auctions</p>
+              <div class="segmented" data-option="auction">
+                <button type="button" data-value="on">Auctions<small>Passed property is auctioned</small></button>
+                <button type="button" data-value="off">No auctions<small>It stays with the bank</small></button>
               </div>
               <p class="ty-rule-label">Free Parking</p>
               <div class="segmented" data-option="jackpot">
@@ -152,6 +165,8 @@
               <button id="giveUpBtn" class="btn btn-ghost" type="button">Give up</button>
             </div>
           </div>
+
+          <div id="auctionBox" class="ty-auction" hidden></div>
 
           <div id="offerBox" class="ty-offer" hidden></div>
 

@@ -4,6 +4,9 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { drawBoard, SIDE, spaceRect, tokenSpot } from './board-art.js';
+import { coinCanvas } from './token-art.js';
+
+let deckTheme = 'classic';
 
 const B = window.TycoonBoard;
 const H = SIDE / 2;
@@ -52,72 +55,77 @@ const UP_ROT = {
 // Token models (all about 0.45 tall, facing +x)
 // ---------------------------------------------------------------------------
 
+
+// Player pieces are coin standees: a big picture coin on a small stand in the
+// player's colour, turned to face the camera every frame.
+const COIN_R = 0.34;
+const coinTextures = new Map();
+function coinTexture(kind, color) {
+  const key = `${kind}|${color}`;
+  if (!coinTextures.has(key)) {
+    const tex = new THREE.CanvasTexture(coinCanvas(kind, color, 512));
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 8;
+    coinTextures.set(key, tex);
+  }
+  return coinTextures.get(key);
+}
+
 function tokenModel(kind, color) {
   const g = new THREE.Group();
-  const metal = new THREE.MeshStandardMaterial({ color: 0xd9dde3, metalness: 0.9, roughness: 0.25 });
-  const paint = new THREE.MeshPhysicalMaterial({ color, metalness: 0.4, roughness: 0.25, clearcoat: 1 });
-  const dark = new THREE.MeshStandardMaterial({ color: 0x1c1f24, roughness: 0.6 });
-  const add = (geo, mat, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) => {
-    const m = new THREE.Mesh(geo, mat);
-    m.position.set(x, y, z);
-    m.rotation.set(rx, ry, rz);
-    m.castShadow = true;
-    g.add(m);
-    return m;
-  };
-  // Coloured base disc so every token shows its player.
-  add(new THREE.CylinderGeometry(0.2, 0.22, 0.05, 28), paint, 0, 0.025, 0);
-  switch (kind) {
-    case 'car':
-      add(new THREE.BoxGeometry(0.42, 0.1, 0.2), paint, 0, 0.12, 0);
-      add(new THREE.BoxGeometry(0.2, 0.08, 0.16), metal, -0.03, 0.21, 0);
-      [[0.13, 0.1], [-0.13, 0.1], [0.13, -0.1], [-0.13, -0.1]].forEach(([x, z]) => add(new THREE.CylinderGeometry(0.055, 0.055, 0.05, 16), dark, x, 0.09, z, Math.PI / 2));
-      add(new THREE.BoxGeometry(0.04, 0.03, 0.22), metal, -0.22, 0.2, 0);
-      break;
-    case 'rocket':
-      add(new THREE.CylinderGeometry(0.08, 0.09, 0.3, 20), metal, 0, 0.23, 0);
-      add(new THREE.ConeGeometry(0.08, 0.14, 20), paint, 0, 0.45, 0);
-      for (let i = 0; i < 3; i += 1) {
-        const fin = add(new THREE.BoxGeometry(0.02, 0.1, 0.1), paint, 0, 0.12, 0);
-        fin.rotation.y = (i * Math.PI * 2) / 3;
-        fin.translateZ(0.09);
-      }
-      add(new THREE.SphereGeometry(0.035, 12, 8), new THREE.MeshStandardMaterial({ color: 0x9fe9ff, emissive: 0x3fb7ff, emissiveIntensity: 0.6 }), 0.075, 0.3, 0);
-      break;
-    case 'hat':
-      add(new THREE.CylinderGeometry(0.19, 0.19, 0.025, 28), dark, 0, 0.065, 0);
-      add(new THREE.CylinderGeometry(0.12, 0.125, 0.28, 28), dark, 0, 0.21, 0);
-      add(new THREE.CylinderGeometry(0.127, 0.127, 0.05, 28), paint, 0, 0.11, 0);
-      break;
-    case 'boat': {
-      const hull = add(new THREE.CylinderGeometry(0.2, 0.12, 0.1, 4, 1), paint, 0, 0.1, 0, 0, Math.PI / 4, 0);
-      hull.scale.set(1.2, 1, 0.55);
-      add(new THREE.CylinderGeometry(0.012, 0.012, 0.36, 8), metal, 0, 0.3, 0);
-      const sail = new THREE.BufferGeometry();
-      sail.setAttribute('position', new THREE.Float32BufferAttribute([0.01, 0.16, 0, 0.01, 0.46, 0, 0.17, 0.18, 0], 3));
-      sail.computeVertexNormals();
-      add(sail, new THREE.MeshStandardMaterial({ color: 0xfbfaf5, side: THREE.DoubleSide }));
-      break;
-    }
-    case 'gem': {
-      const top = add(new THREE.ConeGeometry(0.16, 0.12, 8), new THREE.MeshPhysicalMaterial({ color, metalness: 0.1, roughness: 0.05, transmission: 0.6, thickness: 0.3, clearcoat: 1 }), 0, 0.37, 0, Math.PI);
-      top.scale.y = 1;
-      add(new THREE.ConeGeometry(0.16, 0.28, 8), new THREE.MeshPhysicalMaterial({ color, metalness: 0.1, roughness: 0.05, transmission: 0.6, thickness: 0.3, clearcoat: 1 }), 0, 0.2, 0, Math.PI);
-      add(new THREE.CylinderGeometry(0.1, 0.16, 0.06, 8), metal, 0, 0.46, 0);
-      break;
-    }
-    case 'ufo':
-    default: {
-      const saucer = add(new THREE.SphereGeometry(0.2, 28, 12), metal, 0, 0.2, 0);
-      saucer.scale.y = 0.28;
-      add(new THREE.SphereGeometry(0.09, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshPhysicalMaterial({ color: 0x9fe9ff, transmission: 0.5, roughness: 0.05 }), 0, 0.23, 0);
-      for (let i = 0; i < 8; i += 1) {
-        const a = (i / 8) * Math.PI * 2;
-        add(new THREE.SphereGeometry(0.02, 8, 6), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.8 }), Math.cos(a) * 0.17, 0.2, Math.sin(a) * 0.17);
-      }
-      add(new THREE.CylinderGeometry(0.03, 0.06, 0.12, 12), paint, 0, 0.1, 0);
-    }
+  const paint = new THREE.MeshPhysicalMaterial({ color, metalness: 0.5, roughness: 0.25, clearcoat: 1 });
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.23, 0.05, 32), paint);
+  base.position.y = 0.025;
+  base.castShadow = true;
+  g.add(base);
+  // Glowing ring in the player's colour.
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(0.24, 0.32, 40).rotateX(-Math.PI / 2),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.7, depthWrite: false })
+  );
+  ring.position.y = 0.006;
+  g.add(ring);
+  g.userData.ring = ring;
+  // A chunky 3D coin: ridged metal edge in the player's colour, raised rims,
+  // and the picture set into both faces.
+  const T = 0.1;
+  const metal = new THREE.MeshPhysicalMaterial({ color, metalness: 0.85, roughness: 0.22, clearcoat: 0.6 });
+  const edgeGeo = new THREE.CylinderGeometry(COIN_R, COIN_R, T, 120, 1, true);
+  const pos = edgeGeo.attributes.position;
+  for (let i = 0; i < pos.count; i += 1) {
+    const x = pos.getX(i);
+    const z = pos.getZ(i);
+    const k = 1 + Math.sin(Math.atan2(z, x) * 60) * 0.012;
+    pos.setX(i, x * k);
+    pos.setZ(i, z * k);
   }
+  edgeGeo.computeVertexNormals();
+  const edge = new THREE.Mesh(edgeGeo, metal);
+  edge.rotation.x = Math.PI / 2;
+  // The picture is unlit so it keeps its true colours under the table lights.
+  const tex = coinTexture(kind, color);
+  const faceMat = new THREE.MeshBasicMaterial({ map: tex, toneMapped: false });
+  const coin = new THREE.Group();
+  coin.add(edge);
+  [1, -1].forEach((side) => {
+    const faceDisc = new THREE.Mesh(new THREE.CircleGeometry(COIN_R * 0.96, 64), faceMat);
+    faceDisc.position.z = side * (T / 2 - 0.004);
+    if (side < 0) faceDisc.rotation.y = Math.PI;
+    coin.add(faceDisc);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(COIN_R * 0.965, 0.02, 12, 72), metal);
+    rim.position.z = side * (T / 2);
+    coin.add(rim);
+  });
+  coin.traverse((m) => {
+    m.castShadow = true;
+  });
+  coin.position.y = 0.05 + COIN_R + 0.04;
+  const post = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.07, 0.13), paint);
+  post.position.y = 0.075;
+  const holder = new THREE.Group();
+  holder.add(coin, post);
+  g.add(holder);
+  g.userData.billboard = holder;
   return g;
 }
 
@@ -181,11 +189,12 @@ export class TycoonBoard3D {
 
     this.buildBoard();
     this.buildDice();
+    this.fx = new THREE.Group();
+    this.buildDecks();
     this.markers = new THREE.Group();
     scene.add(this.markers);
     this.houses = new THREE.Group();
     scene.add(this.houses);
-    this.fx = new THREE.Group();
     scene.add(this.fx);
     this.houseCount = {};
 
@@ -226,6 +235,91 @@ export class TycoonBoard3D {
     this.scene.add(table);
   }
 
+  // Chance and Community Chest piles sit in the middle of the board.
+  buildDecks() {
+    const back = (deck) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 332;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = deck === 'lucky' ? '#f08a2e' : '#3b82e0';
+      ctx.fillRect(0, 0, 512, 332);
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+      ctx.lineWidth = 10;
+      ctx.strokeRect(18, 18, 476, 296);
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const bigMark = deck === 'lucky' && deckTheme === 'classic';
+      ctx.font = bigMark ? '900 150px "Chakra Petch", sans-serif' : '900 54px "Chakra Petch", sans-serif';
+      const label = B.themeOf(deckTheme).decks[deck].split(' ');
+      if (deck === 'lucky' && deckTheme === 'classic') ctx.fillText('?', 256, 176);
+      else {
+        ctx.fillText(label[0], 256, 130);
+        ctx.fillText(label.slice(1).join(' '), 256, 200);
+      }
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      return new THREE.MeshStandardMaterial({ map: tex, roughness: 0.5 });
+    };
+    this.cardFace = new THREE.MeshStandardMaterial({ color: 0xfbfaf5, roughness: 0.6 });
+    Object.values(this.decks || {}).forEach((d) => this.scene.remove(d.stack));
+    this.decks = {};
+    [['lucky', -3.25, -0.14], ['town', 3.25, 0.14]].forEach(([deck, x, z]) => {
+      const edge = new THREE.MeshStandardMaterial({ color: 0xf2efe6, roughness: 0.7 });
+      const top = back(deck);
+      const stack = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.14, 1.23), [edge, edge, top, edge, edge, edge]);
+      stack.position.set(x, 0.07, z);
+      stack.rotation.y = Math.PI / 4;
+      stack.castShadow = true;
+      stack.receiveShadow = true;
+      this.scene.add(stack);
+      this.decks[deck] = { stack, top };
+    });
+  }
+
+  // A card lifts off the pile and flips towards the camera.
+  async liftCard(deck) {
+    const d = this.decks?.[deck];
+    if (!d) return;
+    const card = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.01, 1.23), [this.cardFace, this.cardFace, d.top, this.cardFace, this.cardFace, this.cardFace]);
+    card.position.copy(d.stack.position).setY(0.15);
+    card.rotation.y = Math.PI / 4;
+    card.castShadow = true;
+    this.fx.add(card);
+    const start = card.position.clone();
+    const end = new THREE.Vector3(start.x * 0.4, 2.2, start.z * 0.4 + 1.5);
+    await this.tween(520, (t) => {
+      const e = easeInOut(t);
+      card.position.lerpVectors(start, end, e);
+      card.rotation.set(-e * 1.1, Math.PI / 4 * (1 - e), 0);
+    });
+    this.lifted = card;
+  }
+
+  dropCard() {
+    const card = this.lifted;
+    if (!card) return;
+    this.lifted = null;
+    const start = card.position.clone();
+    this.tween(350, (t) => {
+      card.position.y = start.y + t * 1.5;
+      card.scale.setScalar(1 - t);
+    }).then(() => this.fx.remove(card));
+  }
+
+  // Switch between the classic and Pokémon editions.
+  setTheme(theme) {
+    if (this.theme === theme) return;
+    this.theme = theme;
+    deckTheme = theme;
+    this.refreshTexture();
+    this.buildDecks();
+    // Tokens differ between editions: rebuild them.
+    this.tokens.forEach((g) => this.scene.remove(g));
+    this.tokens.clear();
+  }
+
   refreshTexture() {
     this.boardMat.map?.dispose();
     this.boardMat.map = boardTexture();
@@ -257,8 +351,13 @@ export class TycoonBoard3D {
       }
     });
     alive.forEach((s) => {
+      if (this.tokens.has(s.seat) && this.tokens.get(s.seat).userData.kind !== s.token) {
+        this.scene.remove(this.tokens.get(s.seat));
+        this.tokens.delete(s.seat);
+      }
       if (!this.tokens.has(s.seat)) {
         const g = tokenModel(s.token, s.color);
+        g.userData.kind = s.token;
         g.userData.seat = s.seat;
         this.scene.add(g);
         this.tokens.set(s.seat, g);
@@ -287,7 +386,9 @@ export class TycoonBoard3D {
         const spot = toWorld(tokenSpot(pos, i, seats.length, jailed));
         g.userData.home = spot;
         g.position.set(spot.x, g.position.y, spot.z);
-        g.rotation.y = [0, -Math.PI / 2, Math.PI, Math.PI / 2][spaceRect(pos).side] + Math.PI / 2;
+        
+        // Big pieces, a touch smaller when several share a space.
+        g.scale.setScalar(seats.length >= 3 ? 1.25 : seats.length === 2 ? 1.45 : 1.7);
       });
     });
   }
@@ -299,12 +400,11 @@ export class TycoonBoard3D {
     for (const id of path) {
       const start = g.position.clone();
       const end = toWorld(tokenSpot(id, 0, 1));
-      const face = [0, -Math.PI / 2, Math.PI, Math.PI / 2][spaceRect(id).side] + Math.PI / 2;
+            g.scale.setScalar(1.7);
       this.focusGoal.copy(end);
       await this.tween(fast ? 90 : 150, (t) => {
         g.position.lerpVectors(start, end, easeInOut(t));
         g.position.y = Math.sin(t * Math.PI) * 0.35;
-        g.rotation.y += (face - g.rotation.y) * t;
       });
       this.positions.set(seat, id);
       this.onStep?.(id);
@@ -323,6 +423,7 @@ export class TycoonBoard3D {
       g.position.lerpVectors(start, end, easeInOut(t));
       g.position.y = Math.sin(t * Math.PI) * 2.5;
       g.rotation.y += 0.25;
+      if (t >= 1) g.rotation.y = 0;
     });
     this.positions.set(seat, 10);
     this.jailed.add(seat);
@@ -562,8 +663,25 @@ export class TycoonBoard3D {
     }
     // The active token bobs gently.
     this.tokens.forEach((g, seat) => {
+      // Coins always turn to face the camera.
+      const bb = g.userData.billboard;
+      if (bb) {
+        const dx = this.camera.position.x - g.position.x;
+        const dz = this.camera.position.z - g.position.z;
+        const dy = this.camera.position.y - g.position.y;
+        bb.rotation.order = 'YXZ';
+        bb.rotation.y = Math.atan2(dx, dz) - g.rotation.y;
+        // Lean back towards the camera so the picture reads as a full circle.
+        bb.rotation.x = -Math.atan2(dy, Math.hypot(dx, dz)) * 0.8;
+      }
       if (g.userData.moving) return;
-      const goal = seat === this.activeSeat ? 0.06 + Math.sin(now / 300) * 0.04 : 0;
+      const active = seat === this.activeSeat;
+      const ring = g.userData.ring;
+      if (ring) {
+        ring.material.opacity = active ? 0.65 + Math.sin(now / 200) * 0.3 : 0.55;
+        ring.scale.setScalar(active ? 1.05 + Math.sin(now / 200) * 0.08 : 1);
+      }
+      const goal = active ? 0.06 + Math.sin(now / 300) * 0.04 : 0;
       g.position.y += (goal - g.position.y) * Math.min(1, dt * 8);
     });
     this.focus.lerp(this.focusGoal, Math.min(1, dt * 2));
